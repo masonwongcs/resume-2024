@@ -9,9 +9,9 @@ import { usePathname } from 'next/navigation';
 
 import { NavLink } from '@/components/NavLink';
 
-import HomeIcon from '../../../public/images/navigation/home.svg';
-import InfoIcon from '../../../public/images/navigation/info.svg';
-import WorkIcon from '../../../public/images/navigation/work.svg';
+import HomeIcon from '@/icon/home.svg';
+import InfoIcon from '@/icon/info.svg';
+import WorkIcon from '@/icon/work.svg';
 
 const NAV_ITEMS = [
   { icon: HomeIcon, title: 'Home', href: '/' },

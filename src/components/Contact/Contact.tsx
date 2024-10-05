@@ -2,7 +2,7 @@ import styles from './Contact.module.scss';
 
 import cx from 'classnames';
 
-import QR from '../../../public/images/qr.svg';
+import QR from './qr.svg';
 
 const Group = () => {
   return (
