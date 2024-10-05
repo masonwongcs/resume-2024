@@ -26,9 +26,59 @@ const poppins = Poppins({
 
 const years = calculateYearDifference('2017-01-01');
 
+const BASE_URL = 'https://masonwongcs.com';
+const title = 'Mason Wong | UI Enthusiast & Front-End Engineer';
+const description = `With over ${years} years of experience, I aim to excel in front-end development, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`;
 export const metadata: Metadata = {
-  title: 'Mason Wong | UI Enthusiast & Front-End Engineer',
-  description: `With over ${years} years of experience, I aim to excel in front-end development, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`
+  title,
+  description,
+  icons: {
+    icon: [
+      {
+        url: 'favicon-32x32.png',
+        type: 'image/png',
+        sizes: '32x32'
+      },
+      {
+        url: 'favicon-16x16.png',
+        type: 'image/png',
+        sizes: '16x16'
+      }
+    ],
+    apple: {
+      url: 'apple-touch-icon.png',
+      sizes: '180x180'
+    }
+  },
+  keywords: [
+    'Mason Wong',
+    'masonwongcs',
+    'mason wong',
+    'UI/UX',
+    'frontend',
+    'front-end',
+    'front-end developer',
+    'front-end engineer',
+    'ui/ux engineer'
+  ],
+  alternates: {
+    canonical: BASE_URL
+  },
+  openGraph: {
+    title: title,
+    description: description,
+    url: BASE_URL,
+    siteName: title,
+    images: `${BASE_URL}/banner-og.jpg`,
+    locale: 'en_US',
+    type: 'website'
+  },
+  twitter: {
+    title: title,
+    description: description,
+    site: BASE_URL,
+    images: `${BASE_URL}/banner-twitter.jpg`
+  }
 };
 
 export default function RootLayout({
@@ -38,6 +88,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+      </head>
       <body className={cx(cormorantGaramond.variable, poppins.variable)}>
         <Suspense fallback={<div>Loading...</div>}>
           <Background />

@@ -37,6 +37,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const targetOffsetRef = useRef({ x: 0, y: 0 });
   const targetZoomRef = useRef(1);
   const animationFrameRef = useRef<number>();
+  const workUsageCountRef = useRef<Map<string, number>>(new Map());
   const lastTouchDistance = useRef<number | null>(null);
   const isMoving = useRef(false);
   const moveTimeout = useRef<NodeJS.Timeout>();
@@ -63,6 +64,35 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     return x - Math.floor(x);
   };
 
+  const getAdjacentWorks = (x: number, y: number) => {
+    const adjacent: Work[] = [];
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const id = generateItemId(x + dx, y + dy);
+        const item = itemsRef.current.get(id);
+        if (item) adjacent.push(item.work);
+      }
+    }
+    return adjacent;
+  };
+
+  const selectUniqueWork = (x: number, y: number, adjacentWorks: Work[]) => {
+    const seed = x * seedFactor + y;
+    const shuffled = [...works].sort(() => seededRandom(seed) - 0.5);
+
+    // Sort works by usage count (least used first)
+    shuffled.sort((a, b) => (workUsageCountRef.current.get(a.url) || 0) - (workUsageCountRef.current.get(b.url) || 0));
+
+    // Try to find a work that's not in adjacent cells and has been used the least
+    const selectedWork = shuffled.find((work) => !adjacentWorks.includes(work)) || shuffled[0];
+
+    // Update usage count
+    workUsageCountRef.current.set(selectedWork.url, (workUsageCountRef.current.get(selectedWork.url) || 0) + 1);
+
+    return selectedWork;
+  };
+
   const visibleItems = useMemo(() => {
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
@@ -78,15 +108,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         const id = generateItemId(x, y);
         let item = itemsRef.current.get(id);
         if (!item) {
-          const seed = x * seedFactor + y;
-          const randomIndex = Math.floor(seededRandom(seed) * works.length);
-          // const offsetX = cellWidth * 0.5 - cellWidth * 0.25;
+          const adjacentWorks = getAdjacentWorks(x, y);
+          const selectedWork = selectUniqueWork(x, y, adjacentWorks);
           const offsetX = 0;
           const offsetY = x % 2 === 0 ? 0 : staggerOffset;
-          // const offsetY = seededRandom(seed + 1) * cellSize * 0.5 - cellSize * 0.25;
           item = {
             id,
-            work: works[randomIndex],
+            work: selectedWork,
             offsetX,
             offsetY
           };
@@ -95,6 +123,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         items.push({ ...item, x, y });
       }
     }
+
+    // Periodically reset usage counts to allow for long-term variety
+    if (items.length > works.length * 2) {
+      workUsageCountRef.current.clear();
+    }
+
     return items;
   }, [offset, zoom, works, initialOffsetX]);
 

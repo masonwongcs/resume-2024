@@ -107,9 +107,18 @@
       align-items: center;
       background-color: #efefef;
 
+      @media not all and (hover: none) {
+        &:hover {
+          img {
+            transform: translateX(4px);
+          }
+        }
+      }
+
       img {
         width: 16px;
         margin-left: 10px;
+        transition: transform 200ms var(--material-cubic-bezier);
       }
     }
   }

@@ -1,10 +1,38 @@
 const WORK_HISTORY = [
   {
+    name: 'Aquariux',
+    url: 'https://www.aquariux.com',
+    image: './images/work/aquariux.gif',
+    description:
+      "Led a comprehensive rebuild of Aquariux's fintech website, focusing on enhancing user experience and modernizing the platform. Implemented responsive design principles and integrated advanced financial tools to provide a seamless experience for users across devices. The revamped site significantly improved load times, security features, and overall functionality, resulting in increased user engagement and conversion rates."
+  },
+  {
+    name: 'ArkStack',
+    url: 'https://www.arkstack.io',
+    image: './images/work/arkstack.jpg',
+    description:
+      "Spearheaded the development of ArkStack's infrastructure website from the ground up. Created a robust, scalable platform that effectively communicates the company's cloud infrastructure solutions. Incorporated interactive diagrams and real-time system status updates to showcase ArkStack's technological capabilities. The new site has become a crucial tool for lead generation and customer education in the competitive cloud services market."
+  },
+  {
+    name: 'Aesop',
+    url: 'https://www.aesop.com',
+    image: './images/work/aesop.jpg',
+    description:
+      "Played a key role in maintaining and enhancing Aesop's e-commerce website, ensuring a seamless and luxurious online shopping experience that aligns with the brand's high-end image. Implemented regular updates to improve site performance, optimize product displays, and streamline the checkout process. Collaborated closely with the marketing team to integrate new product launches and promotional campaigns, contributing to increased online sales and customer satisfaction."
+  },
+  {
     name: 'Blonde Boudoir',
     url: 'https://www.blondeboudoir.sg',
     image: './images/work/blondeboudoir.gif',
     description:
       "Orchestrated a complete digital transformation for Blonde Boudoir, a high-end hair salon. The website rebuild focused on showcasing their luxurious services, incorporating an elegant design that reflects the salon's sophisticated atmosphere. Enhanced user experience with intuitive navigation and a sleek appointment booking system, resulting in increased online visibility and client engagement."
+  },
+  {
+    name: '$duck',
+    url: 'https://www.duck.fun',
+    image: './images/work/duckfun.jpg',
+    description:
+      'Developed the official website for $duck coin, a new player in the cryptocurrency space. Created an engaging and informative platform that explains the unique features and potential of $duck coin to both crypto enthusiasts and newcomers. Implemented real-time price tracking, a user-friendly wallet interface, and educational resources about blockchain technology. The website played a crucial role in building the $duck coin community and driving adoption of the new cryptocurrency.'
   },
   {
     name: 'SL Edu',
