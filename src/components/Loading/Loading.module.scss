@@ -1,0 +1,24 @@
+@keyframes loading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  inset: 0;
+
+  .blob {
+    max-width: 500px;
+    width: 50vw;
+    aspect-ratio: 1 / 1;
+    background-color: #fd0f00;
+    border-radius: 20% 30% 50% 40%;
+    animation: loading 4s var(--material-cubic-bezier) infinite;
+    filter: blur(100px);
+    opacity: 0.4;
+  }
+}
