@@ -2,7 +2,7 @@
 
 import styles from './Navigation.module.scss';
 
-import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useLayoutEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import { usePathname } from 'next/navigation';

@@ -16,23 +16,39 @@ $navItemWidth: 45px;
   background-color: rgba(255, 255, 255, 0.5);
   box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
+  --nav-item-width: #{$navItemWidth};
+
+  @media screen and (max-width: 480px) {
+    flex-direction: row;
+    top: initial;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 20px;
+    padding: 12px;
+
+    --nav-item-width: 40px;
+  }
 
   .activeBackground {
     position: absolute;
-    width: $navItemWidth;
-    height: $navItemWidth;
+    width: var(--nav-item-width);
+    height: var(--nav-item-width);
     border-radius: 50%;
     background-color: #000;
     top: 0;
     transition: transform 400ms var(--material-cubic-bezier);
+
+    @media screen and (max-width: 480px) {
+      display: none;
+    }
   }
 
   .navigationItem {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: $navItemWidth;
-    height: $navItemWidth;
+    width: var(--nav-item-width);
+    height: var(--nav-item-width);
     border-radius: 50%;
     color: #000;
     position: relative;
@@ -40,6 +56,10 @@ $navItemWidth: 45px;
 
     &.active {
       color: #fff;
+
+      @media screen and (max-width: 480px) {
+        background-color: #000;
+      }
     }
   }
 }

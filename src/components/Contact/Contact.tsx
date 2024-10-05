@@ -72,45 +72,59 @@ const Contact = () => {
         <Group />
 
         <div className={styles.gridItem} />
-        <div className={styles.gridItem}>
-          <h2 className={styles.title}>contact</h2>
+        <div className={cx(styles.gridItem, styles.transparent)}>
+          <div className={styles.innerGrid}>
+            <div className={styles.innerGridItem}>
+              <h2 className={styles.title}>contact</h2>
 
-          <div className={styles.contactItem}>
-            <a
-              className={styles.contactItemCta}
-              href="https://www.linkedin.com/in/masonwongcs/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              LinkedIn
-              <img src="/images/icon/arrow-right.svg" alt={`Open LinkedIn url in new tab`}/>
-            </a>
-          </div>
-          <div className={styles.contactItem}>
-            <a className={styles.contactItemCta} href="https://github.com/masonwongcs" target="_blank" rel="noreferrer">
-              GitHub
-              <img src="/images/icon/arrow-right.svg" alt={`Open GitHub url in new tab`}/>
-            </a>
-          </div>
+              <div className={styles.contactItem}>
+                <a
+                  className={styles.contactItemCta}
+                  href="https://www.linkedin.com/in/masonwongcs/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  LinkedIn
+                  <img src="/images/icon/arrow-right.svg" alt={`Open LinkedIn url in new tab`} />
+                </a>
+              </div>
+              <div className={styles.contactItem}>
+                <a
+                  className={styles.contactItemCta}
+                  href="https://github.com/masonwongcs"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  GitHub
+                  <img src="/images/icon/arrow-right.svg" alt={`Open GitHub url in new tab`} />
+                </a>
+              </div>
 
-          <div className={styles.contactItem}>
-            <a className={styles.contactItemCta} href="https://masonwongcs.com/resume.pdf" target="_blank" rel="noreferrer">
-              Resume
-              <img src="/images/icon/arrow-right.svg" alt={`Open resume url in new tab`}/>
-            </a>
-          </div>
+              <div className={styles.contactItem}>
+                <a
+                  className={styles.contactItemCta}
+                  href="https://masonwongcs.com/resume.pdf"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Resume
+                  <img src="/images/icon/arrow-right.svg" alt={`Open resume url in new tab`} />
+                </a>
+              </div>
 
-          <h2 className={styles.subtitle}>or scan</h2>
-          <QR/>
+              <h2 className={styles.subtitle}>or scan</h2>
+              <QR />
+            </div>
+          </div>
         </div>
-        <div className={styles.gridItem}/>
-        <div className={styles.gridItem}/>
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
 
-        <Group/>
-        <Group/>
+        <Group />
+        <Group />
       </div>
     </section>
   );
 };
 
-export {Contact};
+export { Contact };

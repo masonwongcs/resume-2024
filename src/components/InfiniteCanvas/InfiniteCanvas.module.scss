@@ -32,6 +32,11 @@
         user-select: none;
         transition: filter 400ms var(--material-cubic-bezier);
         //mask-image: radial-gradient(#000, transparent);
+
+        @media screen and (max-width: 480px) {
+          border-radius: 4px;
+          width: 80%;
+        }
       }
     }
   }

@@ -1,13 +1,18 @@
 import styles from '../page.module.scss';
 
+import dynamic from 'next/dynamic';
+
 import { Flyout } from '@/components/Flyout';
-import { InfiniteCanvas } from '@/components/InfiniteCanvas';
 import { WORK_HISTORY } from '@/fixture/Work.fixture';
 
-export default function Home() {
+const InfiniteCanvasWork = dynamic(() => import('@/components/InfiniteCanvas').then((mod) => mod.InfiniteCanvas), {
+  ssr: false
+});
+
+export default function Work() {
   return (
     <main className={styles.main}>
-      <InfiniteCanvas works={WORK_HISTORY} />
+      <InfiniteCanvasWork works={WORK_HISTORY} />
       <Flyout />
     </main>
   );
