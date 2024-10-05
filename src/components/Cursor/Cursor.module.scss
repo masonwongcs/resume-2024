@@ -1,0 +1,9 @@
+.cursor {
+  position: fixed;
+  top: var(--y);
+  left: var(--x);
+  z-index: -1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: transform 400ms var(--material-cubic-bezier);
+}

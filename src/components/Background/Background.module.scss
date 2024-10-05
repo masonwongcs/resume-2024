@@ -1,0 +1,35 @@
+@mixin baseBlob {
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.1;
+}
+
+.blob1 {
+  @include baseBlob();
+  height: 50vh;
+  background-color: #e1bd00;
+  aspect-ratio: 2 / 1;
+}
+
+.blob2 {
+  @include baseBlob();
+  height: 60vh;
+  background-color: #fd0f00;
+  aspect-ratio: 3 / 2;
+}
+
+.blob3 {
+  @include baseBlob();
+  height: 70vh;
+  background-color: #0d00a9;
+  aspect-ratio: 3 / 2;
+}
+
+.noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  opacity: 0.5;
+}

@@ -1,0 +1,48 @@
+{
+  "semi": true,
+  "printWidth": 120,
+  "parser": "typescript",
+  "singleQuote": true,
+  "arrowParens": "always",
+  "bracketSpacing": true,
+  "cursorOffset": -1,
+  "insertPragma": false,
+  "proseWrap": "preserve",
+  "rangeStart": 0,
+  "requirePragma": false,
+  "tabWidth": 2,
+  "useTabs": false,
+  "endOfLine": "lf",
+  "trailingComma": "none",
+  "plugins": ["@trivago/prettier-plugin-sort-imports"],
+
+  "importOrder": ["^(vite)$", "((.*).css$)", "^(react(.*)$)|^(react$)", "<THIRD_PARTY_MODULES>", "^(@\\/)", "^[./]"],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "overrides": [
+    {
+      "files": ["*.json", ".prettierrc"],
+      "options": {
+        "parser": "json"
+      }
+    },
+    {
+      "files": ["*.scss"],
+      "options": {
+        "parser": "scss"
+      }
+    },
+    {
+      "files": ["*.css"],
+      "options": {
+        "parser": "css"
+      }
+    },
+    {
+      "files": ["*.html"],
+      "options": {
+        "parser": "html"
+      }
+    }
+  ]
+}
