@@ -27,6 +27,8 @@ interface InfiniteCanvasProps {
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const { setSelectedWork } = useWorkStore();
+
   const outerContainerRef = useRef<HTMLDivElement>(null);
   const innerContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, GridItem>>(new Map());
@@ -38,16 +40,21 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const lastTouchDistance = useRef<number | null>(null);
   const isMoving = useRef(false);
   const moveTimeout = useRef<NodeJS.Timeout>();
-  const { setSelectedWork } = useWorkStore();
 
-  const cellSize = window.innerWidth / 4;
+  const isMobile = innerWidth <= 480;
+
+  const gapSize = isMobile ? window.innerWidth / 8 : window.innerWidth / 24; // Size of the gap between grid items
+  const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.5;
+  const cellHeight = (cellWidth * 3) / 5;
   const viewportPadding = 2;
-  const lerpFactor = 0.1;
+  const lerpFactor = 0.15;
   const seedFactor = 1000;
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
-  const maxZoom = 3; // Maximum zoom in
+  const maxZoom = isMobile ? 2 : 3; // Maximum zoom in
   const moveTimeoutDuration = 100;
+  const staggerOffset = (cellHeight + gapSize) * 0.5;
+  const initialOffsetX = cellWidth / 2 + gapSize / 2;
 
   const generateItemId = (x: number, y: number) => `item_${x}_${y}`;
 
@@ -59,10 +66,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const visibleItems = useMemo(() => {
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
-    const startX = Math.floor(-offset.x / (cellSize * zoom)) - viewportPadding;
-    const startY = Math.floor(-offset.y / (cellSize * zoom)) - viewportPadding;
-    const endX = Math.ceil((width - offset.x) / (cellSize * zoom)) + viewportPadding;
-    const endY = Math.ceil((height - offset.y) / (cellSize * zoom)) + viewportPadding;
+
+    const startX = Math.floor((-offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) - viewportPadding;
+    const startY = Math.floor(-offset.y / ((cellHeight + gapSize) * zoom)) - viewportPadding;
+    const endX = Math.ceil((width - offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) + viewportPadding;
+    const endY = Math.ceil((height - offset.y) / ((cellHeight + gapSize) * zoom)) + viewportPadding;
 
     const items: (GridItem & { x: number; y: number })[] = [];
     for (let x = startX; x <= endX; x++) {
@@ -72,8 +80,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         if (!item) {
           const seed = x * seedFactor + y;
           const randomIndex = Math.floor(seededRandom(seed) * works.length);
-          const offsetX = cellSize * 0.5 - cellSize * 0.25;
-          const offsetY = seededRandom(seed + 1) * cellSize * 0.5 - cellSize * 0.25;
+          // const offsetX = cellWidth * 0.5 - cellWidth * 0.25;
+          const offsetX = 0;
+          const offsetY = x % 2 === 0 ? 0 : staggerOffset;
+          // const offsetY = seededRandom(seed + 1) * cellSize * 0.5 - cellSize * 0.25;
           item = {
             id,
             work: works[randomIndex],
@@ -86,7 +96,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       }
     }
     return items;
-  }, [offset, zoom, works]);
+  }, [offset, zoom, works, initialOffsetX]);
 
   const lerp = (start: number, end: number, factor: number) => {
     return start + (end - start) * factor;
@@ -129,6 +139,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
   }, []);
+
+  useEffect(() => {
+    // Set initial offset
+    setOffset({ x: initialOffsetX, y: 0 });
+    targetOffsetRef.current = { x: initialOffsetX, y: 0 };
+  }, [initialOffsetX]);
 
   useEffect(() => {
     animationFrameRef.current = requestAnimationFrame(animateOffset);
@@ -337,9 +353,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
             className={styles.infiniteCanvasItem}
             onClick={() => handleItemClick(item.work)}
             style={{
-              width: `${cellSize}px`,
-              height: `${cellSize}px`,
-              transform: `translate3d(${item.x * cellSize + item.offsetX}px, ${item.y * cellSize + item.offsetY}px, 0)`,
+              width: `${cellWidth}px`,
+              height: `${cellHeight}px`,
+              transform: `translate3d(${item.x * (cellWidth + gapSize) + item.offsetX}px, ${item.y * (cellHeight + gapSize) + item.offsetY}px, 0)`,
               willChange: 'transform'
             }}
           >

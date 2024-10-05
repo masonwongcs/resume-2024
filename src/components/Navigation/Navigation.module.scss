@@ -52,7 +52,7 @@ $navItemWidth: 45px;
     border-radius: 50%;
     color: #000;
     position: relative;
-    transition: color 400ms var(--material-cubic-bezier);
+    transition: all 400ms var(--material-cubic-bezier);
 
     &.active {
       color: #fff;

@@ -1,14 +1,16 @@
 import './globals.scss';
 
+import { Suspense } from 'react';
+
 import cx from 'classnames';
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, Poppins } from 'next/font/google';
 
 import { Background } from '@/components/Background';
+import { Flyout } from '@/components/Flyout';
 import { Navigation } from '@/components/Navigation';
 import { SmoothScroll } from '@/components/SmoothScroll';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
-import { Suspense } from 'react';
 
 const cormorantGaramond = Cormorant_Garamond({
   subsets: ['latin'],
@@ -37,11 +39,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cx(cormorantGaramond.variable, poppins.variable)}>
-      <Suspense fallback={<div>Loading...</div>}>
-        <Background />
-        <Navigation />
-        <SmoothScroll>{children}</SmoothScroll>
-      </Suspense>
+        <Suspense fallback={<div>Loading...</div>}>
+          <Background />
+          <Navigation />
+          <Flyout />
+          <SmoothScroll>{children}</SmoothScroll>
+        </Suspense>
       </body>
     </html>
   );

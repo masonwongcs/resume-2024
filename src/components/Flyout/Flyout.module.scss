@@ -1,7 +1,7 @@
 .flyout {
   position: fixed;
   inset: 0;
-  z-index: 500;
+  z-index: 1000;
   backdrop-filter: blur(4px);
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
@@ -10,10 +10,13 @@
   opacity: 0;
   visibility: hidden;
   transition: all 600ms var(--material-cubic-bezier);
+  isolation: isolate;
+  pointer-events: none;
 
   &.open {
     opacity: 1;
     visibility: visible;
+    pointer-events: auto;
 
     .flyoutContent {
       transition-duration: 400ms;
@@ -40,7 +43,11 @@
     transition-timing-function: var(--material-cubic-bezier);
 
     @media screen and (max-width: 480px) {
-      width: 90vw;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      border-radius: 0;
+      box-shadow: initial;
     }
 
     .closeBtn {
@@ -59,8 +66,9 @@
       justify-content: center;
 
       @media screen and (max-width: 480px) {
-        top: -60px;
-        right: 0;
+        top: 10px;
+        right: 10px;
+        position: fixed;
       }
 
       > img {
@@ -72,6 +80,10 @@
       width: 100%;
       border-radius: 20px;
       box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
+
+      @media screen and (max-width: 480px) {
+        border-radius: 12px;
+      }
     }
 
     .title {
