@@ -1,11 +1,11 @@
 import styles from '../page.module.scss';
 
-import { Hero } from '@/components/Hero';
+import { Contact } from '@/components/Contact';
 
 export default function Home() {
   return (
     <main className={styles.main}>
-      <Hero />
+      <Contact />
     </main>
   );
 }

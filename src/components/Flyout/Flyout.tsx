@@ -36,7 +36,7 @@ const Flyout = () => {
         <p className={styles.description}>{selectedWork?.description}</p>
         <a className={styles.cta} href={selectedWork?.url} target="_blank" rel="noopener">
           {formatUrl(selectedWork?.url)}
-          <img src="/images/icon/arrow-right.svg" alt={`Open in ${selectedWork?.name} in new tab`} />
+          <img src="/images/icon/arrow-right.svg" alt={`Open ${selectedWork?.name} in new tab`} />
         </a>
       </div>
     </section>

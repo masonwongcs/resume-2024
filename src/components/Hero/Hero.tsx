@@ -1,9 +1,18 @@
 import styles from './Hero.module.scss';
 
+import cx from 'classnames';
+
 const Hero = () => {
   return (
     <section className={styles.hero}>
       <div className={styles.gridWrapper}>
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
         <div className={styles.gridItem} />
         <div className={styles.gridItem} />
 
@@ -14,9 +23,19 @@ const Hero = () => {
               UI Enthusiast &<br />
               Front-End Engineer
             </h1>
-            {/*<p>UI Enthusiast & Front-End Engineer</p>*/}
+            <p>Mason Wong</p>
           </div>
         </div>
+        <div className={cx(styles.gridItem, styles.transparent)} />
+        <div className={styles.gridItem} />
+
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
+
+        <div className={styles.gridItem} />
+        <div className={styles.gridItem} />
         <div className={styles.gridItem} />
         <div className={styles.gridItem} />
       </div>

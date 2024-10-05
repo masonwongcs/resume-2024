@@ -10,13 +10,13 @@ import { usePathname } from 'next/navigation';
 import { NavLink } from '@/components/NavLink';
 
 import HomeIcon from '../../../public/images/navigation/home.svg';
-import PlayIcon from '../../../public/images/navigation/play.svg';
+import InfoIcon from '../../../public/images/navigation/info.svg';
 import WorkIcon from '../../../public/images/navigation/work.svg';
 
 const NAV_ITEMS = [
   { icon: HomeIcon, title: 'Home', href: '/' },
   { icon: WorkIcon, title: 'Work', href: '/work' },
-  { icon: PlayIcon, title: 'Play', href: '/play' }
+  { icon: InfoIcon, title: 'Info', href: '/info' }
 ];
 
 const Navigation = () => {
@@ -40,7 +40,7 @@ const Navigation = () => {
         className={styles.activeBackground}
         ref={backgroundRef}
         style={{
-          transform: `translateY(${offsetHeight}px)`
+          transform: `scale(${offsetHeight === 0 ? '0' : '1'}) translateY(${offsetHeight}px)`
         }}
       />
       {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => {

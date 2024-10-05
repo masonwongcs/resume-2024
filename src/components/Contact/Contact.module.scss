@@ -1,0 +1,92 @@
+.contact {
+  padding: 2px;
+  overflow: hidden;
+
+  .gridWrapper {
+    height: 100svh;
+    display: grid;
+    grid-template-columns: 1fr 3fr 1fr 1fr;
+    grid-auto-rows: 1fr 1fr 3fr 1fr 1fr;
+    gap: 2px;
+    position: relative;
+
+    .gridItem {
+      height: 100%;
+      background-color: rgba(255, 254, 240, 0.5);
+      position: relative;
+      padding: 20px 0 0 80px;
+
+      &.transparent {
+        background-color: transparent;
+        padding: 0;
+      }
+    }
+  }
+
+  .innerGrid {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2px;
+
+    .innerGridItemTitle {
+      height: 120px;
+    }
+
+    .innerGridItem {
+      height: 100%;
+      background-color: rgba(255, 254, 240, 0.5);
+      position: relative;
+      padding: 20px 20px 20px 80px;
+    }
+  }
+
+  .title {
+    font-size: clamp(24px, 5vw, 60px);
+    font-family: var(--font-cormorantGaramond), sans-serif;
+
+    &:not(:only-child) {
+      margin-bottom: 20px;
+    }
+  }
+
+  .subtitle {
+    font-size: clamp(12px, 1.5vw, 18px);
+    font-family: var(--font-poppins), sans-serif;
+    font-weight: 600;
+    margin-bottom: 12px;
+
+    &:not(:first-child) {
+      margin-top: 40px;
+    }
+  }
+
+  .description {
+    font-size: clamp(12px, 1.5vw, 18px);
+    font-family: var(--font-poppins), sans-serif;
+  }
+
+  .contactItem {
+    display: flex;
+    align-items: center;
+    font-size: clamp(12px, 1.5vw, 20px);
+    font-weight: 600;
+    font-family: var(--font-cormorantGaramond), sans-serif;
+    padding: 12px 0;
+
+    .contactItemIcon {
+      width: 16px;
+      margin-right: 4px;
+    }
+
+    .contactItemCta {
+      display: flex;
+      align-items: center;
+
+      > img {
+        width: 16px;
+        margin-left: 10px;
+      }
+    }
+  }
+}
