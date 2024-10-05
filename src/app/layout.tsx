@@ -8,6 +8,7 @@ import { Background } from '@/components/Background';
 import { Navigation } from '@/components/Navigation';
 import { SmoothScroll } from '@/components/SmoothScroll';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
+import { Suspense } from 'react';
 
 const cormorantGaramond = Cormorant_Garamond({
   subsets: ['latin'],
@@ -36,9 +37,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cx(cormorantGaramond.variable, poppins.variable)}>
+      <Suspense fallback={<div>Loading...</div>}>
         <Background />
         <Navigation />
         <SmoothScroll>{children}</SmoothScroll>
+      </Suspense>
       </body>
     </html>
   );
