@@ -4,7 +4,7 @@ import styles from './InfiniteCanvas.module.scss';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useMounted } from '@/hooks/useMounted';
+import { useWorkStore } from '@/store';
 
 interface Work {
   name: string;
@@ -26,18 +26,28 @@ interface InfiniteCanvasProps {
 
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
   const outerContainerRef = useRef<HTMLDivElement>(null);
   const innerContainerRef = useRef<HTMLDivElement>(null);
   const itemsRef = useRef<Map<string, GridItem>>(new Map());
   const isDragging = useRef(false);
   const lastPosition = useRef({ x: 0, y: 0 });
   const targetOffsetRef = useRef({ x: 0, y: 0 });
+  const targetZoomRef = useRef(1);
   const animationFrameRef = useRef<number>();
+  const lastTouchDistance = useRef<number | null>(null);
+  const isMoving = useRef(false);
+  const moveTimeout = useRef<NodeJS.Timeout>();
+  const { setSelectedWork } = useWorkStore();
 
   const cellSize = window.innerWidth / 4;
   const viewportPadding = 2;
   const lerpFactor = 0.1;
   const seedFactor = 1000;
+  const zoomSpeed = 0.001;
+  const minZoom = 0.75; // Maximum zoom out
+  const maxZoom = 3; // Maximum zoom in
+  const moveTimeoutDuration = 100;
 
   const generateItemId = (x: number, y: number) => `item_${x}_${y}`;
 
@@ -49,10 +59,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const visibleItems = useMemo(() => {
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
-    const startX = Math.floor(-offset.x / cellSize) - viewportPadding;
-    const startY = Math.floor(-offset.y / cellSize) - viewportPadding;
-    const endX = Math.ceil((width - offset.x) / cellSize) + viewportPadding;
-    const endY = Math.ceil((height - offset.y) / cellSize) + viewportPadding;
+    const startX = Math.floor(-offset.x / (cellSize * zoom)) - viewportPadding;
+    const startY = Math.floor(-offset.y / (cellSize * zoom)) - viewportPadding;
+    const endX = Math.ceil((width - offset.x) / (cellSize * zoom)) + viewportPadding;
+    const endY = Math.ceil((height - offset.y) / (cellSize * zoom)) + viewportPadding;
 
     const items: (GridItem & { x: number; y: number })[] = [];
     for (let x = startX; x <= endX; x++) {
@@ -76,7 +86,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       }
     }
     return items;
-  }, [offset, works]);
+  }, [offset, zoom, works]);
 
   const lerp = (start: number, end: number, factor: number) => {
     return start + (end - start) * factor;
@@ -86,7 +96,35 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     setOffset((prevOffset) => {
       const newX = lerp(prevOffset.x, targetOffsetRef.current.x, lerpFactor);
       const newY = lerp(prevOffset.y, targetOffsetRef.current.y, lerpFactor);
+
+      if (Math.abs(newX - targetOffsetRef.current.x) > 0.1 || Math.abs(newY - targetOffsetRef.current.y) > 0.1) {
+        isMoving.current = true;
+        if (moveTimeout.current) {
+          clearTimeout(moveTimeout.current);
+        }
+        moveTimeout.current = setTimeout(() => {
+          isMoving.current = false;
+        }, moveTimeoutDuration); // Wait for 300ms of no movement before considering it stopped
+      }
+
       return { x: newX, y: newY };
+    });
+
+    setZoom((prevZoom) => {
+      const newZoom = lerp(prevZoom, targetZoomRef.current, lerpFactor);
+
+      // Also check zoom changes for movement
+      if (Math.abs(newZoom - targetZoomRef.current) > 0.001) {
+        isMoving.current = true;
+        if (moveTimeout.current) {
+          clearTimeout(moveTimeout.current);
+        }
+        moveTimeout.current = setTimeout(() => {
+          isMoving.current = false;
+        }, moveTimeoutDuration);
+      }
+
+      return newZoom;
     });
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
@@ -100,6 +138,15 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       }
     };
   }, [animateOffset]);
+
+  const handleItemClick = useCallback(
+    (work: Work) => {
+      if (!isMoving.current) {
+        setSelectedWork(work);
+      }
+    },
+    [setSelectedWork]
+  );
 
   const handleStart = useCallback((clientX: number, clientY: number) => {
     isDragging.current = true;
@@ -135,9 +182,59 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     [handleMove]
   );
 
+  const handleZoom = useCallback((zoomPoint: { x: number; y: number }, newZoom: number) => {
+    const rect = outerContainerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const zoomFactor = newZoom / targetZoomRef.current;
+
+      // Calculate the point in the content space
+      const contentPointX = (zoomPoint.x - targetOffsetRef.current.x) / targetZoomRef.current;
+      const contentPointY = (zoomPoint.y - targetOffsetRef.current.y) / targetZoomRef.current;
+
+      // Calculate new offset to keep the zoom point stationary
+      const newOffsetX = zoomPoint.x - contentPointX * newZoom;
+      const newOffsetY = zoomPoint.y - contentPointY * newZoom;
+
+      targetZoomRef.current = newZoom;
+      targetOffsetRef.current = { x: newOffsetX, y: newOffsetY };
+    }
+  }, []);
+
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault();
+
+      if (e.ctrlKey || e.metaKey) {
+        const delta = -e.deltaY * zoomSpeed;
+        const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * (1 + delta)));
+
+        if (newZoom !== targetZoomRef.current) {
+          const rect = outerContainerRef.current?.getBoundingClientRect();
+          if (rect) {
+            const zoomPoint = {
+              x: e.clientX - rect.left - window.innerWidth / 2,
+              y: e.clientY - rect.top - window.innerHeight / 2
+            };
+            handleZoom(zoomPoint, newZoom);
+          }
+        }
+      } else if (e.shiftKey) {
+        targetOffsetRef.current.x += e.deltaX;
+      } else {
+        targetOffsetRef.current.y += e.deltaY;
+      }
+    },
+    [handleZoom]
+  );
+
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (e.touches.length === 1) {
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        lastTouchDistance.current = distance;
+      } else if (e.touches.length === 1) {
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     },
@@ -146,13 +243,52 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      if (e.touches.length === 1) {
-        e.preventDefault();
+      e.preventDefault();
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+
+        if (lastTouchDistance.current !== null) {
+          const delta = distance - lastTouchDistance.current;
+          const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * (1 + delta * 0.01)));
+
+          if (newZoom !== targetZoomRef.current) {
+            const rect = outerContainerRef.current?.getBoundingClientRect();
+            if (rect) {
+              const zoomPoint = {
+                x: (touch1.clientX + touch2.clientX) / 2 - rect.left - window.innerWidth / 2,
+                y: (touch1.clientY + touch2.clientY) / 2 - rect.top - window.innerHeight / 2
+              };
+              handleZoom(zoomPoint, newZoom);
+            }
+          }
+        }
+        lastTouchDistance.current = distance;
+      } else if (e.touches.length === 1) {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     },
-    [handleMove]
+    [handleMove, handleZoom]
   );
+
+  const handleTouchEnd = useCallback(() => {
+    lastTouchDistance.current = null;
+    handleEnd();
+  }, [handleEnd]);
+
+  useEffect(() => {
+    const outerContainer = outerContainerRef.current;
+    if (outerContainer) {
+      outerContainer.addEventListener('wheel', handleWheel, { passive: false });
+    }
+
+    return () => {
+      if (outerContainer) {
+        outerContainer.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, [handleWheel]);
 
   useEffect(() => {
     const outerContainer = outerContainerRef.current;
@@ -162,6 +298,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       outerContainer.addEventListener('mouseleave', handleEnd);
       outerContainer.addEventListener('touchmove', handleTouchMove as any, { passive: false });
       outerContainer.addEventListener('touchend', handleEnd);
+      outerContainer.addEventListener('wheel', handleWheel, { passive: false });
     }
 
     return () => {
@@ -171,9 +308,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         outerContainer.removeEventListener('mouseleave', handleEnd);
         outerContainer.removeEventListener('touchmove', handleTouchMove as any);
         outerContainer.removeEventListener('touchend', handleEnd);
+        outerContainer.removeEventListener('wheel', handleWheel);
       }
     };
-  }, [handleMouseMove, handleTouchMove, handleEnd]);
+  }, [handleMouseMove, handleTouchMove, handleEnd, handleWheel]);
 
   return (
     <div
@@ -182,12 +320,14 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       data-total={visibleItems.length}
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <div
         ref={innerContainerRef}
         className={styles.infiniteCanvasItemWrapper}
         style={{
-          transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
+          transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`,
           willChange: 'transform'
         }}
       >
@@ -195,7 +335,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
           <div
             key={item.id}
             className={styles.infiniteCanvasItem}
-            onClick={() => console.log('clicked')}
+            onClick={() => handleItemClick(item.work)}
             style={{
               width: `${cellSize}px`,
               height: `${cellSize}px`,
@@ -204,13 +344,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
             }}
           >
             <img className={styles.infiniteCanvasItemImage} src={item.work.image} alt={item.work.name} />
-            {/*<div className={styles.itemOverlay}>*/}
-            {/*  <h3>{item.work.name}</h3>*/}
-            {/*  <p>{item.work.description}</p>*/}
-            {/*  <a href={item.work.url} target="_blank" rel="noopener noreferrer">*/}
-            {/*    Visit Site*/}
-            {/*  </a>*/}
-            {/*</div>*/}
           </div>
         ))}
       </div>

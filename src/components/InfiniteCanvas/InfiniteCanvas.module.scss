@@ -1,27 +1,17 @@
-@keyframes scaleFadeIn {
-  from {
-    transform: scale(1.1);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
 .infiniteCanvas {
   position: relative;
   width: 100%;
   height: 100svh;
   overflow: hidden;
-  animation: scaleFadeIn 400ms var(--material-cubic-bezier) forwards;
 
   .infiniteCanvasItemWrapper {
     position: absolute;
     inset: 0;
     touch-action: none;
+    cursor: grab;
 
     .infiniteCanvasItem {
+      cursor: pointer;
       position: absolute;
       display: flex;
       align-items: center;
@@ -37,7 +27,7 @@
         pointer-events: none;
         object-fit: contain;
         width: 80%;
-        height: 80%;
+        border-radius: 16px;
         filter: grayscale(1);
         user-select: none;
         transition: filter 400ms var(--material-cubic-bezier);
