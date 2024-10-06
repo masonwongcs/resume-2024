@@ -2,7 +2,6 @@ import styles from '../page.module.scss';
 
 import dynamic from 'next/dynamic';
 
-import { Flyout } from '@/components/Flyout';
 import { WORK_HISTORY } from '@/fixture/Work.fixture';
 
 const InfiniteCanvasCSR = dynamic(() => import('@/components/InfiniteCanvas').then((mod) => mod.InfiniteCanvas), {
