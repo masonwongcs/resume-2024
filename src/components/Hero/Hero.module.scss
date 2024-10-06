@@ -1,3 +1,12 @@
+@keyframes slideRightInText {
+  from {
+    clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
+  }
+  to {
+    clip-path: polygon(0px 0px, 100% 0px, 100% 100%, 0% 100%);
+  }
+}
+
 .hero {
   height: 100svh;
   padding: 2px;
@@ -43,11 +52,30 @@
     h1 {
       font-size: clamp(24px, 5vw, 60px);
       font-family: var(--font-cormorantGaramond), sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      span {
+        display: inline-flex;
+        animation: slideRightInText 2s 400ms var(--material-cubic-bezier) forwards;
+        clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
+
+        &:nth-child(1) {
+          animation-delay: 400ms;
+        }
+
+        &:nth-child(2) {
+          animation-delay: 1200ms;
+        }
+      }
     }
     p {
+      display: inline-block;
       font-size: clamp(12px, 1.5vw, 20px);
       font-family: var(--font-poppins), sans-serif;
       margin-top: 20px;
+      animation: slideRightInText 1.4s 2400ms var(--material-cubic-bezier) forwards;
+      clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
     }
   }
 }

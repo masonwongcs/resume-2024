@@ -2,6 +2,8 @@ import styles from './Hero.module.scss';
 
 import cx from 'classnames';
 
+import { AnimatedText } from '@/components/AnimatedText';
+
 const Hero = () => {
   return (
     <section className={styles.hero}>
@@ -20,8 +22,8 @@ const Hero = () => {
         <div className={styles.gridItem}>
           <div className={styles.nameWrapper}>
             <h1>
-              UI Enthusiast &<br />
-              Front-End Engineer
+              <span>UI Enthusiast &</span>
+              <span>Front-End Engineer</span>
             </h1>
             <p>Mason Wong</p>
           </div>

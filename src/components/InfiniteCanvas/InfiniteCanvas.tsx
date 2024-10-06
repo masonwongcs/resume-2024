@@ -4,6 +4,7 @@ import styles from './InfiniteCanvas.module.scss';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useImageLoad } from '@/hooks/useImageLoad';
 import { useWorkStore } from '@/store';
 
 interface Work {
@@ -23,6 +24,32 @@ interface GridItem {
 interface InfiniteCanvasProps {
   works: Work[];
 }
+
+const InfiniteCanvasItem: React.FC<{ work: Work; style: React.CSSProperties; onClick: () => void }> = ({
+  work,
+  style,
+  onClick
+}) => {
+  const isLoaded = useImageLoad(work.image);
+  return (
+    <div className={styles.infiniteCanvasItem} onClick={onClick} style={style}>
+      <div
+        className={styles.infiniteCanvasItemBackground}
+        style={{
+          opacity: isLoaded ? 0 : 1
+        }}
+      />
+      <img
+        className={styles.infiniteCanvasItemImage}
+        src={work.image}
+        alt={work.name}
+        style={{
+          opacity: isLoaded ? 1 : 0
+        }}
+      />
+    </div>
+  );
+};
 
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -255,6 +282,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       e.preventDefault();
 
       if (e.ctrlKey || e.metaKey) {
+        // Zoom functionality remains the same
         const delta = -e.deltaY * zoomSpeed;
         const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * (1 + delta)));
 
@@ -268,10 +296,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
             handleZoom(zoomPoint, newZoom);
           }
         }
-      } else if (e.shiftKey) {
-        targetOffsetRef.current.x += e.deltaX;
       } else {
-        targetOffsetRef.current.y += e.deltaY;
+        const deltaX = e.deltaX;
+        const deltaY = e.deltaY;
+
+        targetOffsetRef.current.x -= deltaX;
+        targetOffsetRef.current.y -= deltaY;
       }
     },
     [handleZoom]
@@ -382,19 +412,17 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         }}
       >
         {visibleItems.map((item) => (
-          <div
+          <InfiniteCanvasItem
             key={item.id}
-            className={styles.infiniteCanvasItem}
             onClick={() => handleItemClick(item.work)}
+            work={item.work}
             style={{
               width: `${cellWidth}px`,
               height: `${cellHeight}px`,
               transform: `translate3d(${item.x * (cellWidth + gapSize) + item.offsetX}px, ${item.y * (cellHeight + gapSize) + item.offsetY}px, 0)`,
               willChange: 'transform'
             }}
-          >
-            <img className={styles.infiniteCanvasItemImage} src={item.work.image} alt={item.work.name} />
-          </div>
+          />
         ))}
       </div>
     </div>

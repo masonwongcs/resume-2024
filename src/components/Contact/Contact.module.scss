@@ -3,7 +3,7 @@
   overflow: hidden;
 
   .gridWrapper {
-    height: 100svh;
+    min-height: 100svh;
     display: grid;
     grid-template-columns: 1fr 3fr 1fr 1fr;
     grid-auto-rows: 1fr 1fr 3fr 1fr 1fr;
@@ -11,6 +11,7 @@
     position: relative;
 
     @media screen and (max-width: 480px) {
+      max-height: 700px;
       grid-template-columns: 20px 1fr 20px 20px;
     }
 
