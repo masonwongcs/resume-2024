@@ -75,7 +75,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.5;
   const cellHeight = (cellWidth * 3) / 5;
   const viewportPadding = 2;
-  const lerpFactor = 0.15;
+  const lerpFactor = isMobile ? 0.35 : 0.15;
   const seedFactor = 1000;
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
