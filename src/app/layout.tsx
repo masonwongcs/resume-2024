@@ -7,7 +7,6 @@ import type { Metadata } from 'next';
 import { Cormorant_Garamond, Poppins } from 'next/font/google';
 
 import { Background } from '@/components/Background';
-import { Flyout } from '@/components/Flyout';
 import { Loading } from '@/components/Loading';
 import { Navigation } from '@/components/Navigation';
 import { SmoothScroll } from '@/components/SmoothScroll';
@@ -93,7 +92,6 @@ export default function RootLayout({
         <Suspense fallback={<Loading />}>
           <Background />
           <Navigation />
-          <Flyout />
           <SmoothScroll>{children}</SmoothScroll>
         </Suspense>
       </body>

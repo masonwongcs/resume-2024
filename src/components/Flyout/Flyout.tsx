@@ -2,6 +2,8 @@
 
 import styles from './Flyout.module.scss';
 
+import { createPortal } from 'react-dom';
+
 import cx from 'classnames';
 
 import { useWorkStore } from '@/store';
@@ -21,7 +23,7 @@ const Flyout = () => {
   const { selectedWork, removeSelectedWork } = useWorkStore();
   const isOpen = !!selectedWork;
 
-  return (
+  return createPortal(
     <section
       className={cx(styles.flyout, {
         [styles.open]: isOpen
@@ -39,7 +41,8 @@ const Flyout = () => {
           <img src="/images/icon/arrow-right.svg" alt={`Open ${selectedWork?.name} in new tab`} />
         </a>
       </div>
-    </section>
+    </section>,
+    document.body
   );
 };
 
