@@ -50,6 +50,19 @@
       @media screen and (max-width: 480px) {
         padding: 20px 40px;
       }
+
+      @media not all and (hover: none) {
+        &:hover {
+          .stickerWrapper {
+            :global(.sticker) {
+              opacity: 1;
+              transform: translate(0, 0) rotate(var(--rotate)) scale(var(--scale)) !important;
+              transition-duration: var(--duration);
+              transition-delay: var(--delay);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -76,6 +89,10 @@
   .description {
     font-size: clamp(12px, 1.5vw, 18px);
     font-family: var(--font-poppins), sans-serif;
+  }
+
+  .stickerWrapper {
+    pointer-events: none;
   }
 
   .contactItem {
