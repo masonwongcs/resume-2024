@@ -1,5 +1,16 @@
 $navItemWidth: 45px;
 
+@keyframes scaleIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .navigation {
   position: fixed;
   left: 5vw;
@@ -16,7 +27,6 @@ $navItemWidth: 45px;
   background-color: rgba(255, 255, 255, 0.5);
   box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  //animation: moveIn 1.2s var(--material-cubic-bezier) forwards;
   --nav-item-width: #{$navItemWidth};
 
   @media screen and (max-width: 480px) {
@@ -59,8 +69,7 @@ $navItemWidth: 45px;
       color: #fff;
 
       .activeBackground {
-        opacity: 1;
-        transform: scale(1);
+        animation: scaleIn 400ms var(--material-cubic-bezier) forwards;
       }
     }
   }
