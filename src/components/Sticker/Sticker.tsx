@@ -18,10 +18,10 @@ interface StickerProps {
 const Sticker: FC<StickerProps> = ({ src, alt = 'Sticker', startX, startY, transformEndX, transformEndY }) => {
   const { rotate, scale, duration, delay } = useMemo(
     () => ({
-      rotate: Math.random() * 40 - 20,
+      rotate: Math.random() * 50 - 25,
       scale: Math.random() * 0.2 + 0.85, // Random scale between 0.85 and 1.05
-      duration: Math.random() * 0.5 + 0.5, // Random duration between 0.5s and 1s
-      delay: Math.random() * 0.5 // Random delay between 0s and 0.5s
+      duration: Math.random() * 0.5 + 0.3, // Random duration between 0.5s and 0.8s
+      delay: Math.random() * 0.3 // Random delay between 0s and 0.3s
     }),
     []
   );
