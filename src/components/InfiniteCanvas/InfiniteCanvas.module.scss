@@ -52,6 +52,7 @@
         transition:
           transform 200ms var(--material-cubic-bezier),
           opacity 300ms var(--material-cubic-bezier);
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
       }
     }
   }

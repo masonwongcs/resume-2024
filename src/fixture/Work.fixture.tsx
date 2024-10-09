@@ -3,6 +3,7 @@ const WORK_HISTORY = [
     name: 'Aquariux',
     url: 'https://www.aquariux.com',
     image: './images/work/aquariux.gif',
+    thumbnail: './images/work/aquariux_thumbnail.jpg',
     description:
       "Led a comprehensive rebuild of Aquariux's fintech website, focusing on enhancing user experience and modernizing the platform. Implemented responsive design principles and integrated advanced financial tools to provide a seamless experience for users across devices. The revamped site significantly improved load times, security features, and overall functionality, resulting in increased user engagement and conversion rates."
   },
@@ -10,6 +11,7 @@ const WORK_HISTORY = [
     name: 'ArkStack',
     url: 'https://www.arkstack.io',
     image: './images/work/arkstack.jpg',
+    thumbnail: './images/work/arkstack_thumbnail.png',
     description:
       "Spearheaded the development of ArkStack's infrastructure website from the ground up. Created a robust, scalable platform that effectively communicates the company's cloud infrastructure solutions. Incorporated interactive diagrams and real-time system status updates to showcase ArkStack's technological capabilities. The new site has become a crucial tool for lead generation and customer education in the competitive cloud services market."
   },
@@ -17,6 +19,7 @@ const WORK_HISTORY = [
     name: 'Aesop',
     url: 'https://www.aesop.com',
     image: './images/work/aesop.jpg',
+    thumbnail: './images/work/aesop_thumbnail.jpg',
     description:
       "Played a key role in maintaining and enhancing Aesop's e-commerce website, ensuring a seamless and luxurious online shopping experience that aligns with the brand's high-end image. Implemented regular updates to improve site performance, optimize product displays, and streamline the checkout process. Collaborated closely with the marketing team to integrate new product launches and promotional campaigns, contributing to increased online sales and customer satisfaction."
   },
@@ -31,6 +34,7 @@ const WORK_HISTORY = [
     name: '$duck',
     url: 'https://www.duck.fun',
     image: './images/work/duckfun.jpg',
+    thumbnail: './images/work/duckfun_thumbnail.jpg',
     description:
       'Developed the official website for $duck coin, a new player in the cryptocurrency space. Created an engaging and informative platform that explains the unique features and potential of $duck coin to both crypto enthusiasts and newcomers. Implemented real-time price tracking, a user-friendly wallet interface, and educational resources about blockchain technology. The website played a crucial role in building the $duck coin community and driving adoption of the new cryptocurrency.'
   },
@@ -38,6 +42,7 @@ const WORK_HISTORY = [
     name: 'SL Edu',
     url: 'https://www.sleducation.edu.sg',
     image: './images/work/sledu.png',
+    thumbnail: './images/work/sledu_thumbnail.jpg',
     description:
       "Spearheaded a comprehensive website rebuild for SL Edu, revolutionizing the educational center's digital presence. The new platform features an intuitive course catalog, streamlined student portal, and responsive design optimized for various devices. This overhaul not only improved user experience but also significantly boosted online enrollments and parent engagement."
   },
@@ -45,6 +50,7 @@ const WORK_HISTORY = [
     name: 'KC Tint',
     url: 'https://www.kc-windows.com',
     image: './images/work/kctint.png',
+    thumbnail: './images/work/kctint_thumbnail.jpg',
     description:
       'Executed a strategic website redesign for KC Tint, a leading window tinting company. The overhaul focused on showcasing their diverse product range and expertise through an interactive gallery and detailed service pages. Implemented SEO best practices and a user-friendly quote request system, resulting in improved search rankings and increased lead generation.'
   },
@@ -59,6 +65,7 @@ const WORK_HISTORY = [
     name: 'CAS Garage',
     url: 'https://www.casgarage.sg',
     image: './images/work/casgarage.webp',
+    thumbnail: './images/work/casgarage_thumbnail.jpg',
     description:
       'Engineered a comprehensive digital upgrade for CAS Garage, transforming their online presence in the competitive car services sector. The new website showcases their state-of-the-art facilities and diverse range of services through high-quality imagery and detailed service descriptions. Implemented an easy-to-use booking system and customer review platform, significantly improving customer acquisition and retention rates.'
   },
@@ -71,8 +78,9 @@ const WORK_HISTORY = [
   },
   {
     name: 'Seedverse',
-    url: 'https://www.seedverse.sg',
+    url: 'https://seedverse.vercel.app',
     image: './images/work/seedverse.png',
+    thumbnail: './images/work/seedverse_thumbnail.jpg',
     description:
       'Designed and launched a dynamic landing page for Seedverse, a cutting-edge blockchain enterprise. The page effectively communicates complex blockchain concepts through engaging visuals and concise content. Incorporated interactive elements to demonstrate the potential applications of their technology, successfully attracting potential investors and partners while establishing Seedverse as a thought leader in the blockchain space.'
   },
@@ -86,7 +94,7 @@ const WORK_HISTORY = [
   {
     name: 'Bond Capital',
     url: 'https://bond.sg',
-    image: './images/work/bond.png',
+    image: './images/work/bond.jpg',
     description:
       "Developed a sophisticated landing page for Bond Capital, positioning them as a premier investment firm. The design balances professionalism with approachability, featuring sleek data visualizations of market trends and investment performance. Integrated a secure client portal and clear calls-to-action, effectively nurturing leads and reinforcing Bond Capital's reputation for financial expertise and client-focused service."
   },
@@ -94,6 +102,7 @@ const WORK_HISTORY = [
     name: 'Pacific Light',
     url: 'https://pacificlight.com.sg',
     image: './images/work/pacificlight.png',
+    thumbnail: './images/work/pacificlight_thumbnail.jpg',
     description:
       'Revamped the online presence of Pacific Light, a leading electrical company in Singapore. The new responsive landing page showcases their comprehensive range of services and commitment to sustainable energy solutions. Implemented an intuitive navigation structure and integrated real-time energy-saving calculators, effectively improving user engagement and positioning Pacific Light as an innovative leader in the electrical industry.'
   },
@@ -122,6 +131,7 @@ const WORK_HISTORY = [
     name: 'Click to Meow',
     url: 'https://click-to-meow.vercel.app',
     image: './images/work/clicktomeow.png',
+    thumbnail: './images/work/clicktomeow_thumbnail.png',
     description:
       "Created a whimsical and interactive web experience that brings joy through the simple act of clicking. Each click triggers a delightful 'meow' sound, accompanied by playful animations. Implemented a variety of cat-themed visual elements and a click counter, providing users with a fun, stress-relieving break in their day and showcasing creative front-end development skills."
   },
@@ -129,6 +139,7 @@ const WORK_HISTORY = [
     name: 'In My Meow Meow',
     url: 'https://meowmeow-mauve.vercel.app',
     image: './images/work/meow.png',
+    thumbnail: './images/work/meow_thumbnail.jpg',
     description:
       "Developed a charming website that celebrates the internet's favorite animal - cats. The platform fetches and displays a diverse array of cat images on demand, providing users with an endless stream of feline cuteness. Incorporated smooth transitions and lazy loading for optimal performance, creating a seamless and addictive browsing experience for cat enthusiasts."
   },
@@ -136,6 +147,7 @@ const WORK_HISTORY = [
     name: 'Photography Portfolio',
     url: 'https://photo.masonwongcs.com',
     image: './images/work/photography.png',
+    thumbnail: './images/work/photography_thumbnail.jpg',
     description:
       'Designed and implemented a visually stunning photography portfolio to showcase a personal collection of captivating images. The website features a minimalist design that puts the focus squarely on the photographs, with smooth transitions and a responsive gallery layout. Incorporated category filtering and full-screen viewing options, allowing visitors to immerse themselves in the visual storytelling of each captured moment.'
   }

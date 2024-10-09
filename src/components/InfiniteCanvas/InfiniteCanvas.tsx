@@ -11,6 +11,7 @@ interface Work {
   name: string;
   url: string;
   image: string;
+  thumbnail?: string;
   description: string;
 }
 
@@ -41,7 +42,7 @@ const InfiniteCanvasItem: React.FC<{ work: Work; style: React.CSSProperties; onC
       />
       <img
         className={styles.infiniteCanvasItemImage}
-        src={work.image}
+        src={work?.thumbnail ? work?.thumbnail : work.image}
         alt={work.name}
         style={{
           opacity: isLoaded ? 1 : 0

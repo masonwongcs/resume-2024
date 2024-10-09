@@ -53,6 +53,10 @@ $navItemWidth: 45px;
       transform 400ms var(--material-cubic-bezier),
       opacity 400ms var(--material-cubic-bezier);
     z-index: -1;
+
+    @media screen and (max-width: 480px) {
+      display: none;
+    }
   }
 
   .navigationItem {
@@ -67,6 +71,10 @@ $navItemWidth: 45px;
 
     &.active {
       color: #fff;
+
+      @media screen and (max-width: 480px) {
+        background-color: #000;
+      }
 
       .activeBackground {
         animation: scaleIn 400ms var(--material-cubic-bezier) forwards;
