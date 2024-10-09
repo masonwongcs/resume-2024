@@ -73,11 +73,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const isMobile = innerWidth <= 480;
 
   const gapSize = isMobile ? window.innerWidth / 8 : window.innerWidth / 24; // Size of the gap between grid items
-  const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.5;
+  const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.6;
   const cellHeight = (cellWidth * 3) / 5;
   const viewportPadding = 2;
   const lerpFactor = 0.15;
-  const seedFactor = 1000;
+  const seedFactor = Math.random() * 1000;
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
   const maxZoom = isMobile ? 2 : 3; // Maximum zoom in
@@ -109,7 +109,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const seed = x * seedFactor + y;
     const shuffled = [...works].sort(() => seededRandom(seed) - 0.5);
 
-    // Sort works by usage count (least used first)
+    // Sort works by usage count (the least used first)
     shuffled.sort((a, b) => (workUsageCountRef.current.get(a.url) || 0) - (workUsageCountRef.current.get(b.url) || 0));
 
     // Try to find a work that's not in adjacent cells and has been used the least

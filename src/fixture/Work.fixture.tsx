@@ -27,6 +27,7 @@ const WORK_HISTORY = [
     name: 'Blonde Boudoir',
     url: 'https://www.blondeboudoir.sg',
     image: './images/work/blondeboudoir.gif',
+    thumbnail: './images/work/blondeboudoir_thumbnail.jpg',
     description:
       "Orchestrated a complete digital transformation for Blonde Boudoir, a high-end hair salon. The website rebuild focused on showcasing their luxurious services, incorporating an elegant design that reflects the salon's sophisticated atmosphere. Enhanced user experience with intuitive navigation and a sleek appointment booking system, resulting in increased online visibility and client engagement."
   },
@@ -58,6 +59,7 @@ const WORK_HISTORY = [
     name: 'Jin Investment',
     url: 'https://dev.jininvestment.com',
     image: './images/work/jin.webp',
+    thumbnail: './images/work/jin_thumbnail.jpg',
     description:
       "Revitalized Jin Investment's online presence with a cutting-edge website redesign. The new platform features a sophisticated, data-driven interface that highlights real-time market insights and portfolio performance. Integrated secure client portals and interactive investment tools, enhancing user engagement and reinforcing the firm's position as a forward-thinking investment partner."
   },
@@ -71,8 +73,9 @@ const WORK_HISTORY = [
   },
   {
     name: 'Liv3lynft',
-    url: 'https://www.liv3lynft.com',
+    url: 'https://liv3lynft.vercel.app',
     image: './images/work/liv3lynft.png',
+    thumbnail: './images/work/liv3lynft_thumbnail.jpg',
     description:
       'Developed an innovative NFT platform for Liv3lynft, specializing in the sale of exclusive digital bib numbers. The website features a seamless integration with blockchain technology, allowing for secure transactions and verifiable ownership. Implemented an intuitive user interface with real-time bidding functionality and a showcase of rare, limited-edition bib numbers, catering to both serious collectors and sports enthusiasts.'
   },
@@ -117,6 +120,7 @@ const WORK_HISTORY = [
     name: 'React Simple Marquee',
     url: 'https://react-simple-marquee.surge.sh',
     image: './images/work/marquee.gif',
+    thumbnail: './images/work/marquee_thumbnail.jpg',
     description:
       'Engineered a user-friendly NPM package for creating dynamic marquee components in React applications. The package offers customizable speed, direction, and styling options, allowing developers to easily implement eye-catching scrolling text or image displays. Includes comprehensive documentation and examples, facilitating quick integration and enhancing the visual appeal of React-based websites.'
   },
@@ -124,6 +128,7 @@ const WORK_HISTORY = [
     name: 'React Simple Flipclock',
     url: 'https://react-simple-flipclock.surge.sh',
     image: './images/work/flipclock.gif',
+    thumbnail: './images/work/flipclock_thumbnail.jpg',
     description:
       'Developed a versatile NPM package for integrating stylish flip clock components into React projects. The package features customizable designs, multiple time formats, and countdown functionality. Implemented smooth flip animations and responsive layouts, enabling developers to easily add visually striking time displays to their applications, suitable for various use cases from event countdowns to real-time clocks.'
   },
