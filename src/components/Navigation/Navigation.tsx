@@ -20,39 +20,19 @@ const NAV_ITEMS = [
 
 const Navigation = () => {
   const pathname = usePathname() || '/';
-  const [shouldAnimate, setShouldAnimate] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(NAV_ITEMS.findIndex((item) => item.href === pathname));
-  const [offsetHeight, setOffsetHeight] = useState(0);
-  const backgroundRef = useRef<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    setOffsetHeight(activeIndex * ((backgroundRef?.current?.offsetHeight || 0) + 20) + 16);
-  }, [activeIndex, backgroundRef?.current]);
-
-  useEffect(() => {
-    setShouldAnimate(true);
-  }, []);
 
   return (
     <nav className={styles.navigation}>
-      <div
-        className={styles.activeBackground}
-        ref={backgroundRef}
-        style={{
-          transform: `scale(${offsetHeight === 0 ? '0' : '1'}) translateY(${offsetHeight}px)`,
-          transitionDuration: shouldAnimate ? '400ms' : '0s'
-        }}
-      />
       {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => {
         const isActive = href === pathname;
         const classNames = cx(styles.navigationItem, {
-          [styles.active]: isActive,
-          [styles.shouldAnimate]: shouldAnimate
+          [styles.active]: isActive
         });
 
         return (
-          <NavLink className={classNames} key={href} href={href} onClick={() => setActiveIndex(index)}>
+          <NavLink className={classNames} key={href} href={href}>
             <Icon />
+            <div className={styles.activeBackground} />
           </NavLink>
         );
       })}
