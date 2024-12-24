@@ -27,6 +27,7 @@ $navItemWidth: 45px;
   background-color: rgba(255, 255, 255, 0.5);
   box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
+  transition: gap 400ms var(--material-cubic-bezier);
   --nav-item-width: #{$navItemWidth};
 
   @media screen and (max-width: 480px) {
@@ -38,6 +39,12 @@ $navItemWidth: 45px;
     padding: 12px;
 
     --nav-item-width: 40px;
+  }
+
+  @media not all and (hover: none) {
+    &:hover {
+      gap: 30px;
+    }
   }
 
   .activeBackground {

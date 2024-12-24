@@ -1,0 +1,39 @@
+.githubCard {
+  &--loading,
+  &--error,
+  &--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #586069;
+    font-size: 0.875rem;
+  }
+
+  &--error {
+    color: #cb2431;
+  }
+
+  &__graph {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  &__week {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: opacity 200ms var(--material-cubic-bezier);
+  }
+
+  &__day {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.125rem;
+    cursor: pointer;
+    transition: transform 0.15s ease-in-out;
+
+    &:hover {
+      transform: scale(1.25);
+    }
+  }
+}

@@ -15,6 +15,16 @@
       grid-template-columns: 20px 1fr 20px 20px;
     }
 
+    &:has(:global(.githubCta):hover) :global(.githubCard__week) {
+      opacity: 1;
+
+      @for $i from 1 through 52 {
+        &:nth-child(#{$i}) {
+          transition-delay: $i * 10ms;
+        }
+      }
+    }
+
     .gridItem {
       height: 100%;
       background-color: rgba(255, 254, 240, 0.5);
@@ -28,6 +38,10 @@
       &.transparent {
         background-color: transparent;
         padding: 0;
+      }
+
+      :global(.githubCard__week) {
+        opacity: 0;
       }
     }
   }
@@ -102,6 +116,7 @@
     font-weight: 600;
     font-family: var(--font-poppins), sans-serif;
     padding: 12px 0;
+    position: relative;
 
     .contactItemIcon {
       width: 16px;

@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@studio-freight/react-lenis": "^0.0.47",
+    "cheerio": "^1.0.0",
     "classnames": "^2.5.1",
+    "lodash": "^4.17.21",
     "next": "14.2.14",
     "react": "^18",
     "react-dom": "^18",
@@ -20,6 +22,7 @@
   "devDependencies": {
     "@svgr/webpack": "^8.1.0",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@types/lodash": "^4.17.13",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
