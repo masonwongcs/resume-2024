@@ -14,7 +14,6 @@
     "@react-spring/three": "9.7.5",
     "@react-three/drei": "9.120.5",
     "@react-three/fiber": "9.0.0-rc.1",
-    "@studio-freight/react-lenis": "^0.0.47",
     "cheerio": "^1.0.0",
     "classnames": "^2.5.1",
     "lodash": "^4.17.21",
