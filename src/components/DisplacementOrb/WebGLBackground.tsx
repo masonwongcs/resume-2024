@@ -4,7 +4,7 @@ import { Image } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Group } from 'three';
 
-export function WebGLBackground(): JSX.Element {
+export function WebGLBackground() {
   const bg = useRef<Group>(null) as any;
   const viewport = useThree((s) => s.viewport);
 
