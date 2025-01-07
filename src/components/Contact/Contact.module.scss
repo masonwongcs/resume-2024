@@ -18,7 +18,7 @@
     &:has(:global(.githubCta):hover) :global(.githubCard__week) {
       opacity: 1;
 
-      @for $i from 1 through 52 {
+      @for $i from 1 through 53 {
         &:nth-child(#{$i}) {
           transition-delay: $i * 10ms;
         }
@@ -82,7 +82,7 @@
 
   .title {
     font-size: clamp(24px, 5vw, 60px);
-    font-family: var(--font-cormorantGaramond), sans-serif;
+    font-family: var(--font-futura), sans-serif;
 
     &:not(:only-child) {
       margin-bottom: 20px;
@@ -91,7 +91,7 @@
 
   .subtitle {
     font-size: clamp(12px, 1.5vw, 18px);
-    font-family: var(--font-poppins), sans-serif;
+    font-family: var(--font-futuraBold), sans-serif;
     font-weight: 600;
     margin-bottom: 12px;
 
@@ -102,7 +102,7 @@
 
   .description {
     font-size: clamp(12px, 1.5vw, 18px);
-    font-family: var(--font-poppins), sans-serif;
+    font-family: var(--font-futuraBold), sans-serif;
   }
 
   .stickerWrapper {
@@ -114,7 +114,7 @@
     align-items: center;
     font-size: clamp(12px, 1.5vw, 20px);
     font-weight: 600;
-    font-family: var(--font-poppins), sans-serif;
+    font-family: var(--font-futuraBold), sans-serif;
     padding: 12px 0;
     position: relative;
 

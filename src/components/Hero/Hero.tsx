@@ -3,6 +3,7 @@ import styles from './Hero.module.scss';
 import cx from 'classnames';
 
 import { AnimatedText } from '@/components/AnimatedText';
+import { DisplacementOrb, Headline, Image, Subtitle } from '@/components/DisplacementOrb';
 
 const Hero = () => {
   return (
@@ -22,10 +23,16 @@ const Hero = () => {
         <div className={styles.gridItem}>
           <div className={styles.nameWrapper}>
             <h1>
-              <span>UI Enthusiast &</span>
-              <span>Front-End Engineer</span>
+              <span>
+                <Headline>UI Enthusiast &</Headline>
+              </span>
+              <span>
+                <Headline>Front-End Engineer</Headline>
+              </span>
             </h1>
-            <p>Mason Wong</p>
+            <p>
+              <Subtitle>Mason Wong</Subtitle>
+            </p>
           </div>
         </div>
         <div className={cx(styles.gridItem, styles.transparent)} />

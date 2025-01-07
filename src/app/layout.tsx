@@ -1,21 +1,40 @@
 import './globals.scss';
 
-import { Suspense } from 'react';
-
 import cx from 'classnames';
 import type { Metadata } from 'next';
-import { Cormorant_Garamond, Poppins } from 'next/font/google';
+import { Cormorant_Garamond, Crimson_Text, Poppins } from 'next/font/google';
+import localFont from 'next/font/local';
 
-import { Background } from '@/components/Background';
-import { Loading } from '@/components/Loading';
+import { Background, Blob } from '@/components/Background';
 import { Navigation } from '@/components/Navigation';
-import { SmoothScroll } from '@/components/SmoothScroll';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
+
+//
+// const futura = localFont({
+//   src: [
+//     {
+//       path: 'fonts/Futura-Regular.woff',
+//       weight: '400',
+//       style: 'normal',
+//     },
+//     {
+//       path: 'fonts/Futura-Bold.woff',
+//       weight: '700',
+//       style: 'normal'
+//     }
+//   ]
+// });
 
 const cormorantGaramond = Cormorant_Garamond({
   subsets: ['latin'],
   weight: ['400', '500'],
   variable: '--font-cormorantGaramond'
+});
+
+const crimsonText = Crimson_Text({
+  subsets: ['latin'],
+  weight: ['400', '700'],
+  variable: '--font-crimsonText'
 });
 
 const poppins = Poppins({
@@ -88,12 +107,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cx(cormorantGaramond.variable, poppins.variable)}>
-        <Suspense fallback={<Loading />}>
-          <Background />
-          <Navigation />
-          <SmoothScroll>{children}</SmoothScroll>
-        </Suspense>
+      <body>
+        <Background />
+        {children}
+        <Blob />
+        <Navigation />
       </body>
     </html>
   );
