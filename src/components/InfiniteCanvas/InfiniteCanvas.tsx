@@ -70,7 +70,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const isMoving = useRef(false);
   const moveTimeout = useRef<NodeJS.Timeout>(null);
 
-  const isMobile = innerWidth <= 480;
+  const isMobile = window.innerWidth <= 480;
 
   const gapSize = isMobile ? window.innerWidth / 8 : window.innerWidth / 24; // Size of the gap between grid items
   const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.6;
