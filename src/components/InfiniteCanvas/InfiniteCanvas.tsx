@@ -64,11 +64,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const lastPosition = useRef({ x: 0, y: 0 });
   const targetOffsetRef = useRef({ x: 0, y: 0 });
   const targetZoomRef = useRef(1);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number>(null);
   const workUsageCountRef = useRef<Map<string, number>>(new Map());
   const lastTouchDistance = useRef<number | null>(null);
   const isMoving = useRef(false);
-  const moveTimeout = useRef<NodeJS.Timeout>();
+  const moveTimeout = useRef<NodeJS.Timeout>(null);
 
   const isMobile = innerWidth <= 480;
 

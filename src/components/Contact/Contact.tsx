@@ -2,6 +2,7 @@ import styles from './Contact.module.scss';
 
 import cx from 'classnames';
 
+import { Headline, Subtitle } from '@/components/DisplacementOrb';
 import { GitHubCard } from '@/components/GitHubCard';
 import { Sticker } from '@/components/Sticker';
 import { backendStickers, devopsSticker, frontEndStickers, softSkillSticker } from '@/fixture/Info.fixture';
@@ -30,14 +31,20 @@ const Contact = () => {
         <div className={cx(styles.gridItem, styles.transparent)}>
           <div className={styles.innerGrid}>
             <div className={styles.innerGridItem}>
-              <h2 className={styles.title}>skills</h2>
+              <h2 className={styles.title}>
+                <Headline>skills</Headline>
+              </h2>
             </div>
 
             <div className={styles.innerGridItem}>
-              <h3 className={styles.subtitle}>Front-end</h3>
+              <h3 className={styles.subtitle}>
+                <Headline>Front-end</Headline>
+              </h3>
               <p className={styles.description}>
-                HTML, CSS, SCSS, JavaScript, Next.js, React.js, Three.js, PIXI.js, TypeScript, Responsive Design, State
-                Management
+                <Subtitle>
+                  HTML, CSS, SCSS, JavaScript, Next.js, React.js, Three.js, PIXI.js, TypeScript, Responsive Design,
+                  State Management
+                </Subtitle>
               </p>
               <div className={styles.stickerWrapper}>
                 {frontEndStickers.map(({ src, alt, startX, startY, transformEndX, transformEndY }, index) => (
@@ -55,9 +62,11 @@ const Contact = () => {
             </div>
 
             <div className={styles.innerGridItem}>
-              <h3 className={styles.subtitle}>Back-end</h3>
+              <h3 className={styles.subtitle}>
+                <Headline>Back-end</Headline>
+              </h3>
               <p className={styles.description}>
-                Node.js, Express.js, Bun.js, Deno.js, RESTful APIs, GraphQL, SQL, PostgreSQL
+                <Subtitle>Node.js, Express.js, Bun.js, Deno.js, RESTful APIs, GraphQL, SQL, PostgreSQL</Subtitle>
               </p>
               <div className={styles.stickerWrapper}>
                 {backendStickers.map(({ src, alt, startX, startY, transformEndX, transformEndY }, index) => (
@@ -75,9 +84,13 @@ const Contact = () => {
             </div>
 
             <div className={styles.innerGridItem}>
-              <h3 className={styles.subtitle}>DevOps</h3>
+              <h3 className={styles.subtitle}>
+                <Headline>DevOps</Headline>
+              </h3>
               <p className={styles.description}>
-                CI/CD (Jenkins, GitHub Actions), Docker, Kubernetes, Cloud Platform, AWS, Google Cloud Platform
+                <Subtitle>
+                  CI/CD (Jenkins, GitHub Actions), Docker, Kubernetes, Cloud Platform, AWS, Google Cloud Platform
+                </Subtitle>
               </p>
               <div className={styles.stickerWrapper}>
                 {devopsSticker.map(({ src, alt, startX, startY, transformEndX, transformEndY }, index) => (
@@ -95,10 +108,14 @@ const Contact = () => {
             </div>
 
             <div className={styles.innerGridItem}>
-              <h3 className={styles.subtitle}>Soft Skills</h3>
+              <h3 className={styles.subtitle}>
+                <Headline>Soft Skills</Headline>
+              </h3>
               <p className={styles.description}>
-                Team Collaboration, Agile Methodologies, Scrum, Problem-solving, Mentorship and Leadership, Project
-                Management
+                <Subtitle>
+                  Team Collaboration, Agile Methodologies, Scrum, Problem-solving, Mentorship and Leadership, Project
+                  Management
+                </Subtitle>
               </p>
               <div className={styles.stickerWrapper}>
                 {softSkillSticker.map(({ src, alt, startX, startY, transformEndX, transformEndY }, index) => (
@@ -131,7 +148,9 @@ const Contact = () => {
         <div className={cx(styles.gridItem, styles.transparent)}>
           <div className={styles.innerGrid}>
             <div className={styles.innerGridItem}>
-              <h2 className={styles.title}>contact</h2>
+              <h2 className={styles.title}>
+                <Headline>contact</Headline>
+              </h2>
 
               <div className={styles.contactItem}>
                 <a

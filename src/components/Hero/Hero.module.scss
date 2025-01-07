@@ -44,21 +44,21 @@
   }
 
   .nameWrapper {
-    padding: 0 80px;
+    padding: 0 0 0 80px;
 
     @media screen and (max-width: 480px) {
       padding: 0 0 0 60px;
     }
     h1 {
-      font-size: clamp(24px, 5vw, 60px);
-      font-family: var(--font-cormorantGaramond), sans-serif;
+      font-size: clamp(24px, 5vw, 70px);
+      font-family: var(--font-futuraBold), sans-serif;
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
       span {
         display: inline-flex;
-        animation: slideRightInText 2s 400ms var(--material-cubic-bezier) forwards;
-        clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
+        //animation: slideRightInText 2s 400ms var(--material-cubic-bezier) forwards;
+        //clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
 
         &:nth-child(1) {
           animation-delay: 400ms;
@@ -72,10 +72,10 @@
     p {
       display: inline-block;
       font-size: clamp(12px, 1.5vw, 20px);
-      font-family: var(--font-poppins), sans-serif;
+      font-family: var(--font-futuraBold), sans-serif;
       margin-top: 20px;
-      animation: slideRightInText 1.4s 2400ms var(--material-cubic-bezier) forwards;
-      clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
+      //animation: slideRightInText 1.4s 400ms var(--material-cubic-bezier) forwards;
+      //clip-path: polygon(0px 0px, 0px 0px, 0px 100%, 0% 100%);
     }
   }
 }
