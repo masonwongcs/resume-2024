@@ -28,12 +28,13 @@
       display: flex;
       align-items: center;
       height: 100%;
-      background-color: rgba(255, 254, 240, 0.5);
+      //background-color: rgba(255, 254, 240, 0.5);
       //background-color: rgba(255, 255, 255, 0.5);
       //backdrop-filter: blur(50px);
       position: relative;
 
       &.transparent {
+
         > * {
           -webkit-text-fill-color: transparent;
           -webkit-background-clip: text;
@@ -44,11 +45,12 @@
   }
 
   .nameWrapper {
-    padding: 0 0 0 80px;
+    //padding: 0 0 0 80px;
 
     @media screen and (max-width: 480px) {
-      padding: 0 0 0 60px;
+      //padding: 0 0 0 60px;
     }
+
     h1 {
       font-size: clamp(24px, 5vw, 70px);
       font-family: var(--font-futuraBold), sans-serif;

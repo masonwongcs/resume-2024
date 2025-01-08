@@ -5,7 +5,7 @@ import { DisplacementOrb } from '@/components/DisplacementOrb';
 
 export default function Home() {
   return (
-    <DisplacementOrb>
+    <DisplacementOrb showCursor showBackground={false}>
       <main className={styles.main}>
         <Contact />
       </main>
