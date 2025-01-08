@@ -110,7 +110,6 @@ export default function RootLayout({
       <body>
         <Background />
         {children}
-        <Blob />
         <Navigation />
       </body>
     </html>
