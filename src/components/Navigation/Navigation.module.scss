@@ -11,11 +11,9 @@ $navItemWidth: 45px;
   }
 }
 
-.navigation {
+@mixin baseNavigationStyle {
   position: fixed;
   left: 5vw;
-  top: 50%;
-  transform: translateY(-50%);
   padding: 16px;
   display: flex;
   align-items: center;
@@ -27,8 +25,23 @@ $navItemWidth: 45px;
   background-color: rgba(255, 255, 255, 0.5);
   box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
   z-index: 100;
-  transition: gap 400ms var(--material-cubic-bezier);
+  transition: all 400ms var(--material-cubic-bezier);
+}
+
+.navigation {
+  top: 50%;
+  transform: translateY(-50%) translateX(0);
   --nav-item-width: #{$navItemWidth};
+  @include baseNavigationStyle();
+
+  &.hide {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-20px);
+
+    @media screen and (max-width: 480px) {
+      transform: translateY(50%) translateX(-50%);
+    }
+  }
 
   @media screen and (max-width: 480px) {
     flex-direction: row;
@@ -86,6 +99,67 @@ $navItemWidth: 45px;
       .activeBackground {
         animation: scaleIn 400ms var(--material-cubic-bezier) forwards;
       }
+    }
+  }
+}
+
+.immersiveToggle {
+  cursor: pointer;
+  border: 0;
+  opacity: 0;
+  visibility: hidden;
+  @include baseNavigationStyle();
+  --nav-item-width: #{$navItemWidth};
+  top: calc(50% + 4 * var(--nav-item-width));
+  width: calc(32px + var(--nav-item-width));
+  height: calc(32px + var(--nav-item-width));
+
+  @media screen and (max-width: 480px) {
+    --nav-item-width: 40px;
+
+    flex-direction: row;
+    top: initial;
+    left: calc(50% + 4 * var(--nav-item-width));
+    bottom: 20px;
+    padding: 12px;
+    width: calc(24px + var(--nav-item-width));
+    height: calc(24px + var(--nav-item-width));
+  }
+
+  &.active {
+    top: 50%;
+    transform: translateY(-50%) translateX(0);
+
+    @media screen and (max-width: 480px) {
+      top: initial;
+      left: 50%;
+      transform: translateY(0) translateX(-50%);
+    }
+  }
+
+  &.isHome {
+    top: calc(50% + 2.75 * var(--nav-item-width));
+    opacity: 1;
+    visibility: visible;
+
+    @media screen and (max-width: 480px) {
+      top: initial;
+      left: calc(50% + 2.75 * var(--nav-item-width));
+    }
+
+    &.active {
+      top: 50%;
+
+      @media screen and (max-width: 480px) {
+        top: initial;
+        left: 50%;
+      }
+    }
+  }
+
+  @media not all and (hover: none) {
+    &:hover {
+      scale: 1.1;
     }
   }
 }
