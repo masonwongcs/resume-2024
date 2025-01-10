@@ -2,8 +2,7 @@ import styles from './Hero.module.scss';
 
 import cx from 'classnames';
 
-import { AnimatedText } from '@/components/AnimatedText';
-import { DisplacementOrb, Headline, Image, Subtitle } from '@/components/DisplacementOrb';
+import { Headline, Subtitle } from '@/components/DisplacementOrb';
 
 const Hero = () => {
   return (

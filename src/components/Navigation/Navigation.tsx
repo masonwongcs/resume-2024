@@ -10,7 +10,9 @@ import { usePathname } from 'next/navigation';
 import { NavLink } from '@/components/NavLink';
 import HomeIcon from '@/icon/home.svg';
 import InfoIcon from '@/icon/info.svg';
+import MagicIcon from '@/icon/magic.svg';
 import WorkIcon from '@/icon/work.svg';
+import { useHomeStore } from '@/store';
 
 const NAV_ITEMS = [
   { icon: HomeIcon, title: 'Home', href: '/' },
@@ -20,23 +22,39 @@ const NAV_ITEMS = [
 
 const Navigation = () => {
   const pathname = usePathname() || '/';
+  const isHome = pathname === '/';
+  const { immersiveModeOn, setImmersiveModeOn } = useHomeStore();
 
   return (
-    <nav className={styles.navigation}>
-      {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => {
-        const isActive = href === pathname;
-        const classNames = cx(styles.navigationItem, {
-          [styles.active]: isActive
-        });
-
-        return (
-          <NavLink className={classNames} key={href} href={href}>
-            <Icon />
-            <div className={styles.activeBackground} />
-          </NavLink>
-        );
-      })}
-    </nav>
+    <>
+      <nav
+        className={cx(styles.navigation, {
+          [styles.hide]: immersiveModeOn
+        })}
+      >
+        {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => {
+          const isActive = href === pathname;
+          const classNames = cx(styles.navigationItem, {
+            [styles.active]: isActive
+          });
+          return (
+            <NavLink className={classNames} key={href} href={href}>
+              <Icon />
+              <div className={styles.activeBackground} />
+            </NavLink>
+          );
+        })}
+      </nav>
+      <button
+        className={cx(styles.immersiveToggle, {
+          [styles.active]: immersiveModeOn,
+          [styles.isHome]: isHome
+        })}
+        onClick={() => setImmersiveModeOn(!immersiveModeOn)}
+      >
+        <MagicIcon />
+      </button>
+    </>
   );
 };
 
