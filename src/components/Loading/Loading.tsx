@@ -8,4 +8,16 @@ const Loading = () => {
   );
 };
 
-export { Loading };
+const CircularLoading = () => {
+  return (
+    <div className={styles.circularLoading}>
+      <div className={styles.container}>
+        <div className={styles.ring1} />
+        <div className={styles.ring2} />
+        <div className={styles.ring3} />
+      </div>
+    </div>
+  );
+};
+
+export { Loading, CircularLoading };

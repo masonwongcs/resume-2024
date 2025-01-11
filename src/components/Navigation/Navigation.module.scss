@@ -108,6 +108,7 @@ $navItemWidth: 45px;
   border: 0;
   opacity: 0;
   visibility: hidden;
+  color: #000;
   @include baseNavigationStyle();
   --nav-item-width: #{$navItemWidth};
   top: calc(50% + 4 * var(--nav-item-width));
