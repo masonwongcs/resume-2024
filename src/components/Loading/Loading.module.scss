@@ -57,11 +57,13 @@
     inset: 0;
     border: 4px solid;
     border-radius: 50%;
+    transform: scale(0);
+    opacity: 0;
     animation: scaleLoading 1.5s ease-out infinite;
   }
 
   .ring1 {
-    border-color: rgba(0, 0, 0, 0.3);
+    border-color: rgba(0, 0, 0, 0.2);
     animation-delay: 0s;
   }
 
@@ -71,7 +73,7 @@
   }
 
   .ring3 {
-    border-color: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.2);
     animation-delay: 1s;
   }
 }
