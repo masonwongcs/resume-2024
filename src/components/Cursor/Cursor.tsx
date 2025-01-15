@@ -18,11 +18,32 @@ interface ICursorProps {
 const Cursor: FC<ICursorProps> = ({ className, lerpFactor = 0.1 }) => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
   const animationRef = useRef(0);
 
   const smoothness = lerpFactor;
 
+  // Check if device is mobile
   useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice =
+        window.matchMedia('(max-width: 768px)').matches ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(isMobileDevice);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
+
+  // Desktop mouse movement handler
+  useEffect(() => {
+    if (isMobile) return;
+
     const handleMouseMove = (event: MouseEvent) => {
       setMousePos({ x: event.clientX, y: event.clientY });
     };
@@ -32,9 +53,12 @@ const Cursor: FC<ICursorProps> = ({ className, lerpFactor = 0.1 }) => {
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, []);
+  }, [isMobile]);
 
+  // Cursor position update animation (only for desktop)
   useEffect(() => {
+    if (isMobile) return;
+
     const updateCursor = () => {
       setCursorPos((prev) => ({
         x: lerp(prev.x, mousePos.x, smoothness),
@@ -51,19 +75,25 @@ const Cursor: FC<ICursorProps> = ({ className, lerpFactor = 0.1 }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [mousePos]);
+  }, [mousePos, smoothness, isMobile]);
 
-  // Calculate the rotation angle
-  const angle = Math.atan2(mousePos.y - cursorPos.y, mousePos.x - cursorPos.x) * (180 / Math.PI);
+  // Calculate the rotation angle (only for desktop)
+  const angle = isMobile ? 0 : Math.atan2(mousePos.y - cursorPos.y, mousePos.x - cursorPos.x) * (180 / Math.PI);
 
   return (
     <div
-      className={cx(styles.cursor, className)}
-      style={{
-        top: `${cursorPos.y}px`,
-        left: `${cursorPos.x}px`,
-        transform: `translate(-50%, -50%) rotate(${angle}deg)`
-      }}
+      className={cx(styles.cursor, className, {
+        [styles.mobile]: isMobile
+      })}
+      style={
+        isMobile
+          ? {}
+          : {
+              top: `${cursorPos.y}px`,
+              left: `${cursorPos.x}px`,
+              transform: `translate(-50%, -50%) rotate(${angle}deg)`
+            }
+      }
     />
   );
 };
