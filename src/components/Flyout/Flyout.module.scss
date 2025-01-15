@@ -1,9 +1,18 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .flyout {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  backdrop-filter: blur(4px);
-  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(40px);
+  background-color: rgba(255, 255, 255, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12,6 +21,8 @@
   transition: all 600ms var(--material-cubic-bezier);
   isolation: isolate;
   pointer-events: none;
+  overflow: auto;
+  padding: 40px 0;
 
   &.open {
     opacity: 1;
@@ -28,11 +39,8 @@
   }
 
   .flyoutContent {
-    width: 500px;
-    background-color: #fff;
-    box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
-    border-radius: 30px;
-    padding: 40px;
+    width: 75%;
+    max-width: 800px;
     position: relative;
     opacity: 0;
     visibility: hidden;
@@ -48,78 +56,143 @@
       overflow: auto;
       border-radius: 0;
       box-shadow: initial;
+      padding: 80px 40px 40px;
     }
 
-    .closeBtn {
-      cursor: pointer;
-      position: absolute;
-      top: 0;
-      right: -60px;
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      background-color: #d9d9d9;
-      border: 0;
-      outline: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .workContentWrapper {
+      .image {
+        width: 100%;
+        border-radius: 20px;
+        box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
 
-      @media screen and (max-width: 480px) {
-        top: 10px;
-        right: 10px;
-        position: fixed;
-      }
-
-      > img {
-        width: 24px;
-      }
-    }
-
-    .image {
-      width: 100%;
-      border-radius: 20px;
-      box-shadow: 8px 12px 20px rgba(0, 0, 0, 0.1);
-
-      @media screen and (max-width: 480px) {
-        border-radius: 12px;
-      }
-    }
-
-    .title {
-      font-size: 30px;
-      font-family: var(--font-futura), sans-serif;
-      margin: 20px 0;
-    }
-
-    .description {
-      font-size: 14px;
-      font-family: var(--font-futuraBold), sans-serif;
-      color: #a1a1a1;
-      margin-bottom: 20px;
-    }
-
-    .cta {
-      font-size: 18px;
-      padding: 12px 16px;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      background-color: #efefef;
-
-      @media not all and (hover: none) {
-        &:hover {
-          img {
-            transform: translateX(4px);
-          }
+        @media screen and (max-width: 480px) {
+          border-radius: 12px;
         }
       }
 
-      img {
-        width: 16px;
-        margin-left: 10px;
-        transition: transform 200ms var(--material-cubic-bezier);
+      .textWrapper {
+        position: relative;
       }
+
+      .title {
+        font-size: 30px;
+        font-family: var(--font-futuraBold), sans-serif;
+        margin: 40px 0 20px;
+        line-height: 1;
+      }
+
+      .description {
+        font-size: 16px;
+        font-family: var(--font-futura), sans-serif;
+        color: rgba(0, 0, 0, 0.75);
+        margin-bottom: 20px;
+        line-height: 1.7;
+      }
+
+      .cta {
+        font-size: 18px;
+        line-height: 1;
+        padding: 12px 16px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        background-color: #000;
+        color: #fff;
+
+        @media not all and (hover: none) {
+          &:hover {
+            svg {
+              transform: translateX(4px);
+            }
+          }
+        }
+
+        svg {
+          width: 16px;
+          margin-left: 10px;
+          transition: transform 200ms var(--material-cubic-bezier);
+        }
+      }
+    }
+
+    .infoContentWrapper {
+      .title {
+        font-size: clamp(16px, 5vw, 30px);
+        font-family: var(--font-futura), sans-serif;
+        font-weight: normal;
+        margin: 40px 0;
+        line-height: 1;
+        color: rgba(0, 0, 0, 0.3);
+      }
+
+      .skills {
+        .skillItem {
+          font-size: clamp(16px, 5vw, 30px);
+          font-family: var(--font-futura), sans-serif;
+          margin-top: 20px;
+          opacity: 0;
+
+          @for $i from 1 through 20 {
+            &:nth-child(#{$i}) {
+              animation: fadeIn 400ms $i * 100ms var(--material-cubic-bezier) forwards;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+.closeBtn {
+  cursor: pointer;
+  position: fixed;
+  top: 30px;
+  right: 30px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #000;
+  border: 0;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  pointer-events: none;
+  transform: scale(0);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 600ms var(--material-cubic-bezier);
+
+  @media screen and (max-width: 480px) {
+    top: 10px;
+    right: 10px;
+  }
+
+  &.open {
+    transform: scale(1);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  > img {
+    width: 24px;
+  }
+}
+
+.stickerWrapper {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+
+  &.active {
+    :global(.sticker) {
+      opacity: 1;
+      transform: translate(0, 0) rotate(var(--rotate)) scale(var(--scale)) !important;
+      transition-duration: var(--duration);
+      transition-delay: var(--delay);
     }
   }
 }

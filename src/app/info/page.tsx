@@ -1,14 +1,15 @@
 import styles from '../page.module.scss';
 
+import { Blob } from '@/components/Background';
 import { Contact } from '@/components/Contact';
-import { DisplacementOrb } from '@/components/DisplacementOrb';
+import { Flyout } from '@/components/Flyout';
 
 export default function Home() {
   return (
-    <DisplacementOrb showCursor showBackground={false}>
-      <main className={styles.main}>
-        <Contact />
-      </main>
-    </DisplacementOrb>
+    <main className={styles.main}>
+      <Contact />
+      <Blob />
+      <Flyout type="info" />
+    </main>
   );
 }
