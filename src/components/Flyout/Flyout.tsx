@@ -22,7 +22,7 @@ const formatUrl = (url?: string) => {
 };
 
 interface FlyoutProps {
-  type: 'work' | 'info';
+  type?: 'work' | 'info';
 }
 
 const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
