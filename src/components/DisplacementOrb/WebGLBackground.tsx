@@ -25,7 +25,7 @@ interface RingData extends RingProps {
 
 export function WebGLBackground({ hovered }: WebGLBackgroundProps) {
   const frequency = 1.2;
-  const { immersiveModeOn } = useHomeStore();
+  const immersiveModeOn = useHomeStore((state) => state.immersiveModeOn);
   const noOfRings = new Date().getFullYear() - 1993;
   const rings = generateRings(frequency, 1, noOfRings, 0.5, 0.2, 1, 0.05);
   const groupRef = useRef<THREE.Group>(null);
@@ -90,7 +90,7 @@ const Ring = ({ radius, frequency, phase, amplitude, index, totalRings }: RingPr
   const gainRef = useRef<GainNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isInitializingRef = useRef(false);
-  const { immersiveModeOn } = useHomeStore();
+  const immersiveModeOn = useHomeStore((state) => state.immersiveModeOn);
 
   const initializeAudio = async () => {
     if (isInitializingRef.current || analyzerRef.current) return;

@@ -1,0 +1,29 @@
+{
+  "files": {
+    "main.js": "/static/js/main.b6d794f6.chunk.js",
+    "runtime-main.js": "/static/js/runtime-main.f37a9baa.js",
+    "static/js/2.dd0fbd06.chunk.js": "/static/js/2.dd0fbd06.chunk.js",
+    "static/js/3.6a382555.chunk.js": "/static/js/3.6a382555.chunk.js",
+    "index.html": "/index.html",
+    "static/js/2.dd0fbd06.chunk.js.LICENSE.txt": "/static/js/2.dd0fbd06.chunk.js.LICENSE.txt",
+    "static/media/allianz.png": "/static/media/allianz.838e2afc.png",
+    "static/media/aspirasi.png": "/static/media/aspirasi.0461f706.png",
+    "static/media/bond.png": "/static/media/bond.99e15b09.png",
+    "static/media/flipclock.gif": "/static/media/flipclock.4d398836.gif",
+    "static/media/github.105fe84c.svg": "/static/media/github.105fe84c.svg",
+    "static/media/linkedin.95e70eb3.svg": "/static/media/linkedin.95e70eb3.svg",
+    "static/media/marquee.gif": "/static/media/marquee.13731876.gif",
+    "static/media/meow.png": "/static/media/meow.8a39eac8.png",
+    "static/media/merquri.png": "/static/media/merquri.3eef452d.png",
+    "static/media/normal.a4dd4d51.jpeg": "/static/media/normal.a4dd4d51.jpeg",
+    "static/media/pacificlight.png": "/static/media/pacificlight.4fa40f9a.png",
+    "static/media/poppins.eb23bc4e.woff": "/static/media/poppins.eb23bc4e.woff",
+    "static/media/silicon.c5d9eeb8.jpg": "/static/media/silicon.c5d9eeb8.jpg",
+    "static/media/var1.9424f6ae.jpeg": "/static/media/var1.9424f6ae.jpeg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.f37a9baa.js",
+    "static/js/2.dd0fbd06.chunk.js",
+    "static/js/main.b6d794f6.chunk.js"
+  ]
+}

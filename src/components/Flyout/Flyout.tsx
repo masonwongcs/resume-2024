@@ -26,7 +26,9 @@ interface FlyoutProps {
 }
 
 const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
-  const { selectedWork, removeSelectedWork } = useWorkStore();
+  const selectedWork = useWorkStore((state) => state.selectedWork);
+  const removeSelectedWork = useWorkStore((state) => state.removeSelectedWork);
+
   const isOpen = !!selectedWork;
   const [isActive, setIsActive] = useState(false);
 

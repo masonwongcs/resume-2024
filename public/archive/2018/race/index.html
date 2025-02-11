@@ -1,0 +1,344 @@
+<html lang="en">
+   <head>
+      <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+      <meta charset="UTF-8">
+      <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport">
+      <title>Title</title>
+      <style>
+         .loading{
+         position: fixed;
+         opacity: 1;
+         visibility: visible;
+         top:0;
+         right: 0%;
+         bottom:0;
+         left:0;
+         background-color: #1a1a1d;
+         z-index: 999999;
+         transition: opacity 400ms ease-in-out, visibility 400ms ease-in-out, transform 400ms ease;
+         }
+         .loading.hide{
+         opacity: 0;
+         transform: scale(2);
+         visibility: hidden;
+         }
+         .loading:before{
+         content: "";
+         top: 0;
+         right: 0;
+         bottom: 0;
+         left: 0;
+         width: 50px;
+         height: 50px;
+         margin: auto;
+         z-index: 999999;
+         position: absolute;
+         border: 3px solid rgba(255,255,255,0.5);
+         border-top: 3px solid #3498db;
+         border-radius: 50%;
+         background-color: transparent;
+         animation: loading 3s linear infinite;
+         }
+         .ripple-1{
+         position: absolute;
+         top: 0;
+         right: 0;
+         bottom: 0;
+         left: 0;
+         width: 4rem;
+         height: 4rem;
+         margin: auto;
+         animation: zoom 3s linear infinite;
+         background-color: #20c0f0;
+         border-radius: 50%;
+         }
+         .ripple-2{
+         position: absolute;
+         top: 0;
+         right: 0;
+         bottom: 0;
+         left: 0;
+         width: 6rem;
+         height: 6rem;
+         margin: auto;
+         animation: zoom 3s linear infinite;
+         background-color: #12679f;
+         border-radius: 50%;
+         }
+         .ripple-3{
+         position: absolute;
+         top: 0;
+         right: 0;
+         bottom: 0;
+         left: 0;
+         width: 8rem;
+         height: 8rem;
+         margin: auto;
+         animation: zoom 3s linear infinite;
+         background-color: #064377;
+         border-radius: 50%;
+         }
+         @keyframes loading{
+         from{
+         transform: rotate(0deg);
+         }
+         to{
+         transform: rotate(360deg);
+         }
+         }
+         @keyframes zoom {
+         0%{
+         transform: translate3d(0, 0, 0) scale(1);
+         opacity: 0;
+         }
+         50%{
+         opacity: 0.7;
+         }
+         100%{
+         transform: translate3d(0, 0, 0) scale(10);
+         opacity: 0;
+         }
+         }
+      </style>
+      <!--<link rel="stylesheet" href="/creditfrontend/dist/css/vendor.css">-->
+      <link rel="stylesheet" href="/dist/css/bundle.css">
+      <script type="text/javascript" charset="utf-8" async="" src="/dist/0"></script>
+      <link type="text/css" rel="stylesheet" href="style.css">
+      <script type="text/javascript" charset="utf-8" async="" src="/dist/12"></script><script type="text/javascript" charset="utf-8" async="" src="/dist/13"></script><script type="text/javascript" charset="utf-8" async="" src="/dist/9"></script>
+   </head>
+   <body>
+      <div id="root">
+         <div data-reactroot="">
+            <div class="main-content">
+               <div class="content-wrapper">
+                  <div>
+                     <div class="container">
+                        <div class="result-panel">
+                           <div class="result-header">
+                              <div class="game-title">北京赛车PK10</div>
+                              <div class="game-result">
+                                 <ul></ul>
+                              </div>
+                              <div class="game-date">
+                                 <div class="date">
+                                    <div class="top-date">期数</div>
+                                    <div class="bottom-date">123456</div>
+                                 </div>
+                                 <div class="mute">
+                                    <div class="mute-status"></div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="result-container">
+                              <div class="running">
+                                 <div class="stopwatch-container">
+                                    <div class="stopwatch">
+                                       <div data-anim="base wrapper" class="wrapper">
+                                          <div data-anim="base left" class="circle"></div>
+                                          <div data-anim="base right" class="circle"></div>
+                                       </div>
+                                       <div class="counter">
+                                          <div class="bg"><span class="counter">30</span></div>
+                                       </div>
+                                    </div>
+                                 </div>
+                                 <button class="finish-btn">Finish</button><button class="start-btn">Start</button>
+                                 <div class="road-container">
+                                    <div id="audience" class="audience"></div>
+                                    <img id="audience-image" src="/dist/6f8d46460d7077590655a6d65d434337.jpg" class="audience-image">
+                                    <canvas id="audience-canvas" class="audience-canvas"></canvas>
+                                    <div id="road" class="road"></div>
+                                    <img id="road-image" src="/dist/3a773925fbe9c60378c3d1550caf9e2c.jpg" class="road-image">
+                                    <canvas id="road-canvas" class="road-canvas"></canvas>
+                                    <div class="finish-line"></div>
+                                    <div class="start-line"></div>
+                                    <div class="cars">
+                                       <ul>
+                                          <li id="cars-1" data-speed="0" class="car-1"><span></span></li>
+                                          <li id="cars-2" data-speed="0" class="car-2"><span></span></li>
+                                          <li id="cars-3" data-speed="0" class="car-3"><span></span></li>
+                                          <li id="cars-4" data-speed="0" class="car-4"><span></span></li>
+                                          <li id="cars-5" data-speed="0" class="car-5"><span></span></li>
+                                          <li id="cars-6" data-speed="0" class="car-6"><span></span></li>
+                                          <li id="cars-7" data-speed="0" class="car-7"><span></span></li>
+                                          <li id="cars-8" data-speed="0" class="car-8"><span></span></li>
+                                          <li id="cars-9" data-speed="0" class="car-9"><span></span></li>
+                                          <li id="cars-10" data-speed="0" class="car-10"><span></span></li>
+                                       </ul>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div class="result-footer">
+                              <div>
+                                 <div class="footer-header">期号</div>
+                                 <div class="footer-content"><span>2017/7/7</span><span>123456</span></div>
+                              </div>
+                              <div>
+                                 <div class="footer-header">冠亚军和</div>
+                                 <div class="footer-content"><span>15</span><span>大</span><span>单</span></div>
+                              </div>
+                              <div>
+                                 <div class="footer-header">1-5龙虎</div>
+                                 <div class="footer-content"><span>龙</span><span>龙</span><span>龙</span><span>龙</span><span>虎</span></div>
+                              </div>
+                           </div>
+                        </div>
+                     </div>
+                     <div class="header">
+                        <div class="user-info">
+                           <div class="user-profile"><img src="https://s3.amazonaws.com/pyl_showcase/11459791713040416.jpg" class="profile-pic"></div>
+                           <div class="form-message">
+                              <div class="bet-amount">
+                                 <span>0</span><!-- react-text: 15 -->注<!-- /react-text -->
+                              </div>
+                              <div class="bet-input"><input type="text" name="Msg" id="dis-msg" placeholder="投注金额" class="bet-value"></div>
+                              <div class="bet-btn"><button type="submit" id="betMsg" class="bet-send">立即发送</button><button type="reset" id="betReset" class="bet-reset">清空</button></div>
+                           </div>
+                           <div class="count-message">
+                              <div class="count-display">
+                                 <ul>
+                                    <li>
+                                       <h3>剩余点数:</h3>
+                                       <span id="amount">123</span>
+                                    </li>
+                                    <li>
+                                       <h3>线上人数:</h3>
+                                       <span id="people-count">123</span>
+                                    </li>
+                                 </ul>
+                              </div>
+                           </div>
+                        </div>
+                        <div id="F5" class="refresh"><a></a></div>
+                     </div>
+                     <div class="component-wrapper bjpk10">
+                        <div class="menu">
+                           <ul>
+                              <li class="active">
+                                 <a href="#" data-nav="bet">
+                                    <div><span>投注</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="fast-bet">
+                                    <div><span>快捷下注</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="report">
+                                    <div><span>报表</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="history">
+                                    <div><span>历史</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="rule">
+                                    <div><span>规则</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="customer">
+                                    <div><span>客服</span></div>
+                                 </a>
+                              </li>
+                              <li>
+                                 <a href="#" data-nav="home">
+                                    <div><span>大厅</span></div>
+                                 </a>
+                              </li>
+                           </ul>
+                        </div>
+                        <div class="content">
+                           <div class="active" data-nav="fast-bet">
+                              <div>
+                                 <div class="bet-panel">
+                                    <ul>
+                                       <li class="active">
+                                          <a href="#">
+                                             <div><span>车号</span></div>
+                                          </a>
+                                       </li>
+                                       <li>
+                                          <a href="#">
+                                             <div><span>大小单双</span></div>
+                                          </a>
+                                       </li>
+                                       <li>
+                                          <a href="#">
+                                             <div><span>亚冠和值</span></div>
+                                          </a>
+                                       </li>
+                                       <li>
+                                          <a href="#">
+                                             <div><span>龙虎</span></div>
+                                          </a>
+                                       </li>
+                                       <li>
+                                          <a href="#">
+                                             <div><span>庄闲</span></div>
+                                          </a>
+                                       </li>
+                                       <li>
+                                          <a href="#">
+                                             <div><span>其它</span></div>
+                                          </a>
+                                       </li>
+                                    </ul>
+                                 </div>
+                                 <div class="bet-option">
+                                    <div class="bet-info"><span>1~10名猜车号</span></div>
+                                    <div class="bet-choice">
+                                       <div class="top-bar">
+                                          <ul>
+                                             <li><a href="#">冠军</a></li>
+                                             <li><a href="#">亚军</a></li>
+                                             <li><a href="#">季军</a></li>
+                                             <li><a href="#">第四名</a></li>
+                                             <li><a href="#">第五名</a></li>
+                                             <li><a href="#">第六名</a></li>
+                                             <li><a href="#">第七名</a></li>
+                                             <li><a href="#">第八名</a></li>
+                                             <li><a href="#">第九名</a></li>
+                                             <li><a href="#">第十名</a></li>
+                                          </ul>
+                                       </div>
+                                       <div class="bottom-bar">
+                                          <ul>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                             <li><a href="#">1.995</a></li>
+                                          </ul>
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </div>
+                           <div data-nav="bet">Bet</div>
+                           <div data-nav="report">Report</div>
+                           <div data-nav="history">History</div>
+                           <div data-nav="rule">Rule</div>
+                           <div data-nav="customer">Customer</div>
+                           <div data-nav="home">Home</div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.2/TweenMax.min.js"></script>
+      <script type="text/javascript" src="main.js"></script>
+   </body>
+</html>

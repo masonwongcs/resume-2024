@@ -1,0 +1,494 @@
+html, body {
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	font-family: Tahoma, Helvetica, "Microsoft Yahei","Î¢ÈíÑÅºÚ", sans-serif;
+	-webkit-tap-highlight-color: transparent;
+}
+
+@keyframes zoomIn{
+	from {
+		transform: scale(0);
+		opacity: 0;
+	}
+	to{
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes scale{
+	0% {
+		transform: scale(1);
+		opacity: 0;
+	}
+	50%{
+		transform: scale(5);
+		opacity: 1;
+	}
+	100%{
+		transform: scale(10);
+		opacity: 0;
+	}
+}
+
+.loading{
+	position: fixed;
+	height: calc(100% - 4rem);
+	bottom: 0;
+	width: 100%;
+	opacity: 0;
+	visibility: hidden;
+	pointer-events: none;
+	background-color: rgba(55,55,55,0.5);
+	transition: all 0.2s ease-in-out;
+	z-index: 99999;
+}
+.loading:before{
+	content: "";
+	width: 4rem;
+	height: 4rem;
+	background-color: rgba(255,255,255,0.4);
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	border-radius: 50%;
+	margin: auto;
+	animation: scale 1s linear infinite;
+}
+
+.loading:after{
+	content: "";
+	width: 7rem;
+	height: 7rem;
+	background-color: rgba(255,255,255,0.4);
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	border-radius: 50%;
+	margin: auto;
+	animation: scale 2s linear infinite;
+}
+
+.loading.show{
+	opacity: 1;
+	visibility: visible;
+}
+
+.loading:before{
+
+}
+
+.content-wrapper{
+	height: auto;
+	min-height: 100vh;
+	width: 100%;
+	position: absolute;
+	background-color: #3498db;
+}
+
+.content-wrapper:before{
+	content: "";
+	background: url("../img/bus.svg") no-repeat;
+	background-position: center;
+	background-size: contain;
+	position: absolute;
+	opacity: 0.2;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+
+.submit-input{
+	width: 100%;
+	height: 4rem;
+	position: relative;
+	transition: transform 200ms ease-in-out;
+	transform: translate3d(0,5%,0) scale(0.9);
+}
+
+.submit-input.focus{
+	transform: translate3d(0,0,0) scale(1);
+}
+
+.submit-input input {
+	outline: none;
+	border: 0;
+	background-color: #fff;
+	width: 100%;
+	height: 100%;
+	box-sizing: border-box;
+	padding: 0.5rem 1.5rem;
+	font-size: 1.5rem;
+	font-weight: bold;
+	border-radius: 5rem;
+	transition: border-radius 200ms ease-in-out;
+	box-shadow: 0 1rem 3rem rgba(55,55,55,0.2);
+}
+.submit-input.focus input{
+	border-radius: 0;
+}
+
+.submit-input .submit{
+	position: absolute;
+	height: 4rem;
+	width: 4rem;
+	transform: scale(0.7);
+	border: 0;
+	outline: none;
+	border-radius: 50%;
+	top: 0;
+	right: 0;
+	font-size: 0;
+	background-color: #424242;
+}
+
+.submit-input .favourite{
+	position: absolute;
+	height: 4rem;
+	width: 4rem;
+	transform: scale(0.7);
+	border: 0;
+	outline: none;
+	border-radius: 50%;
+	top: 0;
+	right: 4rem;
+	background-color: transparent;
+	font-size: 0;
+}
+
+.submit-input .favourite:before{
+	content: "\f006";
+	font-family: FontAwesome;
+	position: absolute;
+	height: 4rem;
+	width: 4rem;
+	color: #424242;
+	top: 0;
+	right: 0;
+	line-height: 4rem;
+	font-size: 3rem;
+}
+
+.submit-input .favourite.checked:before{
+	content: "\f005";
+	font-family: FontAwesome;
+	position: absolute;
+	height: 4rem;
+	width: 4rem;
+	color: #f1c40f;
+	top: 0;
+	right: 0;
+	line-height: 4rem;
+	font-size: 3rem;
+}
+
+.submit-input .submit .search-btn{
+	width: 50%;
+	height: 50%;
+	fill: #fff;
+}
+
+.extra-info {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transition: transform 400ms ease-in-out, opacity 400ms ease-in-out;
+    opacity: 0;
+    z-index: 999;
+    transform: translate3d(100vw,0,0);
+}
+
+.bus {
+	cursor: pointer;
+    background-color: #fff;
+    /*flex: 0 0 25%;*/
+    width: 95%;
+    height: 4rem;
+    margin: 0.5rem auto;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    -webkit-margin-collapse: collapse;
+    transition: height 400ms ease-in-out;
+    position: relative;
+    overflow: hidden;
+    /*animation: zoomIn linear forwards;*/
+}
+
+.bus.coming:before{
+    content: "";
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background-color: #2ecc71;
+    position: absolute;
+    right: 0;
+    top: 1.5rem;
+    animation: scale 1s linear infinite;
+}
+
+.bus .info:before {
+	content: "\f054";
+	font-family: FontAwesome;
+	font-size: 1rem;
+	line-height: 4rem;
+	right: 0.5rem;
+	top: 0;
+	color: #7f8c8d;
+	position: absolute;
+}
+
+.bus:nth-child(1){
+	animation-duration: 200ms;
+}
+
+.bus:nth-child(2){
+	animation-duration: 400ms;
+}
+.bus:nth-child(3){
+	animation-duration: 600ms;
+}
+.bus.active {
+
+}
+
+.bus.active .extra-info{
+   transform: translate3d(0,0,0);
+   opacity: 1;
+}
+
+.result {
+    /*display: flex;*/
+    /*flex-flow: row wrap;*/
+    margin-top: 1rem;
+}
+
+.back-to-main {
+    width: 3rem;
+    background-color: #2ecc71;
+    height: 3rem;
+    border: 0;
+    outline: none;
+    font-size: 0;
+    text-align: center;
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    border-radius: 50%;
+}
+
+.back-to-main:before {
+    content: "\f015";
+	font-family: FontAwesome;
+    font-size: 2rem;
+    line-height: 2rem;
+    left: 0.6rem;
+    top: 0.5rem;
+    color: #fff;
+    position: absolute;
+}
+
+.nav {
+    height: 4rem;
+    display: flex;
+    background-color: #fff;
+}
+
+.nav .back{
+	font-size: 0;
+}
+
+.nav .back:before{
+	content: "\f053";
+	font-family: FontAwesome;
+	font-size: 2rem;
+	line-height: 4rem;
+	left: 1rem;
+	color: #424242;
+	position: absolute;
+}
+
+.nav > span.bus-no {
+	margin: auto;
+	text-align: center;
+}
+
+.nav > span.next-duration {
+    right: 2rem;
+    top: 0.6rem;
+}
+
+span.bus-no {
+    position: relative;
+    /*display: block;*/
+    font-size: 2rem;
+    padding: 0 2rem;
+    font-weight: bold;
+}
+
+span.bus-no:before{
+	content: "\f207";
+    font-family: FontAwesome;
+    font-size: 1rem;
+    position: absolute;
+    color: #95a5a6;
+    left: 0;
+    line-height: 2.5rem;
+}
+
+span.subsequent-duration {
+    right: 2.6rem;
+    bottom: 0.2rem;
+    position: absolute;
+    font-size: 0.8rem;
+    color: #95a5a6;
+}
+
+span.subsequent-duration:before {
+	content: "\f064";
+    font-family: FontAwesome;
+    font-size: 0.7rem;
+    position: absolute;
+    color: #bdc3c7;
+    left: -14px;
+    top: 3px;
+    opacity: 0.4;
+}
+
+span.next-duration {
+    display: block;
+    position: absolute;
+    text-align: center;
+    font-size: 1.5rem;
+    right: 4rem;
+    top: 0.4rem;
+    padding: 0.5rem;
+}
+
+span.next-duration:before {
+    content: "\f09e";
+    font-family: FontAwesome;
+    font-size: 0.7rem;
+    position: absolute;
+    color: #95a5a6;
+    left: -3px;
+    transform: rotate(-90deg);
+    top: 11px;
+}
+
+span.next-duration:after {
+    content: "mins";
+    font-size: 0.8rem;
+    position: absolute;
+    color: #95a5a6;
+    bottom: 10px;
+    right: -22px;
+}
+
+span.next-duration.coming{
+	color: #2ecc71;
+}
+
+span.next-duration.late{
+	color: #e74c3c;
+}
+
+.map {
+	height: calc(100% - 8rem);
+    width: 100%;
+    bottom: 4rem;
+    position: absolute !important;
+}
+
+.open-in-maps{
+	position: absolute;
+    height: 4rem;
+    width: 100%;
+    text-align: center;
+    line-height: 4rem;
+    /* text-decoration: none; */
+    /* color: #fff; */
+    bottom: 0;
+    background-color: #e74c3c;
+}
+
+.open-in-maps a{
+	text-decoration: none;
+	color: #fff;
+	font-weight: bold;
+	font-size: 1.5rem;
+}
+
+.open-in-maps:before{
+	content: "\f041";
+    font-family: FontAwesome;
+    position: absolute;
+    font-size: 1.5rem;
+    left: 5rem;
+    color: rgba(255,255,255,0.5);
+}
+
+.toast{
+	background-color: rgba(55,55,55,0.8);
+	border-radius: 4rem;
+	box-shadow: 0 0 14px rgba(66,66,66,0.7);
+}
+
+.toast h3{
+	font-size: 1rem;
+	line-height: 1rem;
+	font-weight: normal;
+	color: #fff;
+}
+
+.bus-stop-wrapper{
+	display: flex;
+	flex-flow: row wrap;
+}
+
+.bus-stop-wrapper .bus-stop{
+	cursor: pointer;
+	flex: 0 0 29%;
+    background-color: #fff;
+    font-weight: bold;
+    text-align: center;
+    height: 4rem;
+    font-size: 1.5rem;
+    margin: 0.5rem;
+    line-height: 4rem;
+    position: relative;
+    border-radius: 0.5rem;
+}
+
+.bus-stop-wrapper .bus-stop .delete{
+	position: absolute;
+	height: 1.5rem;
+	width: 1.5rem;
+	font-size: 0;
+	top: 0rem;
+	right: 0rem;
+	border: 0;
+	outline: none;
+	line-height: 1rem;
+	background-color: transparent;
+}
+
+.bus-stop-wrapper .bus-stop .delete:before{
+	content: "\f005";
+	font-family: FontAwesome;
+	position: absolute;
+	height: 1rem;
+	width: 1rem;
+	color: #f1c40f;;
+	top: 0.25rem;
+	right: 0.25rem;
+	line-height: 1rem;
+	font-size: 1rem;
+}

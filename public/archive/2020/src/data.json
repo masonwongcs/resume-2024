@@ -1,0 +1,55 @@
+{
+  "position": [
+    {
+      "id": "home",
+      "text": "Mason",
+      "color": "#3F8EFC"
+    },
+    {
+      "id": "developer",
+      "text": "Developer",
+      "color": "#2667FF"
+    },
+    {
+      "id": "designer",
+      "text": "Designer",
+      "color": "#87BFFF"
+    },
+    {
+      "id": "photographer",
+      "text": "Photographer",
+      "color": "#3B28CC"
+    },
+    {
+      "id": "ui",
+      "text": "UI/UX guy",
+      "color": "#3B28CC"
+    },
+    {
+      "id": "coffee",
+      "text": "Coffee Lover",
+      "color": "#795548"
+    }
+  ],
+  "images": {
+    "photographer": [
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074435/photographer/photo1_ubmmy3.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo2_zwzcye.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo3_v6oizc.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo4_jtnn4m.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo5_wp2xes.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo6_ypg5l8.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo7_hux8ep.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo8_ym0yts.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo9_idzld9.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo10_jlewui.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo11_twnuul.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074435/photographer/photo12_losf0k.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074434/photographer/photo13_iqctv8.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo14_tpeppd.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo15_vvrj1h.jpg",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo16_dfhspf.png",
+      "https://res.cloudinary.com/masonwongcs/image/upload/v1583074433/photographer/photo17_xho0dg.jpg"
+    ]
+  }
+}

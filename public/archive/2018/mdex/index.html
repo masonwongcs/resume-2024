@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+
+        <!-- title and meta -->
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <meta name="description" content="" />
+        <title>MDEX | MYCYberSales 2015
+        </title>
+
+        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="icon" href="favicon.ico" type="image/x-icon">
+        <!-- css -->
+        <!-- Font type -->
+        <!--
+        <link href='http://fonts.googleapis.com/css?family=Ubuntu:300,400,700,400italic' rel='stylesheet' type='text/css'>
+        <link href='http://fonts.googleapis.com/css?family=Oswald:400,300,700' rel='stylesheet' type='text/css'>
+        <link href='http://fonts.googleapis.com/css?family=Nunito' rel='stylesheet' type='text/css'>
+        -->
+        <link href='http://fonts.googleapis.com/css?family=Lato:300,400,700' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="css/style.css" />
+        <link rel="stylesheet" href="css/bootstrap.css" />
+        <link rel="stylesheet" href="css/bootstrap.min.css" />
+        <link rel="stylesheet" href="css/animate.css">
+        <link rel="stylesheet" href="css/font-awesome.css" />
+        <link rel="stylesheet" href="css/font-awesome.min.css" />
+        <!-- js -->
+        <link rel="stylesheet" href="compiled/flipclock.css">
+        <link rel="stylesheet" href="css/jquery.countdown.css">
+
+        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
+        <script src="compiled/flipclock.js"></script>
+        <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+        <script src="js/classie.js"></script>
+        <script src="js/bootstrap.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/wow.min.js"></script>
+        <script src="js/jquery.countdown.min.js"></script>
+        <script>
+            new WOW().init();
+        </script>
+
+
+
+
+    </head>
+    <body>
+
+        <div id="wrapper">
+            <div id="main">
+                <div id="content">
+                    <section class="bg wow fadeIn" data-wow-delay="0.5s">
+                        <div class="container">
+                            <div class="wow fadeIn" >
+                                <!--<img class="centered logo" src="img/mdex_logo_flat.png" alt="logo" />-->
+                                <div class="centered logo" style="width: 500px; height: 200px"></div>
+                                <div class="centered wow fadeIn"  data-wow-delay="0.8s">
+                                    <h1 class="text-center">Stay tuned for <i>#</i>MYCyberSales</h1>
+                                    <div class="row">
+                                        <ul id="example">
+                                            <li><span class="days">00</span><p class="days_text text-center">Days</p></li>
+                                            <li class="seperator">:</li>
+                                            <li><span class="hours">00</span><p class="hours_text text-center">Hours</p></li>
+                                            <li class="seperator">:</li>
+                                            <li><span class="minutes">00</span><p class="minutes_text text-center">Minutes</p></li>
+                                            <li class="seperator">:</li>
+                                            <li><span class="seconds">00</span><p class="seconds_text text-center">Seconds</p></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wow fadeInUp text-center" data-wow-delay="1s"> 
+                                <a class="btn btn-default enterbutton" href="http://www.mdex.my/mdex/Marketplace"><h3><i class="fa fa-sign-in"></i>&nbsp;ENTER SITE</h3></a>
+                            </div>
+
+                        </div>
+                    </section>
+                </div>
+            </div><!-- #main -->
+        </div><!-- /#wrapper -->
+        <script>
+            $('#example').countdown({
+                date: '9/28/2015 00:00:00',
+                offset: +8,
+                day: 'Day',
+                days: 'Days'
+            }, function () {
+                //alert('Done!');
+            });
+        </script>
+    </body>	
+</html>

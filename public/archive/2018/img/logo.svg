@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 162 162" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:square;stroke-miterlimit:1.5;">
+    <g transform="matrix(1,0,0,1,-19.4247,-16.4444)">
+        <g transform="matrix(1,0,0,1,-1.8989,-1.16698)">
+            <g transform="matrix(0.901269,0,0,0.901269,-87.961,-39.6496)">
+                <path d="M295.06,237.337L295.06,68.534L126.257,68.534L126.257,237.337L172.165,237.337" style="fill:none;stroke:white;stroke-opacity:0.603922;stroke-width:5.55px;"/>
+            </g>
+            <g transform="matrix(0.658112,0,0,0.645221,-73.4598,52.9805)">
+                <text x="221.299px" y="171.15px" style="font-family:'Biko-Bold', 'Biko';font-weight:700;font-size:66.667px;fill:white;">w<tspan x="264.232px 297.432px 330.299px " y="171.15px 171.15px 171.15px ">ong</tspan></text>
+            </g>
+            <g transform="matrix(0.184904,0,0,0.184904,43.9632,141.458)">
+                <text x="163.644px" y="198.278px" style="font-family:'QuicksandBold-Regular', 'Quicksand';font-weight:700;font-size:66.667px;fill:white;">D<tspan x="232.244px 295.777px 364.244px 408.577px 486.844px " y="198.278px 198.278px 198.278px 198.278px 198.278px ">ESIGN</tspan></text>
+            </g>
+        </g>
+    </g>
+</svg>

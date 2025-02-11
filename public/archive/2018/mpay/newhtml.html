@@ -1,0 +1,2053 @@
+
+
+
+
+
+
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>ManagePay: Universal Commerce B2B B2C And Payment Service Provider</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript" src="http://uatmanagepay.mpay.my/managepay/meta/fad.js"></script>
+<script language="Javascript" src="http://uatmanagepay.mpay.my/managepay/meta/ajax_check_browser.js"></SCRIPT>
+<link type="text/css" rel="stylesheet" href="http://uatmanagepay.mpay.my/managepay/meta/css.css">
+<link type="text/css" rel="stylesheet" href="http://uatmanagepay.mpay.my/managepay/meta/style.css">
+<script language="javascript">
+String.prototype.trim = function() { return this.replace(/^\s+|\s+$/g, ""); };
+function proceed(f)
+{
+	var validfeatures = 'false';
+	
+	if(f.gender.value == ""){
+		alert("Please select the Gender.");
+		f.gender.focus();
+		return false;
+	}
+
+	if(f.name.value == "") {
+		alert("Please fill in the Name.");
+		f.name.focus();
+		return false;
+	}
+
+	if(f.email.value == "") {
+		alert("Please fill in the Email.");
+		f.email.focus();
+		return false;
+	}
+
+	if(f.email.value.indexOf("@") == -1){
+		alert("Email address is invalid. Please re-enter your email address!");
+		f.email.focus();
+		return false;
+	}
+
+	if(f.mobilePhone.value == "") {
+		alert("Please fill in the Mobile Phone Number.");
+		f.mobilePhone.focus();
+		return false;
+	}
+	
+	if (isNaN(f.mobilePhone.value)) {
+        alert('Please Fill in numbers only for Mobile Phone Number.');
+        f.mobilePhone.focus();
+        return false;
+    }
+
+	if(f.add1.value == "") {
+		alert("Please fill in the Address.");
+		f.add1.focus();
+		return false;
+	}
+	
+	
+	if(f.city.value == "") {
+		alert("Please fill in the City.");
+		f.city.focus();
+		return false;
+	}
+	
+	if(f.postal.value == "") {
+		alert("Please fill in the Postal Code.");
+		f.postal.focus();
+		return false;
+	}
+	
+	if(f.state.value == "") {
+		alert("Please fill in the State.");
+		f.state.focus();
+		return false;
+	}
+	
+		if(f.country.value == "0"){
+		alert("Please select the Country.");
+		f.country.focus();
+		return false;
+	}
+	
+	if((f.country.value == "130")&&(f.state.value == "0")){
+	  alert("Please select the State.");
+	  f.state.focus();
+	  return false;
+	} 
+	if((f.country.value == "130")&&(f.province.value != "")){
+	  alert("Province is only required for non-Malaysian only.");
+	  f.province.focus();
+	  return false;
+	} 
+	if((f.country.value != "130")&&(f.state.value != "0")){
+	  alert("State field is only required for MALAYSIA only.");
+	  f.state.focus();
+	  return false;
+	} 
+	
+	if (isNaN(f.dic1.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic1.focus();
+		return false;
+	}
+ 	
+ 	if (f.namelist1.value == "")
+ 	{
+ 		if (f.dic1.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist1.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic2.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic2.focus();
+		return false;
+	}
+ 	
+ 	if (f.namelist2.value == "")
+ 	{
+ 		if (f.dic2.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist2.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic3.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic3.focus();
+		return false;
+	}
+ 	
+ 	if (f.namelist3.value == "")
+ 	{
+ 		if (f.dic3.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist3.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic4.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic4.focus();
+		return false;
+	}
+ 	
+ 	if (f.namelist4.value == "")
+ 	{
+ 		if (f.dic4.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist4.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	
+ 	if (isNaN(f.dic5.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic5.focus();
+		return false;
+	}
+ 	if (f.namelist5.value == "")
+ 	{
+ 		if (f.dic5.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist5.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	
+ 	if (isNaN(f.dic6.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic6.focus();
+		return false;
+	}
+ 	if (f.namelist6.value == "")
+ 	{
+ 		if (f.dic6.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist6.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	
+ 	if (isNaN(f.dic7.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic7.focus();
+		return false;
+	}
+ 	if (f.namelist7.value == "")
+ 	{
+ 		if (f.dic7.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist7.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic8.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic8.focus();
+		return false;
+	}
+ 	if (f.namelist8.value == "")
+ 	{
+ 		if (f.dic8.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist8.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic9.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic9.focus();
+		return false;
+	}
+ 	if (f.namelist9.value == "")
+ 	{
+ 		if (f.dic9.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist9.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if (isNaN(f.dic10.value))
+	{
+ 		alert("Please fill in Numbers only for IC No.");
+		f.dic10.focus();
+		return false;
+	}
+ 	if (f.namelist10.value == "")
+ 	{
+ 		if (f.dic10.value != "")
+ 		{
+ 			alert("Please fill in the Director Name.");
+ 			f.namelist10.focus();
+ 			return false;
+ 		}
+ 	}
+ 	
+ 	if(f.cpnName.value.trim() == "") {
+		alert("Please fill in the Company Name.");
+		f.cpnName.focus();
+		return false;
+	}
+
+	if (validfeatures == "true")
+	{	
+		
+		if(f.DBAName.value == "") {
+	 		alert("Please fill in the Trading Name.");
+	 		f.DBAName.focus();
+	 		return false;
+	 	}
+	 	
+	 	/* if(f.DBAName.value.indexOf("MPAY-") == -1){
+			alert('Please fill in the Trading Name start with "MPAY-".');
+			f.DBAName.focus();
+			return false;
+		} */
+	 	
+	 	if(f.DBAName.value.length >25) {
+	 		alert('Please fill in the Trading Name not more than 16 characters.');
+	 		f.DBAName.focus();
+	 		return false;
+	 	}
+		
+		if(f.cpnRegNo.value.trim() == "") {
+			alert("Please fill in the Business Registration No.");
+			f.cpnRegNo.focus();
+			return false;
+		}
+		
+		if(f.cpnEmail.value == ""){
+			alert("Please fill in the Company Email.");
+			f.cpnEmail.focus();
+			return false;
+		}
+		
+		if(f.cpnEmail.value.indexOf("@") == -1){
+			alert("Company email address is invalid. Please re-enter your company email address!");
+			f.cpnEmail.focus();
+			return false;
+		}
+		
+		var rbsalesvol_value = 0;
+		for (i=0;i<f.salesvol.length;i++) 
+		{ 
+			  if (f.salesvol[i].checked) 
+			  { 
+					 rbsalesvol_value = f.salesvol[i].value; 
+			  } 
+		} 
+		if(rbsalesvol_value == 0){
+			alert("Please select yout annual sales volume.");
+			f.salesvol[0].focus();
+			return false;
+		}
+		
+		
+		var rbcpnRegType_value = 0;
+		for (i=0;i<f.cpnRegType.length;i++) 
+		{ 
+			  if (f.cpnRegType[i].checked) 
+			  { 
+					 rbcpnRegType_value = f.cpnRegType[i].value; 
+			  } 
+		} 
+		if(rbcpnRegType_value == 0){
+			alert("Please select the Company Type.");
+			f.cpnRegType[0].focus();
+			return false;
+		}
+
+			
+		var rbcpnType_value = 0;
+		for (i=0;i<f.cpnType.length;i++) 
+		{			
+			  if (f.cpnType[i].checked) 
+			{	
+					 rbcpnType_value = f.cpnType[i].value; 
+			}
+		}	
+		if(rbcpnType_value == 0){
+			alert("Please select the Business Type.");
+			f.cpnType[0].focus();
+			return false;
+		}
+		
+		
+		var rbind_value = 0;
+		for (i=0;i<f.ind.length;i++) 
+		{ 
+			  if (f.ind[i].checked) 
+			  { 
+					 rbind_value = f.ind[i].value; 
+			  } 
+		} 
+		if(rbind_value == 0){
+			alert("Please select the Business Products.");
+			f.ind[0].focus();
+			return false;
+		}
+		
+		
+		
+		var validChar = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-";
+		var ok1 = "yes";
+		
+		for(var m=0; m<(f.subDomain.value.length); m++) {
+			temp = f.subDomain.value.substring(m,m+1);
+			if(validChar.indexOf(temp) == "-1") ok1 = "no";	
+		}
+		
+		if(ok1 == "no") {
+			alert("Your Subdomain Name is invalid. \nPlease do not key in SPACE or INVALID character in your Subdomain Name! ");
+			f.subDomain.focus();
+			return false;
+		}
+	}	
+
+	if(confirm("Are you sure you want to update this user?"))
+		return true;
+	else
+		return false;
+}
+
+
+</script>
+<link href="http://uatmanagepay.mpay.my/managepay/meta/css.css" rel="stylesheet" type="text/css">
+<link type="text/css" rel="stylesheet" media="screen" href="http://uatmanagepay.mpay.my/managepay/meta/style2.css">
+<style type="text/css">
+.dropv, .dropv ul {padding: 0; margin: 0; list-style: none;}
+.dropv a {display: inline; }
+.dropv li {float: left; padding: 5px 8px 5px 5px;}  /* all list items */
+.dropv li ul {position: absolute; background: #333333; padding: 5px 5px 5px 4px; left: -9999px;} /* second-level lists */
+.dropv li:hover ul {left: auto; } /* nest list under hovered list items */
+.dropv li ul li a {color: #ffffff; text-decoration: none; display: block;}
+.dropv li ul li a:hover {color: yellow; background:#663399;}
+ </style>
+ 
+</head>
+
+<body bgcolor="#e8ebec">
+	<!--start top ban-->	
+	
+
+
+
+
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta name="keywords" content="ManagePay http://uatmanagepay.mpay.my/managepay/ ManagePay: Universal Commerce B2B B2C And Payment Service Provider">
+<meta name="description" content="One stop solution for online trading platform, business tool and payment solution.">
+<meta name="robots" content="index,follow"/>
+<link type="text/css" rel="stylesheet" media="screen" href="http://uatmanagepay.mpay.my/managepay/meta/style2.css">
+<link rel="stylesheet" href="http://uatmanagepay.mpay.my/managepay/meta/jquery-ui.css" />
+<script src="http://uatmanagepay.mpay.my/managepay/meta/jquery-ui.js"></script>
+<script type="text/javascript">
+function fncCheckValidRef(f){
+var domain = 'http://uatmanagepay.mpay.my/managepay/';
+
+}
+
+function ShowLoginBox(s)
+{
+	if(s == "1")
+		document.getElementById("loginPart").style.display = "block";
+	else 
+		document.getElementById("loginPart").style.display = "none";
+}
+
+function validateLogin()
+{		
+	//User Name validate
+	if(document.Login.Username.value == "" ) {
+		alert("Please enter your Email address.");
+		document.Login.Username.focus();
+		return false;
+	}
+	//User Password validate
+	if(document.Login.Password.value == "" ) {
+		alert("Please enter your Password.");
+		document.Login.Password.focus();
+		return false;
+	}
+}
+function goto(s)
+{		
+	if (s == "1")
+	window.open("https://www.facebook.com/managepay");
+	if (s == "2")
+	window.open("https://twitter.com/managepay");
+}
+
+
+</script>
+<link rel="shortcut icon" href="http://uatmanagepay.mpay.my/managepay/images/favicon.ico" type="image/x-icon" /> 
+
+<!-- Google Analytic -->
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-11332580-8']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+<!-- end Google Analytic -->
+
+<!-- start Google +1 -->
+<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>
+<!-- end Google +1 -->
+<style type="text/css">
+#uatFlag { 
+	width:104px;
+	position: fixed;
+	top: 50px;
+	right: 10px;
+	z-index: 999;
+	weight: bold;
+}
+</style>
+
+<body onload="fncCheckValidRef(searchForm)">
+<!--<font style="font-family:verdana; font-size:12px;">
+	<marquee bgcolor="#ffffcc" height="20px" scrollamount="3" onmouseover="this.stop();" onmouseout="this.start();">
+		<strong>Dear Merchant, we will be undergoing a system upgrade from 9th October, 2013 to 20th October, 2013. During this period, daily settlement payout will be paid by cheque which will take additional 2 working days to clear. Therefore please manage your fund accordingly. We apologise for any inconvenience caused.</strong>
+	</marquee>
+</font>-->
+<div id="loginPart" style="display:none">
+<table width="100%"  border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td height="137" background="http://uatmanagepay.mpay.my/managepay/images/general/sign_in_header.jpg" style="background-position:center; background-position:top;background-repeat:repeat-x;">
+	<table width="980" border="0" align="center" cellpadding="0" cellspacing="0" style="margin-bottom:35px; ">
+      <tr>
+        <td>
+	<form name="Login" method="post" onSubmit="return validateLogin();" action="http://uatmanagepay.mpay.my/managepay/general/MercLogin?ref=0">
+	<input type="hidden" name="dest" value="">
+		<table  border="0" align="right" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="150" valign="bottom" class="top_signin">Sign In </td>
+              <td width="209"><table width="100%"  cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td height="20" class="top_text">Email Address</td>
+                  </tr>
+                  <tr align="center">
+                    <td colspan="2" background="http://uatmanagepay.mpay.my/managepay/images/general/bg_top_signup.jpg" style="background-repeat:no-repeat; background-position:center;" width="209" height="35">
+					<input name="Username" class="top_signbox" type="text"  size="25"></td>
+                  </tr>
+              </table></td>
+              <td width="25">&nbsp;</td>
+              <td><table width="100%"   cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td height="20" class="top_text">Password</td>
+                  </tr>
+                  <tr align="center">
+                    <td colspan="2" background="http://uatmanagepay.mpay.my/managepay/images/general/bg_top_signup.jpg" style="background-repeat:no-repeat; background-position:center;" width="209" height="35">
+					<input name="Password" class="top_signbox" type="password" size="25"></td>
+                  </tr>
+              </table></td>
+              <td width="25" valign="bottom">&nbsp;</td>
+              <td width="114" valign="bottom"><input type="image" src="http://uatmanagepay.mpay.my/managepay/images/general/btn_sign_in.jpg" width="114" height="35" alt="Login"></td>
+              <td width="50" valign="bottom">&nbsp;</td>
+              <td valign="bottom"><img src="http://uatmanagepay.mpay.my/managepay/images/general/btn_x.jpg" width="31" height="32" onClick="ShowLoginBox(0);" title="Close"></td>
+            </tr>
+            <tr>
+              <td height="20" colspan="4" align="right" class="top_signin"> <a class="pass" href="http://uatmanagepay.mpay.my/managepay/general/ForgetPassword?ref=0">Forgot your password? </a> </td>
+              <td valign="bottom">&nbsp;</td>
+              <td valign="bottom">&nbsp;</td>
+              <td valign="bottom">&nbsp;</td>
+              <td valign="bottom">&nbsp;</td>
+            </tr>
+        </table>
+	</form>
+		</td>
+      </tr>
+    </table>
+	</td>
+  </tr>
+</table>
+</div>
+<table width="100%"  border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td background="http://uatmanagepay.mpay.my/managepay/images/general/bg3.jpg" style="background-position:center; background-repeat:no-repeat; " bgcolor="#C9DFED">
+<form name="searchForm" id="searchForm" method="post" onSubmit="return checkValidate(searchForm)" action="">
+<input type="hidden" name="ref" value="0">
+<input type="hidden" name="flag" value="">
+	<table width="980"  border="0" align="center" cellpadding="0" cellspacing="0">
+              <tr>
+                <td>
+                  <table width="100%"  border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td height="100"><a href="http://uatmanagepay.mpay.my/managepay/Home?ref=0" title="ManagePay: Agile, Convenient, Secure"><img src="http://uatmanagepay.mpay.my/managepay/images/general/managepay_logo.png" width="280" height="73" border="0" alt="ManagePay: Agile, Convenient, Secure"></a></td>
+                      <td>&nbsp;</td>
+					   <td><img src = "http://uatmanagepay.mpay.my/managepay/images/general/follow-us-on-facebook.gif"   alt="Like ManagePay on Facebook" title="Like ManagePay on Facebook" onClick="goto(1)"  style="cursor:pointer" ></td>
+					  <td ><div style="margin: 0px; padding:0px; clear: both; height: 6px"></div><img src = "http://uatmanagepay.mpay.my/managepay/images/general/twitterlogo2.gif"  alt="Follow ManagePay on Twitter" title="Follow ManagePay on Twitter" onClick="goto(2)"  style="cursor:pointer" ></td>
+                      <td align="right"><table border="0" cellspacing="5" cellpadding="0">
+                        <tr align="right">
+	
+				  	  	    <td colspan="5"><span class="welcome_black">Welcome!</span><span class="welcome_green"> <b>Wong Khoay Shen </b></td>
+	
+                        </tr>
+                        <tr align="right">
+                          <td><!--<a class="top" href="mailto:uatmanagepay@managepay.com" style="padding:0px 5px 0px 5px;" title="Send enquiry to ManagePay">uatmanagepay@managepay.com</a></td>
+                          <td width="10"><img src="http://uatmanagepay.mpay.my/managepay/images/general/tx_divider.png" width="3" height="13">--></td>
+	
+					  	    <td align="right" width="80"> <a class="top" href="http://uatmanagepay.mpay.my/managepay/general/Logout?ref=0" style="padding:0px 5px 0px 5px;" title="Sign out from ManagePay">Sign Out</a></td>
+	
+                          <td width="10" align="center"><img src="http://uatmanagepay.mpay.my/managepay/images/general/tx_divider.png" width="3" height="13"></td>
+                          <td align="right" width="90"> <a class="top" href="http://uatmanagepay.mpay.my/managepay/profile/Home?ref=0" style="padding:0px 0px 0px 5px;" title="My ManagePay account">My Account</a></td>
+                        </tr>
+                      </table></td>
+                    </tr>
+                </table></td>
+              </tr>
+              <tr>
+                <td>
+				<table width="100%"  border="0" cellspacing="0" cellpadding="0">
+                    <tr>
+            <td background="http://uatmanagepay.mpay.my/managepay/images/general/menubar_bg2.jpg">
+			<div id="menu" >
+			  <ul>
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_bg1.jpg" width="10" height="46"></li>
+			  <li class="tiada"><a href="http://uatmanagepay.mpay.my/managepay/Home?ref=0" title="Home">Home</a></li>
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tab"><a href="#" title="Company Overview">Company Overview</a>
+                  <ul>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=20&ref=0" title="History & Business">History & Business</a></li>
+					<li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=29&ref=0" title="Group of Companies">Group of Companies</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=21&ref=0" title="Principal Activities">Principal Activities</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=22&ref=0" title="Key Achievements, Milestones & Awards">Key Achievements, Milestones & Awards</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=23&ref=0" title="Competitive Strengths & Advantages">Competitive Strengths & Advantages</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=8&ref=0" title="Technology Used">Technology Used</a></li>                   
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=25&ref=0" title="Modes of Marketing & Distributions">Modes of Marketing & Distributions</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=24&ref=0" title="Strategies, Future Plans & Prospects">Strategies, Future Plans & Prospects</a></li>                   
+                  </ul>
+			  </li>
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tab"><a href="#" title="Solution">Solution</a>
+                  <ul>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=34&ref=0" title="MDEX ECPOS">MTrader</a></li>
+                    <li class="subtab"><a href="#" title="MPAY ECPOS">MPAY ECPOS</a>
+                    	<ul>
+	                    	<li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=4&ref=0" title="For iOS (Apple)">For iOS (Apple)</a></li>
+	                    	<li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=35&ref=0" title="For Windows">For Windows</a></li>
+                    	</ul>
+                    </li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=5&ref=0" title="MDEX">MDEX</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=6&ref=0" title="BuyMalaysia">BuyMalaysia</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=15&ref=0" title="Cardgain">Cardgain</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=7&ref=0" title="Sinatec ECPOS">Sinatec ECPOS</a></li>                   
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=16&ref=0" title="Payment Services">Payment Services</a></li>                   
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=3&ref=0" title="Terminal Services">Terminal Services</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=17&ref=0" title="Loyalty Management Services">Loyalty Management Services</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=18&ref=0" title="Business Process Outsourcing">Business Process Outsourcing</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=19&ref=0" title="Software, Security and ICT Services">Software, Security and ICT Services</a></li>
+                  </ul>
+              </li>			  
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tiada"><a href="http://uatmanagepay.mpay.my/managepay/Content?id=10&ref=0" title="Gallery">Gallery</a></li>
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tab"><a href="#" title="Partner">Partner</a>
+			  	<ul>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=32&ref=0" title="Become a Partner">Become a Partner</a></li>
+					<li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=9&ref=0" title="ManagePay Partner Program">ManagePay Partner Program</a></li>
+				</ul>	
+			  </li>
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tab"><a href="#" title="Investor Relation">Investor Relation</a>
+                  <ul>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=26&ref=0" title="Market Watch">Market Watch</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Announcement?ref=0" title="Corporate Announcement">Corporate Announcement</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/Content?id=28&ref=0" title="Financial report & Prospectus">Financial report & Prospectus</a></li>
+                    <li><a href="http://uatmanagepay.mpay.my/managepay/PressRelease?ref=0" title="Press Release">Press Release</a></li>
+                    <li class="subtab"><a href="#" title="Board Policies">Board Policies</a>
+                    	<ul>
+	                    	<li><a href="http://uatmanagepay.mpay.my/managepay/files/MPAY AC-TOR (2013) 1.0.pdf" title="Terms of Reference of Audit Committee" target="_blank">Terms of Reference of Audit Committee</a></li>
+	                    	<li><a href="http://uatmanagepay.mpay.my/managepay/files/MPAY Board Charter 1.0.pdf" title="Board Charter" target="_blank">Board Charter</a></li>
+	                    	<li><a href="http://uatmanagepay.mpay.my/managepay/files/MPAY Code of Conduct 1.0.pdf" title="Code of Conduct" target="_blank">Code of Conduct</a></li>
+                    	</ul>
+                    </li>
+                  </ul>
+              </li>			  
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tiada"><a href="http://uatmanagepay.mpay.my/managepay/Content?id=27&ref=0" title="Career">Career</a></li>   
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+			  <li class="tiada"><a href="http://uatmanagepay.mpay.my/managepay/Content?id=11&ref=0" title="Contact ManagePay">Contact</a></li>   
+			  <li class="tiada"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_separator.jpg" width="6" height="46"></li>
+              <li class="tiada"><a href="http://uatmanagepay.mpay.my/managepay/Content?id=31&ref=0" title="FAQ">FAQ</a></li>
+			  <div><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_bg3.jpg" width="8" height="46" align="right"></div>
+			  <!--<div><a href="http://uatmanagepay.mpay.my/managepay/Content?id=14&ref=0" title="Business Associate Programme"><img src="http://uatmanagepay.mpay.my/managepay/images/general/menubar_bg4.jpg" border="0" align="right" alt="Business Associate Programme"></a></div>-->         
+			  </ul>
+			  </div> </td>                      
+                    </tr>
+                </table></td>
+              </tr>
+                </table>
+</form>				
+	</td>
+  </tr>
+</table>
+<div id="uatFlag">
+	<font size="10" color="red">UAT</font>
+</div>
+</body>
+
+
+
+	<!--end top ban-->	
+<table width="100%"  border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td valign="top" background="http://uatmanagepay.mpay.my/managepay/images/general/bg2.jpg" style="background-position:center; background-position:top;background-repeat:repeat-x;"><table width="1000"  border="0" align="center" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" class="shadowbg"><table width="980"  border="0" align="center" cellpadding="0" cellspacing="0" bgcolor="#FFFFFF">
+            <tr><td height="10">
+			<td></tr>
+			<tr>
+              <td height="300" valign="top" align="center">
+			  <!-- content start -->
+	  		  <form name="editUserForm" method="post" onSubmit="return proceed(editUserForm);" action="http://uatmanagepay.mpay.my/managepay/profile/UserInfo?ref=0">
+			<input type="hidden" name="action" value="editprofile">
+			<input type="hidden" name="RegType" value="3">
+			
+	<table width="98%"  border="0" cellspacing="0" cellpadding="0" align="center">
+      <tr>
+        <td align="left"><!--include menutab-->
+		 	
+
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<title>ManagePay: Universal Commerce B2B B2C And Payment Service Provider</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+<script type="text/javascript">
+function show(id)
+{
+	/* if (id == 1)
+	{
+		document.getElementById('publishBlock1').style.display="block";
+		document.getElementById('publishBlock2').style.display="block";
+		check =0;
+	}
+	else
+	{
+	
+		document.getElementById('publishBlock1').style.display="none";
+		document.getElementById('publishBlock2').style.display="none";
+
+		check =1;
+	} */
+}
+
+</script>
+</head>
+<table width="100%" align="center" border="0" cellpadding="0" cellspacing="0"  >
+<tr height="10" >
+	<td width ="8%"><b>
+		
+				<font class="menutitle">My Profile</font>
+		
+	</b></td>
+		
+				<!--<a href="http://uatmanagepay.mpay.my/managepay/market/Marketing?action=init&ref=0" class="menutitle">My Affiliate</a>-->
+		
+		
+		
+				<!--&nbsp;&nbsp;|&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/commerce/B2CBuyerOrder?action=search&ref=0" class="menutitle">My Order</a>-->
+		
+		
+		
+			<!--&nbsp;&nbsp;|&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/account?ref=0" class="menutitle">My Earnings</a>-->
+		
+
+		
+			<!--&nbsp;&nbsp;|&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/market/buyerInfo?ref=0" class="menutitle">My Buyer</a>-->
+		
+		
+		<td width="19%"><b>
+		
+				|&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/MySubcribeServices?ref=0" class="menutitle">My Subscribed Services</a>
+			
+		</b></td>
+		<td width ="18%"><b>
+		
+				|&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/payment_type?action=profile&ref=0" class="menutitle">My Bank Details & Doc</a>
+		
+		</b></td>
+		
+		
+		
+			<td width="11%">
+		
+
+<!-- 				|&nbsp;&nbsp;&nbsp;<font class="menutitle" >My Earnings</font> -->
+
+
+
+		
+			
+				|&nbsp;&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/account?ref=0" class="menutitle" >My Account</a>
+			
+		
+		
+	</td>
+		
+		
+		
+		
+	<td width="10%">
+		
+				|&nbsp;&nbsp;&nbsp;<a href="http://uatmanagepay.mpay.my/managepay/profile/UserInfo?action=setting&ref=0" class="menutitle" >Setting</a>
+			
+		</td>	
+		
+		
+		
+		
+	<td width="33%"></td>
+</tr></table>
+<script>  
+window.onload = show(0);
+</script>
+</html>
+
+
+			<!--include menutab--->
+		</td>
+      </tr>
+      <tr>
+	    
+        <td class="fill3"><table width="100%"  border="0" align="center" cellpadding="0" cellspacing="0">
+          <tr>
+             <td height="10">&nbsp;</td>
+          </tr>
+		  <tr>
+            <td height="30" class="txt_14px" bgcolor="#CCCCCC" align="left"><b>&nbsp;&nbsp;My Profile</b></td>
+          </tr>
+          <tr>
+            <td><table width="100%"  border="0" cellspacing="0" cellpadding="0">
+              <tr>
+              <td align="left" valign="top"><table width="100%" border="0" cellpadding="5" cellspacing="1" class="border01">
+                  <tr>
+                    <td><table width="899" border="0" cellspacing="0" cellpadding="3">
+						
+						
+                        <tr>
+                           <td width="20"></td>
+                          <td width="200"><strong>My Package</strong></td>
+                          <td>MPAY PRO (Standard Package)</td>
+                        </tr>
+						
+                        <tr>
+                          <td colspan="3" height="30" valign="bottom"><strong>Profile Details</strong></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Full Name </td>
+                          <td><select name="gender" style="width:60px;">
+						  
+                              <option value="female" >Miss.</option>
+                              <option value="male" selected>Mr.</option>
+                            </select>
+                              <input name="name" type="text" style="width:276px" value="Wong Khoay Shen "></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Email</td>
+                          <td><input name="email" type="text" style="width:340px" value="weiyan.hooi@mpsb.net" >
+						  </td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">IC Number</td>                         
+                          <td> <input type="hidden" name="ICNo" value="790526145079" />
+                          <input type="text" style="width:340px" disabled="disabled" value="xxxxxxxxxxxx"></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Mobile Phone Number </td>
+                          <td><input name="mobilePhone" type="text" style="width:340px" value="0123228885"></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Phone Number </td>
+                          <td><input name="offPhone" type="text" style="width:340px" value="0358790106"></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Fax </td>
+                          <td><input name="fax" type="text" style="width:340px" value=""></td>
+                        </tr>
+					
+                        <tr>
+                          <td align="right" class="txtred"></td>
+                          <td height="20">Company Name </td>
+                          <td><input name="cpnName" type="text" style="width:340px" value="Merchant Access Consulting "></td>
+                        </tr>
+                                    
+                         <tr>
+                          <td align="right" class="txtred"></td>
+                          <td height="20" class="Vregular">DBA Name (Trading Name)</td>
+                          <td ><input type="text" name="DBAName" id="DBAName"  style="width:340px" value="MPY*Merchant Access Consl"/></td>
+                        </tr>
+                    
+                        <tr>
+                          <td align="right" class="txtred"></td>
+                          <td height="20">Business Registration Number</td>
+                          <td><input name="cpnRegNo" type="text" style="width:340px" value="002268650-K"></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred"></td>
+                          <td height="20">GST Registration No.</td>
+                          <td><input name="gstRegNo" type="text" style="width:340px" value=""></td>
+                        </tr>
+                        <tr>
+                          <td colspan="3" height="35" valign="bottom"><strong>Contact Address</strong></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Address </td>
+                          <td><input name="add1" type="text" style="width:340px" value="R2-13-03, Brios Services Apartment, Setia Walk "></td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">&nbsp;</td>
+                          <td><input name="add2" type="text" style="width:340px" value="Persiaran Wawasan Puchong "></td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">City</td>
+                          <td><input name="city" type="text" style="width:340px" value="Puchong "></td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Postal Code </td>
+                          <td><input name="postal" type="text" style="width:340px" value="47160"></td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">State </td>
+                          <td>
+						    <select name="state" style="width:150px;">
+							<option value="0">- Select State -</option>
+								
+								<option value="1"> Johor </option>
+								
+								<option value="2"> Kedah </option>
+								
+								<option value="3"> Kelantan </option>
+								
+								<option value="4"> Kuala Lumpur </option>
+								
+								<option value="5"> Labuan </option>
+								
+								<option value="6"> Melaka </option>
+								
+								<option value="7"> Negeri Sembilan </option>
+								
+								<option value="8"> Pahang </option>
+								
+								<option value="9"> Penang </option>
+								
+								<option value="10"> Perak </option>
+								
+								<option value="11"> Perlis </option>
+								
+								<option value="12"> Putrajaya </option>
+								
+								<option value="13"> Sabah </option>
+								
+								<option value="14"> Sarawak </option>
+								
+								<option value="15" selected> Selangor </option>
+								
+								<option value="16"> Terrenganu </option>
+								
+                              </select>
+						  </td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Province</td>
+                          <td><input name="province" type="text" style="width:340px" value=""></td>
+                        </tr>
+						<tr>
+                          <td align="right" class="txtred">* </td>
+                          <td height="20">Country</td>
+                          <td>
+						    <select name="country" style="width:345px;">
+								
+								<option value="130" selected> MALAYSIA </option>
+								
+								<option value="1"> AFGHANISTAN </option>
+								
+								<option value="2"> ALBANIA </option>
+								
+								<option value="3"> ALGERIA </option>
+								
+								<option value="4"> AMERICAN SAMOA </option>
+								
+								<option value="5"> ANDORRA </option>
+								
+								<option value="6"> ANGOLA </option>
+								
+								<option value="7"> ANGUILLA </option>
+								
+								<option value="8"> ANTARCTICA </option>
+								
+								<option value="9"> ANTIGUA AND BARBUDA </option>
+								
+								<option value="10"> ARGENTINA </option>
+								
+								<option value="11"> ARMENIA </option>
+								
+								<option value="12"> ARUBA </option>
+								
+								<option value="13"> AUSTRALIA </option>
+								
+								<option value="14"> AUSTRIA </option>
+								
+								<option value="15"> AZERBAIJAN </option>
+								
+								<option value="16"> BAHAMAS </option>
+								
+								<option value="17"> BAHRAIN </option>
+								
+								<option value="18"> BANGLADESH </option>
+								
+								<option value="19"> BARBADOS </option>
+								
+								<option value="20"> BELARUS </option>
+								
+								<option value="21"> BELGIUM </option>
+								
+								<option value="22"> BELIZE </option>
+								
+								<option value="23"> BENIN </option>
+								
+								<option value="24"> BERMUDA </option>
+								
+								<option value="25"> BHUTAN </option>
+								
+								<option value="26"> BOLIVIA </option>
+								
+								<option value="27"> BOSNIA AND HERZEGOVINA </option>
+								
+								<option value="28"> BOTSWANA </option>
+								
+								<option value="29"> BOUVET ISLAND </option>
+								
+								<option value="30"> BRAZIL </option>
+								
+								<option value="31"> BRITISH VIRGIN ISLANDS </option>
+								
+								<option value="32"> BRUNEI DARUSSALAM </option>
+								
+								<option value="33"> BULGARIA </option>
+								
+								<option value="34"> BURKINA FASO </option>
+								
+								<option value="35"> BURUNDI </option>
+								
+								<option value="36"> CAMBODIA </option>
+								
+								<option value="37"> CAMEROON </option>
+								
+								<option value="38"> CANADA </option>
+								
+								<option value="39"> CAPE VERDE </option>
+								
+								<option value="40"> CAYMAN ISLANDS </option>
+								
+								<option value="41"> CENTRAL AFRICAN REPUBLIC </option>
+								
+								<option value="42"> CHAD </option>
+								
+								<option value="43"> CHILE </option>
+								
+								<option value="44"> CHINA </option>
+								
+								<option value="45"> CHRISTMAS ISLAND </option>
+								
+								<option value="46"> COCOS ISLANDS </option>
+								
+								<option value="47"> COLOMBIA </option>
+								
+								<option value="48"> COMOROS </option>
+								
+								<option value="49"> CONGO </option>
+								
+								<option value="50"> CONGO (REPUBLIC OF) </option>
+								
+								<option value="51"> COOK ISLANDS </option>
+								
+								<option value="52"> COSTA RICA </option>
+								
+								<option value="53"> COTE D`IVOIRE </option>
+								
+								<option value="54"> CROATIA </option>
+								
+								<option value="55"> CUBA </option>
+								
+								<option value="56"> CYPRUS </option>
+								
+								<option value="57"> CZECH REPUBLIC </option>
+								
+								<option value="58"> DENMARK </option>
+								
+								<option value="59"> DJIBOUTI </option>
+								
+								<option value="60"> DOMINICA </option>
+								
+								<option value="61"> DOMINICAN REPUBLIC </option>
+								
+								<option value="62"> EAST TIMOR </option>
+								
+								<option value="63"> ECUADOR </option>
+								
+								<option value="64"> EGYPT </option>
+								
+								<option value="65"> EL SALVADOR </option>
+								
+								<option value="66"> EQUITORIAL GUINEA </option>
+								
+								<option value="67"> ERITREA </option>
+								
+								<option value="68"> ESTONIA </option>
+								
+								<option value="69"> ETHIOPIA </option>
+								
+								<option value="70"> FALKLAND ISLANDS </option>
+								
+								<option value="71"> FAROE ISLANDS </option>
+								
+								<option value="81"> FAROE ISLANDS </option>
+								
+								<option value="72"> FIJI </option>
+								
+								<option value="73"> FINLAND </option>
+								
+								<option value="74"> FRANCE </option>
+								
+								<option value="75"> FRENCH GUIANA </option>
+								
+								<option value="76"> FRENCH POLYNESIA </option>
+								
+								<option value="77"> FRENCH SOUTHERN TERRITORIES </option>
+								
+								<option value="78"> GABON REPUBLIC </option>
+								
+								<option value="79"> GAMBIA </option>
+								
+								<option value="80"> GEORGIA </option>
+								
+								<option value="82"> GHANA </option>
+								
+								<option value="83"> GIBRALTAR </option>
+								
+								<option value="84"> GREECE </option>
+								
+								<option value="85"> GREENLAND </option>
+								
+								<option value="86"> GRENADA </option>
+								
+								<option value="87"> GUADELOUPE </option>
+								
+								<option value="88"> GUAM </option>
+								
+								<option value="89"> GUATEMALA </option>
+								
+								<option value="90"> GUINEA </option>
+								
+								<option value="91"> GUINEA-BISSAU </option>
+								
+								<option value="92"> GUYANA </option>
+								
+								<option value="93"> HAITI </option>
+								
+								<option value="94"> HEARD ISLAND AND MCDONALD ISLANDS </option>
+								
+								<option value="95"> HOLY SEE (VATICAN CITY STATE) </option>
+								
+								<option value="96"> HONDURAS </option>
+								
+								<option value="97"> HONG KONG </option>
+								
+								<option value="98"> HUNGARY </option>
+								
+								<option value="99"> ICELAND </option>
+								
+								<option value="100"> INDIA </option>
+								
+								<option value="101"> INDONESIA </option>
+								
+								<option value="102"> IRAN </option>
+								
+								<option value="103"> IRAQ </option>
+								
+								<option value="104"> IRELAND </option>
+								
+								<option value="105"> ISRAEL </option>
+								
+								<option value="106"> ITALY </option>
+								
+								<option value="107"> JAMAICA </option>
+								
+								<option value="108"> JAPAN </option>
+								
+								<option value="109"> JORDAN </option>
+								
+								<option value="110"> KAZAKSTAN </option>
+								
+								<option value="111"> KENYA </option>
+								
+								<option value="112"> KIRIBATI </option>
+								
+								<option value="115"> KUWAIT </option>
+								
+								<option value="116"> KYRGYZSTAN </option>
+								
+								<option value="117"> LAOS </option>
+								
+								<option value="118"> LATVIA </option>
+								
+								<option value="119"> LEBANON </option>
+								
+								<option value="120"> LESOTHO </option>
+								
+								<option value="121"> LIBERIA </option>
+								
+								<option value="122"> LIBYAN ARAB JAMAHIRIYA </option>
+								
+								<option value="123"> LIECHTENSTEIN </option>
+								
+								<option value="124"> LITHUANIA </option>
+								
+								<option value="125"> LUXEMBOURG </option>
+								
+								<option value="126"> MACAU </option>
+								
+								<option value="127"> MACEDONIA </option>
+								
+								<option value="128"> MADAGASCAR </option>
+								
+								<option value="129"> MALAWI </option>
+								
+								<option value="131"> MALDIVES </option>
+								
+								<option value="132"> MALI </option>
+								
+								<option value="133"> MALTA </option>
+								
+								<option value="160"> MARIANA ISLANDS </option>
+								
+								<option value="134"> MARSHALL ISLANDS </option>
+								
+								<option value="135"> MARTINIQUE </option>
+								
+								<option value="136"> MAURITANIA </option>
+								
+								<option value="137"> MAURITIUS </option>
+								
+								<option value="138"> MAYOTTE </option>
+								
+								<option value="139"> MEXICO </option>
+								
+								<option value="140"> MICRONESIA </option>
+								
+								<option value="183"> MIQUELON </option>
+								
+								<option value="141"> MOLDOVA </option>
+								
+								<option value="142"> MONACO </option>
+								
+								<option value="143"> MONGOLIA </option>
+								
+								<option value="153"> MONNEW CALEDONIAGOLIA </option>
+								
+								<option value="144"> MONTSERRAT </option>
+								
+								<option value="145"> MOROCCO </option>
+								
+								<option value="146"> MOZAMBIQUE </option>
+								
+								<option value="147"> MYANMAR </option>
+								
+								<option value="148"> NAMIBIA </option>
+								
+								<option value="149"> NAURU </option>
+								
+								<option value="150"> NEPAL </option>
+								
+								<option value="151"> NETHERLANDS </option>
+								
+								<option value="152"> NETHERLANDS ANTILLES </option>
+								
+								<option value="154"> NEW ZEALAND </option>
+								
+								<option value="155"> NICARAGUA </option>
+								
+								<option value="156"> NIGER </option>
+								
+								<option value="157"> NIGERIA </option>
+								
+								<option value="158"> NIUE </option>
+								
+								<option value="159"> NORFOLK ISLAND </option>
+								
+								<option value="113"> NORTH KOREA </option>
+								
+								<option value="161"> NORWAY </option>
+								
+								<option value="162"> OMAN </option>
+								
+								<option value="163"> PAKISTAN </option>
+								
+								<option value="164"> PALAU </option>
+								
+								<option value="165"> PALESTINIAN TERRITORY, OCCUPIED </option>
+								
+								<option value="166"> PANAMA </option>
+								
+								<option value="167"> PAPUA NEW GUINEA </option>
+								
+								<option value="168"> PARAGUAY </option>
+								
+								<option value="169"> PERU </option>
+								
+								<option value="170"> PHILIPPINES </option>
+								
+								<option value="171"> PITCAIRN </option>
+								
+								<option value="172"> POLAND </option>
+								
+								<option value="173"> PORTUGAL </option>
+								
+								<option value="174"> PUERTO RICO </option>
+								
+								<option value="175"> QATAR </option>
+								
+								<option value="176"> REUNION </option>
+								
+								<option value="177"> ROMANIA </option>
+								
+								<option value="178"> RUSSIAN FEDERATION </option>
+								
+								<option value="179"> RWANDA </option>
+								
+								<option value="180"> SAINT HELENA </option>
+								
+								<option value="181"> SAINT KITTS AND NEVIS </option>
+								
+								<option value="182"> SAINT LUCIA </option>
+								
+								<option value="185"> SAMOA </option>
+								
+								<option value="186"> SAN MARINO </option>
+								
+								<option value="187"> SAO TOME </option>
+								
+								<option value="188"> SAUDI ARABIA </option>
+								
+								<option value="189"> SENEGAL </option>
+								
+								<option value="190"> SEYCHELLES </option>
+								
+								<option value="191"> SIERRA LEONE </option>
+								
+								<option value="192"> SINGAPORE </option>
+								
+								<option value="194"> SLOVENIA </option>
+								
+								<option value="195"> SOLOMON ISLANDS </option>
+								
+								<option value="196"> SOMALIA </option>
+								
+								<option value="197"> SOUTH AFRICA </option>
+								
+								<option value="198"> SOUTH GEORGIA & SOUTH SANDWICH ISLANDS </option>
+								
+								<option value="114"> SOUTH KOREA </option>
+								
+								<option value="199"> SPAIN </option>
+								
+								<option value="200"> SRI LANKA </option>
+								
+								<option value="184"> ST. VINCENT </option>
+								
+								<option value="201"> SUDAN </option>
+								
+								<option value="202"> SURINAME </option>
+								
+								<option value="203"> SVALBARD AND JAN MAYEN </option>
+								
+								<option value="204"> SWAZILAND </option>
+								
+								<option value="205"> SWEDEN </option>
+								
+								<option value="206"> SWITZERLAND </option>
+								
+								<option value="207"> SYRIAN ARAB REPUBLIC </option>
+								
+								<option value="208"> TAIWAN </option>
+								
+								<option value="209"> TAJIKISTAN </option>
+								
+								<option value="210"> TANZANIA </option>
+								
+								<option value="211"> THAILAND </option>
+								
+								<option value="212"> TOGO </option>
+								
+								<option value="213"> TOKELAU </option>
+								
+								<option value="214"> TONGA </option>
+								
+								<option value="215"> TRINIDAD AND TOBAGO </option>
+								
+								<option value="216"> TUNISIA </option>
+								
+								<option value="217"> TURKEY </option>
+								
+								<option value="218"> TURKMENISTAN </option>
+								
+								<option value="219"> TURKS AND CAICOS ISLANDS </option>
+								
+								<option value="220"> TUVALU </option>
+								
+								<option value="226"> U.S. MINOR OUTLYING ISLANDS </option>
+								
+								<option value="221"> UGANDA </option>
+								
+								<option value="222"> UKRAINE </option>
+								
+								<option value="223"> UNITED ARAB EMIRATES </option>
+								
+								<option value="224"> UNITED KINGDOM </option>
+								
+								<option value="225"> UNITED STATES </option>
+								
+								<option value="227"> URUGUAY </option>
+								
+								<option value="228"> UZBEKISTAN </option>
+								
+								<option value="229"> VANUATU </option>
+								
+								<option value="230"> VENEZUELA </option>
+								
+								<option value="231"> VIET NAM </option>
+								
+								<option value="232"> VIRGIN ISLANDS, BRITISH </option>
+								
+								<option value="233"> VIRGIN ISLANDS, U.S. </option>
+								
+								<option value="193"> vSLOVAKIA </option>
+								
+								<option value="234"> WALLIS AND FUTUNA </option>
+								
+								<option value="235"> WESTERN SAHARA </option>
+								
+								<option value="236"> YEMEN </option>
+								
+								<option value="237"> YUGOSLAVIA </option>
+								
+								<option value="238"> ZAMBIA </option>
+								
+								<option value="239"> ZIMBABWE </option>
+								
+                              </select>
+						  </td>
+                        </tr>
+                        <tr>
+                          <td colspan="3" height="35" valign="bottom"><strong>Login Account</strong></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Login ID </td>
+                          <td>A00001059@mpay</td>
+                        </tr>                        
+                        <tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Password </td>
+                          <td><a href="javascript:void(0)" onClick="window.open('http://uatmanagepay.mpay.my/managepay/profile/chgpass.jsp','mywindow','width=400,height=260,dependent,resizable=yes')" title="You may change your login password here">Change your password here</a></td>
+                        </tr>
+                        <tr>
+                          <td align="right" class="txtred"> </td>
+                          <td height="20">Hints Q & A </td>
+                          <td><a href="javascript:void(0)" onClick="window.open('http://uatmanagepay.mpay.my/managepay/profile/chgqna.jsp','mywindow','width=700,height=400,dependent,resizable=yes')" title="You may maintain your hints question and answer here">Change your hints Q&A here</a></td>
+                        </tr>
+						<tr>
+						  <td colspan="3" height="35" valign="bottom"><strong>Additional</strong></td>
+						</tr>
+						<tr>
+						  <td width="100%" colspan="3">
+							<div id="publishBlock" name="publishBlock">
+							  <table width="100%"  border="0" cellspacing="0" cellpadding="0">
+							  	<tr>
+								  <td align="right" class="txtred">* </td>
+								  <td height="20" width="209">&nbsp;&nbsp;Company Email </td>
+								  
+								  <td class="Vregular"><input name="cpnEmail" id ="cpnEmail" type="text" style="width:340px" value="weiyan.hooi@mpsb.net"></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred"> </td>
+								  <td height="20">&nbsp;&nbsp;URL </td>
+								  <td><input name="url" type="text" style="width:340px" value=""></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr style="display:none">
+								  <td width="20" align="right" class="txtred">* </td>
+								  <td width="209" height="20">&nbsp;&nbsp;Subdomain&nbsp;&nbsp; </td>
+								  <td><input name="subDomain" type="text" style="width:340px" value="A00001059"></td>
+								</tr>
+								<tr style="display:none">
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred"> </td>
+								  <td height="20">&nbsp;&nbsp;Incorporated/ Established since </td>
+								  <td><input name="establishYear" type="text" style="width:340px" value="2013"></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred">* </td>
+								  <td height="20" colspan="2">&nbsp;&nbsp;Company Type</td>
+								</tr>
+								<tr>
+								  <td colspan="3">
+									<table width="100%"  border="0" align="center" cellpadding="0" cellspacing="0">
+									  
+										<td width="3%" style="padding-left:20px; ">
+										  <input type="radio" name="cpnRegType" value="1" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Private Limited (Sendirian Berhad)</td>
+										
+										<td width="3%" style="padding-left:20px; ">
+										  <input type="radio" name="cpnRegType" value="2" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Partnership</td>
+										
+										<td width="3%" style="padding-left:20px; ">
+										  <input type="radio" name="cpnRegType" value="3" checked></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Sole Proprietor</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; ">
+										  <input type="radio" name="cpnRegType" value="4" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Public Listed (Berhad)</td>
+										
+										<td width="3%" style="padding-left:20px; ">
+										  <input type="radio" name="cpnRegType" value="5" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Association & Club</td>
+										
+								  </table></td>
+								  <td width="25" ></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred">* </td>
+								  <td height="20" colspan="2">&nbsp;&nbsp;Business Type</td>
+								</tr>
+								<tr>
+								  <td colspan="3">
+									<table width="100%"  border="0" align="center" cellpadding="0" cellspacing="0">
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="1" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Trader</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="2" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Manufacturer</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="3" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Wholesaler/ Distributor</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="4" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Agent</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="5" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Others</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="6" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Franchisee</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="7" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Retailer/Retail Chain/td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="8" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Exporter</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="9" checked></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Service</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="10" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Importer</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="11" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Professional Service</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="cpnType" value="12" ></td>
+										<td width="30% " align="left">&nbsp;&nbsp;Hotel/Lodging</td>
+										
+									  </tr>
+									  
+								  </table></td>
+								  <td width="25" ></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred">* </td>
+								  <td height="20" colspan="2">&nbsp;&nbsp;Business Product</td>
+								</tr>
+								<tr>
+								  <td colspan="3">
+									<table width="100%"  border="0" align="center" cellpadding="0" cellspacing="0">
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="21" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Agriculture</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="27" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Antiques & Collectibles</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="28" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Art</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="18" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Automobiles</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="29" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Baby Products</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="14" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Beauty Care</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="30" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Books</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="22" checked></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Business Services</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="31" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Chemicals</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="32" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Computers & Peripherals</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="23" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Construction</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="329" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Education & Training</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="1" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Electricals & Electronics</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="34" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Energy</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="10" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Fashion</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="6" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Floral & Gift</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="20" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Food & Beverages</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="24" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Furnitures</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="26" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Green Technology</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="33" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Hardware</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="11" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Health & Medical Supplies</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="7" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Home & Garden</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="3" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Home Appliances</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="19" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;ICT Solutions & Services</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="8" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Jewellery & Watches</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="15" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Machinery</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="384" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Malaysia Craft</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="35" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Maritime</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="367" checked></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Others</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="16" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Packaging & Storage</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="362" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Printers & Consumables</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="295" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Property</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="81" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Safety Equipment</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="378" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Sewing & Craft</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="36" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Sports & Equipment</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="9" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Stationery</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="4" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Telecommunications</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="25" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Textiles</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="12" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Toys & Hobbies</td>
+										
+									  </tr>
+									  
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="334" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Transportation</td>
+										
+										<td width="3%" style="padding-left:20px; "><input type="checkbox" name="ind" value="13" ></td>
+										<td width="30%" align="left">&nbsp;&nbsp;Travel</td>
+										
+								  </table></td>
+								  <td width="25" ></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+								  <td align="right" class="txtred">* </td>
+								  <td height="20" colspan="2">&nbsp;Annual Sales Volume (RM)</td>
+								</tr>
+								<tr>
+								  <td colspan="3">
+									<table width="100%"  border="0" align="center" cellpadding="0" cellspacing="0">
+									  <tr align="left">
+										<td width="33%" style="padding-left:20px; ">
+										
+										
+										<input name="salesvol" id="radio" type="radio"  value="1"  >&nbsp;&nbsp;Below 50K&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+										
+										
+										<input name="salesvol" id="radio" type="radio"  value="2"  checked>&nbsp;&nbsp;50K - 500K&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+										
+										
+										<input name="salesvol" id="radio" type="radio"  value="3"  >&nbsp;&nbsp;501K - 1 Mil&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+										
+										
+										<input name="salesvol" id="radio" type="radio"  value="4"  >&nbsp;&nbsp;Above 1 Mil&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+										
+										</td>
+										
+									  </tr>
+								  </table></td>
+								</tr>
+								<tr>
+						  			<td colspan="3" height="10" ></td>
+								</tr>
+								<tr>
+									<td align="right" class="txtred" valign="top">* </td>
+									<td colspan ="2">
+										<table >
+											<tr>							
+												<td height="20" colspan="3">Owner / Partners / Directors Name</td>
+											</tr>
+											<tr>
+												<td></td>
+												<td height="20" >1.</td>
+												<td ><input name="namelist1" type="text" style="width:300px" value="Wong Khoay Shen "></td>
+												<td><input name="dic1" type="text" style="width:300px" value="790526145079"></td>
+											</tr>
+									
+										</table>
+									</td>
+								</tr>
+								
+							  </table>
+						  </div></td>
+						</tr>
+						<tr>
+                          <td>&nbsp;</td>
+                          <td>&nbsp;</td>
+                          <td>&nbsp;</td>
+                        </tr>
+						<tr>
+						  <td>&nbsp;</td>
+						  <td>&nbsp;</td>
+						  <td width="674"><input type="reset" name="Reset" value="Reset">&nbsp;
+							<input type="submit" name="Submit" value="Update"></td>
+					  	</tr>
+                    </table></td>
+                  </tr>
+              </table></td>
+            </tr>
+
+            </table></td>
+          </tr>
+          <tr>
+            <td>&nbsp;</td>
+          </tr>
+        </table></td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td>
+      </tr>
+    
+    </table>
+	</form>
+			  <!-- content end -->
+			  </td>
+            </tr>
+        </table></td>
+      </tr>
+    </table></td>
+  </tr>
+</table>
+	<!--start bot ban-->	
+	
+
+
+
+<table width="100%" align="center"  border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td background="http://uatmanagepay.mpay.my/managepay/images/general/footer_bg.png" bgcolor="#E8EBEC" style="background-repeat:repeat-x; padding:5px;"><table width="1000" border="0" align="center" cellpadding="0" cellspacing="0">
+      <tr>
+        <td><table width="980"  border="0" align="center" cellpadding="0" cellspacing="0">
+          <tr>
+            <td width="7" height="9" align="right" valign="bottom"><img src="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve.jpg" width="7" height="9"></td>
+            <td background="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve2.jpg" style="background-repeat:repeat-x; background-position:bottom; ">&nbsp;</td>
+            <td width="8" height="9" align="left" valign="bottom"><img src="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve3.jpg" width="8" height="9"></td>
+          </tr>
+          <tr>
+            <td background="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve8.jpg" style="background-position:right; background-repeat:repeat-y; ">&nbsp;</td>
+            <td bgcolor="#FFFFFF"><table width="100%" border="0" cellspacing="0" cellpadding="0">
+              <tr>
+                <td width="250" align="center"><img src="http://uatmanagepay.mpay.my/managepay/images/general/support_logo.jpg" width="206" height="101" border="0" alt="Powered by MPSB; Supported by MSC" title="Powered by MPSB; Supported by MSC"></td>
+                <td width="1" bgcolor="#ececec"></td>
+                <td width="715" align="right"><table width="690"  border="0" cellpadding="0" cellspacing="0">
+                  <tr align="left">
+                    <td width="115"><strong> Company Info </strong></td>
+                    <td width="21">&nbsp;</td>
+                    <td width="286"><strong> Solution</strong></td>
+                    <td width="11">&nbsp;</td>
+                    <td width="257"><strong> Tool &amp; Resources </strong></td>
+                  </tr>
+                  <tr valign="top">
+                    <td colspan="5" background="http://uatmanagepay.mpay.my/managepay/images/general/line.jpg" style="background-repeat:repeat-x; background-position:center; ">&nbsp;</td>
+                  </tr>
+                  <tr valign="top">
+                    <td>
+                      <table cellspacing="0" cellpadding="3">
+                        <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"> <a class="login" href="http://uatmanagepay.mpay.my/managepay/Home?ref=0">Home</a> </td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=20&ref=0">About Us</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=11&ref=0">Contact Us</a></td>
+                        </tr>
+                    </table>
+					<table cellspacing="0" cellpadding="3">
+					  <tr><td width="125" align="left">&nbsp;</td></tr>
+					  <tr><td width="125" align="left">&nbsp;</td></tr>
+					  <tr><td width="125" align="left"><strong> My Account </strong></td></tr>
+                  	  <tr valign="top"><td background="http://uatmanagepay.mpay.my/managepay/images/general/line.jpg" style="background-repeat:repeat-x; background-position:center; ">&nbsp;</td>
+                  </tr>
+					</table>
+					<table cellspacing="0" cellpadding="3">
+                        <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/general/Logout?ref=0">Sign Out</a></td>
+                        </tr>
+                        <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/profile/Home?ref=0">My Account </a></td>
+                        </tr>
+                    </table>
+					</td>
+                    <td>&nbsp;</td>
+                    <td><table cellspacing="0" cellpadding="3">
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=4&ref=0">MPAY ECPOS</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=5&ref=0">MDEX</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=6&ref=0">BuyMalaysia</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=15&ref=0">Cardgain</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=7&ref=0">Sinatec ECPOS</a></td>
+                        </tr>
+                        <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=16&ref=0">Payment Services</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=3&ref=0">Terminal Services</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=17&ref=0">Loyalty Management Services</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=18&ref=0">Business Process Outsourcing</a></td>
+                        </tr>
+                        <tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=19&ref=0">Software, Security and ICT Services</a></td>
+                        </tr>
+                    </table></td>
+                    <td>&nbsp;</td>
+                    <td><table cellspacing="0" cellpadding="3">
+                    	<tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=35&ref=0" target="_blank">Download MPAY ECPOS Windows</a></td>
+                        </tr>
+                        <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=34&ref=0" target="_blank">Download MTrader Windows</a></td>
+                        </tr>
+                       <tr>
+                          <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=12&ref=0" target="_blank">Business Associate Agreement </a></td>
+                        </tr>
+  						<tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=13&ref=0" target="_blank">Privacy Policy </a></td>
+                        </tr>
+  						<tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=30&ref=0" target="_blank">Terms & Conditions</a></td>
+                        </tr>
+						<tr>
+                          <td align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                          <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=31&ref=0">FAQ</a></td>
+                        </tr>
+                    </table>
+					<table width="100%" cellpadding="3" cellspacing="0">
+                        <tbody>
+                          <tr>
+                            <td align="left">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td align="left"><strong> ManagePay Partner Programme </strong></td>
+                          </tr>
+                          <tr valign="top">
+                            <td background="http://uatmanagepay.mpay.my/managepay/images/general/line.jpg" style="background-repeat:repeat-x; background-position:center; ">&nbsp;</td>
+                          </tr>
+                        </tbody>
+                      </table>
+					  <table cellspacing="0" cellpadding="3">
+                        <tbody>
+                          <tr>
+                            <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                            <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=14&ref=0">ManagePay Business Associates Programme</a></td>
+                          </tr>
+                          <tr>
+                            <td width="12" align="middle"><img src="http://uatmanagepay.mpay.my/managepay/images/general/bullet2.jpg" width="5" height="5"></td>
+                            <td align="left"><a class="login" href="http://uatmanagepay.mpay.my/managepay/Content?id=9&ref=0">Other Partners </a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+					</td>
+                  </tr>
+                  <tr valign="top">
+                    <td colspan="7">&nbsp;</td>
+                  </tr>
+                  <tr align="left" valign="top">
+                    <td colspan="7" class="footer"> (c) 2012 ManagePay.com All rights reserved </td>
+                  </tr>
+                </table></td>
+              </tr>
+            </table></td>
+            <td background="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve4.jpg" style="background-position:left; background-repeat:repeat-y; ">&nbsp;</td>
+  </tr>
+  <tr>
+            <td width="7" height="8" align="right" valign="top"><img src="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve7.jpg" width="7" height="8"></td>
+            <td background="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve6.jpg" style="background-position:top; background-repeat:repeat-x; ">&nbsp;</td>
+            <td width="8" height="8" align="left" valign="top"><img src="http://uatmanagepay.mpay.my/managepay/images/general/footer_curve5.jpg" width="8" height="8"></td>
+          </tr>
+        </table></td>
+      </tr>
+    </table></td>
+  </tr>
+</table>
+
+
+
+	<!--end bot ban-->
+
+</body>
+<script type="text/javascript">
+
+
+</script>
+</html>
+
+
+

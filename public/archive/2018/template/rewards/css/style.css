@@ -1,0 +1,319 @@
+:root{
+    font-size: 16px;
+    font-family: 'Varela Round', sans-serif;
+    --main-color-1: #2362FF;
+    --main-color-2: #2ECC71;
+}
+
+html, body{
+    margin: 0;
+}
+
+body{
+    background-color: rgba(0,0,0,0.8);
+    -webkit-transition: all 200ms ease-in-out;
+    -o-transition: all 200ms ease-in-out;
+    transition: all 200ms ease-in-out;
+}
+
+body.successful{
+    background-color: #2ecc71;
+}
+
+body.failed{
+    background-color: #eb3b5a;
+}
+
+.popup{
+    display: none;
+}
+
+
+.popup:before{
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 998;
+}
+
+.popup-container{
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 350px;
+    height: auto;
+    max-height: 400px;
+    background-color: #fff;
+    border-radius: 0.5rem;
+    z-index: 999;
+    margin: auto;
+    padding: 1rem;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+
+.popup-container .popup-header{
+    font-size: 1rem;
+    font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+}
+
+.popup-container .popup-content{
+    font-size: 0.8rem;
+    padding: 1rem 0.2rem;
+}
+
+.popup .popup-container .popup-close{
+    position: absolute;
+    bottom: 1rem;
+    left: 0;
+    right: 0;
+    display: block;
+    width: 90%;
+    margin: auto;
+    height: 3rem;
+    background: -webkit-linear-gradient(315deg, var(--main-color-1) 0%, var(--main-color-2) 100% );
+    background: -o-linear-gradient(315deg, var(--main-color-1) 0%, var(--main-color-2) 100% );
+    background: linear-gradient(135deg, var(--main-color-1) 0%, var(--main-color-2) 100% );
+    color: #fff;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    outline: 0;
+    border: 0;
+    font-size: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    -webkit-transition-timing-function: ease-in-out;
+    -o-transition-timing-function: ease-in-out;
+    transition-timing-function: ease-in-out;
+    -webkit-transition-duration: 200ms;
+    -o-transition-duration: 200ms;
+    transition-duration: 200ms;
+    border-radius: 0.25rem;
+    margin: auto;
+}
+
+.reward-container{
+    position: fixed;
+    top: 50%;
+    left: 0;
+    right: 0;
+    max-width: 330px;
+    margin: auto;
+    height:430px;
+    -webkit-transform: translateY(-50%);
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+
+.reward-wrapper{
+    background-color: #fafafa;
+    width: 100%;
+    /*margin: auto;*/
+    /*height: auto;*/
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow: hidden;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+.reward-wrapper:not(.step-1){
+    -webkit-transform: translateX(100vw);
+    -ms-transform: translateX(100vw);
+    transform: translateX(100vw);
+}
+
+.reward-wrapper .title{
+    font-weight: bold;
+    text-align: center;
+    font-size: 1.25rem;
+    position: absolute;
+    top: -2rem;
+    left: 0;
+    right: 0;
+    color: var(--main-color-2)
+}
+
+.reward-wrapper .redemption-period{
+    text-align: center;
+    margin: 1rem auto;
+    color: #5f5f5f;
+}
+
+.reward-wrapper .redemption-period label{
+    display: block;
+    font-size: 0.7rem;
+}
+
+.confetti{
+    -webkit-transform: scale(0);
+    -ms-transform: scale(0);
+    transform: scale(0);
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.result{
+    position: relative;
+    top: 2rem;
+    left: 0;
+    right: 0;
+    -webkit-perspective: 30rem;
+    perspective: 30rem;
+    z-index: 1;
+    margin-bottom: 5rem;
+}
+
+.reward-wrapper.step-1 .result{
+    margin-bottom: 4rem;
+}
+
+.result.success,
+.result.failed{
+    display: none;
+}
+
+.result-message {
+    margin: 2rem auto;
+    text-align: center;
+    color: #b2b2b2;
+    display: block;
+    font-size: 1.25rem;
+}
+
+.reward-wrapper.step-1 .result-message{
+    margin: 0;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.result .result-icon{
+    border-radius: 50%;
+    background-color: #ccc;
+    padding: 2rem;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 12rem;
+    height: 12rem;
+    margin: auto;
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+    -webkit-transition: all 200ms ease-in-out;
+    -o-transition: all 200ms ease-in-out;
+    transition: all 200ms ease-in-out;
+}
+
+.result.failed .result-icon{
+    padding: 0;
+}
+
+.result .result-icon svg{
+    -webkit-transform: translateZ(1rem);
+    transform: translateZ(1rem);
+}
+
+.btn{
+    display: block;
+    width: 90%;
+    margin: auto;
+    height: 3rem;
+    border-radius: 2rem;
+    background-color: #2ecc71;
+    color: #fff;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    outline: 0;
+    border: 0;
+    font-size: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    -webkit-transition-timing-function: ease-in-out;
+    -o-transition-timing-function: ease-in-out;
+    transition-timing-function: ease-in-out;
+    -webkit-transition-duration: 200ms;
+    -o-transition-duration: 200ms;
+    transition-duration: 200ms;
+    position: relative;
+}
+
+.btn.failed{
+    background-color: #eb3b5a;
+}
+
+.btn.loading{
+    opacity: 0.8;
+    pointer-events: none;
+    font-size: 0;
+}
+
+.btn.loading:before{
+    content: '';
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border-top: 4px solid #fff;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 4px solid transparent;
+    -webkit-animation: loading 1s linear infinite;
+    animation: loading 1s linear infinite;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: auto;
+}
+
+.btn:active{
+    background-color: rgba(0,0,0,0.35);
+}
+
+.reward-wrapper.successful{
+    background-color: rgba(255,255,255, 0.25);
+}
+
+.reward-wrapper.successful .result-message{
+    color: #fff;
+}
+
+.reward-wrapper.successful .result .result-icon{
+    background-color: rgba(0,0,0,0.15);
+}
+
+.reward-wrapper.successful .btn{
+    background-color: rgba(0,0,0,0.15);
+}
+
+@-webkit-keyframes loading {
+    to{
+        -webkit-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes loading {
+    to{
+        -webkit-transform: rotate(360deg);
+        transform: rotate(360deg);
+    }
+}

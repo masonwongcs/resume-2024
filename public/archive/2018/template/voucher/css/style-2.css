@@ -1,0 +1,240 @@
+:root{
+	font-size: 16px;
+	font-family: 'Varela Round', sans-serif;
+	--main-color-1: #582c6c;
+	--main-color-2: #8e44ad;
+	--sec-color-1: #e74c3c;
+	--sec-color-2: #FFC300;
+}
+
+html, body{
+	margin: 0;
+	min-height: 100%;
+	height: 100%;
+	background-color: var(--main-color-1);
+}
+
+body:before{
+	content: '';
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: url(../img/christmas.png) center / cover no-repeat;
+}
+
+.voucher-wrapper{
+	width: 350px;
+	height: auto;
+	min-height: 300px;
+	position: relative;
+	left: 0;
+	right: 0;
+	margin: auto;
+	top: 50%;
+	-webkit-transform: translateY(-50%);
+	-ms-transform: translateY(-50%);
+	transform: translateY(-50%);
+	background: radial-gradient(rgba(255,255,255,0.2), transparent);
+	border-radius: 0.5rem;
+	-webkit-box-shadow: 0 4px 16px rgba(55,55,55,0.2);
+	box-shadow: 0 4px 16px rgba(55,55,55,0.2);
+	-webkit-perspective: 100px;
+	perspective: 100px;
+	overflow: hidden;
+	text-align: center;
+}
+
+.voucher-wrapper .voucher-title{
+	font-size: 2rem;
+	width: 60%;
+	padding: 1rem;
+	color: var(--sec-color-2);
+	text-transform: uppercase;
+	margin: 3rem auto;
+}
+
+.voucher-wrapper .voucher-title img{
+	width: 100%;
+}
+
+.voucher-wrapper .voucher-desc{
+	padding: 1rem;
+	color: #fff;
+	font-size: 1rem;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+.voucher-wrapper .voucher-desc span{
+	color: var(--sec-color-2);
+	font-size: 1.125rem;
+}
+
+.voucher-wrapper .price{
+	position: absolute;
+	top: 50%;
+	-webkit-transform: translateY(-50%) rotate(90deg);
+	-ms-transform: translateY(-50%) rotate(90deg);
+	transform: translateY(-50%) rotate(90deg);
+	right: 0;
+	width: 200px;
+	height: 200px;
+	color: #fff;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	text-align: center;
+	display: table;
+}
+
+.voucher-wrapper .price .price-wrapper{
+	display: table-cell;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.voucher-wrapper .price strong{
+	display: inline-block;
+	font-size: 1rem;
+	vertical-align: text-top;
+	line-height: 4rem;
+}
+
+.voucher-wrapper .price span{
+	font-weight: bold;
+	display: inline-block;
+	font-size: 5rem;
+	vertical-align: text-top;
+}
+
+.voucher-wrapper .redeem-btn{
+	display: block;
+	color: var(--sec-color-2);
+	font-size: 0.9rem;
+	width: 70%;
+	height: 40px;
+	line-height: 40px;
+	margin: 1rem auto;
+	border: 2px solid var(--sec-color-2);
+	text-decoration: none;
+	transition: all 200ms ease-in-out;
+}
+
+.voucher-wrapper .redeem-btn:hover{
+	background-color: var(--sec-color-2);
+	color: #fff;
+}
+
+.voucher-wrapper .redeem-btn:active{
+	background-position: 100% 0px;
+}
+
+.voucher-wrapper .voucher-footer{
+	color: #fff;
+	font-size: 0.6rem;
+	text-align: center;
+}
+
+
+.popup{
+	display: none;
+}
+
+
+.popup:before{
+	content: '';
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	background-color: rgba(0,0,0,0.5);
+	z-index: 998;
+}
+
+.popup-container{
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	width: 350px;
+	height: auto;
+	max-height: 400px;
+	background-color: #fff;
+	border-radius: 0.5rem;
+	z-index: 999;
+	margin: auto;
+	padding: 1rem;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+}
+
+
+.popup-container .popup-header{
+	font-size: 1rem;
+	font-weight: bold;
+	text-align: center;
+	border-bottom: 1px solid #ccc;
+}
+
+.popup-container .popup-content{
+	font-size: 0.8rem;
+	padding: 1rem 0.2rem;
+}
+
+.popup .popup-container .popup-close{
+	position: absolute;
+	bottom: 1rem;
+	left: 0;
+	right: 0;
+	display: block;
+	width: 90%;
+	margin: auto;
+	height: 3rem;
+	background: -webkit-linear-gradient(315deg, #E43E50 0%, #EC6C49 100% );
+	background: -o-linear-gradient(315deg, #E43E50 0%, #EC6C49 100% );
+	background: linear-gradient(135deg, #E43E50 0%, #EC6C49 100% );
+	color: #fff;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	outline: 0;
+	border: 0;
+	font-size: 1rem;
+	font-weight: bold;
+	text-transform: uppercase;
+	-webkit-transition-timing-function: ease-in-out;
+	-o-transition-timing-function: ease-in-out;
+	transition-timing-function: ease-in-out;
+	-webkit-transition-duration: 200ms;
+	-o-transition-duration: 200ms;
+	transition-duration: 200ms;
+	border-radius: 3rem;
+	margin: auto;
+}
+
+.success-icon{
+	border-radius: 50%;
+	background-color: #2ecc71;
+	padding: 2rem;
+	-webkit-box-sizing: border-box;
+	box-sizing: border-box;
+	width: 12rem;
+	height: 12rem;
+	margin: auto;
+	-webkit-transform-style: preserve-3d;
+	transform-style: preserve-3d;
+}
+
+@media screen and (max-width: 450px){
+	.voucher-wrapper{
+		width: 330px;
+		height: auto;
+		min-height: 250px;
+	}
+}

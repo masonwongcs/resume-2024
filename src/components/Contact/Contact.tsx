@@ -2,10 +2,12 @@
 
 import styles from './Contact.module.scss';
 
+import { useEffect } from 'react';
+
 import cx from 'classnames';
 
 import { GitHubCard } from '@/components/GitHubCard';
-import { useWorkStore } from '@/store';
+import { useHomeStore, useWorkStore } from '@/store';
 
 import { INFO } from './Contact.fixture';
 import QR from './qr.svg';
@@ -22,7 +24,15 @@ const Group = () => {
 };
 
 const Contact = () => {
-  const { setSelectedWork, setStickerQueue } = useWorkStore();
+  const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
+  const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
+  const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
+  const setIsLoaded = useHomeStore((state) => state.setIsLoaded);
+
+  useEffect(() => {
+    setLoadingProgress(100);
+    setIsLoaded();
+  }, []);
 
   return (
     <section className={styles.contact}>

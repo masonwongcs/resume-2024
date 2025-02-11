@@ -1,0 +1,50 @@
+@keyframes loaded {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.loader {
+  position: fixed;
+  z-index: 2025;
+  background: var(--background);
+  inset: 0;
+
+  &.loaded {
+    animation: loaded 600ms var(--material-cubic-bezier) forwards;
+  }
+
+  .progressWrapper {
+    width: 250px;
+    height: 250px;
+    bottom: 40px;
+    right: 40px;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @media screen and (max-width: 480px) {
+      transform-origin: bottom right;
+      transform: scale(0.5);
+    }
+
+    .circle {
+      position: absolute;
+      inset: 0;
+      transform: rotate(-90deg);
+
+      .circleProgressBar {
+        transition: stroke-dashoffset 0.3s ease-out;
+      }
+    }
+
+    .progress {
+      font-size: clamp(40px, 10vw, 60px);
+      font-family: var(--font-futuraBold), sans-serif;
+    }
+  }
+}

@@ -1,0 +1,67 @@
+body{
+	background-color: #fafafa;
+}
+.text-container{
+	position: absolute;
+	width: 40%;
+	top: 5rem;
+	left: 0;
+	right: 0;
+	margin: auto;
+}
+
+.monkey-container{
+	position: absolute;
+	width: 40%;
+	height: 40%;
+	bottom: 2rem;
+	left: 5rem;
+}
+
+.monkey .eyes{
+	animation: move 5s infinite alternate;
+}
+
+.monkey .hand{
+	animation: hand 500ms infinite alternate;
+}
+
+.monkey .oops{
+	animation: oops 1s linear infinite;
+}
+
+@keyframes move{
+	0%{
+		transform: translate3d(-0.5rem, 0 , 0);
+	}
+	50%{
+		transform: translate3d(0, 0, 0);
+	}
+	100%{
+		transform: translate3d(0.25rem, -0.25rem , 0);
+	}
+}
+
+@keyframes hand{
+	0%{
+		transform: translate3d(0, -0.7rem, 0);
+	}
+	100%{
+		transform: translate3d(0, -0.2rem , 0);
+	}
+}
+
+@keyframes oops{
+	0%{
+		transform: translate3d(0, -1rem , 0);
+		opacity: 0;
+	}
+	50%{
+		transform: translate3d(0, 0 , 0);
+		opacity: 1;
+	}
+	100%{
+		transform: translate3d(0, 1rem , 0);
+		opacity: 0;
+	}
+}
