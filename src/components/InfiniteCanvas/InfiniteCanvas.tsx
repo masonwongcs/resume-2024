@@ -5,7 +5,7 @@ import styles from './InfiniteCanvas.module.scss';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useImageLoad } from '@/hooks/useImageLoad';
-import { useWorkStore } from '@/store';
+import { useHomeStore, useWorkStore } from '@/store';
 
 interface Work {
   name: string;
@@ -55,7 +55,9 @@ const InfiniteCanvasItem: React.FC<{ work: Work; style: React.CSSProperties; onC
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
-  const { setSelectedWork } = useWorkStore();
+  const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
+  const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
+  const setIsLoaded = useHomeStore((state) => state.setIsLoaded);
 
   const outerContainerRef = useRef<HTMLDivElement>(null);
   const innerContainerRef = useRef<HTMLDivElement>(null);
@@ -393,6 +395,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       }
     };
   }, [handleMouseMove, handleTouchMove, handleEnd, handleWheel]);
+
+  useEffect(() => {
+    setLoadingProgress(100);
+    setIsLoaded();
+  }, []);
 
   return (
     <div

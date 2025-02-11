@@ -1,0 +1,206 @@
+doctype html
+html(lang='en')
+    head
+        meta(charset='utf-8')
+        title Mason Wong's Portfolio
+        meta(name='description', content='Portfolio')
+        meta(name='author', content='Mason Wong')
+        meta(name="viewport" content="width=device-width, initial-scale=1.0")
+        link(href='https://fonts.googleapis.com/css?family=Cookie', rel='stylesheet')
+        link(href="https://fonts.googleapis.com/css?family=Spartan:400,700&display=swap" rel="stylesheet")
+        link(href='https://api.mapbox.com/mapbox-gl-js/v1.8.0/mapbox-gl.css' rel='stylesheet')
+        link(href="style/main.scss" rel="stylesheet")
+    body
+        a.dark-toggle
+            include icon/dark-toggle
+        svg.line(width='100%', height='100%', viewBox='0 0 1709 5711', version='1.1', xmlns='http://www.w3.org/2000/svg', xmlns:xlink='http://www.w3.org/1999/xlink', xml:space='preserve', xmlns:serif='http://www.serif.com/', style='fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:1.5;')
+            g(transform='matrix(1,0,0,1,-146.14,-335.519)')
+                path(d='M1428.73,6044.93C1428.73,6044.93 308.915,5480.83 293.79,4888.77C282.377,4442.01 1092.96,4828.48 1597.24,4551.38C2072.79,4337.78 1834.25,3445.68 1309.52,3619.81C428.091,3924.92 -386.981,2774.57 594.756,2730.17C2126.41,2660.91 2159.15,1805.87 451.274,1950.28C100.197,1939.76 10.417,1361.21 410.79,1337.2C530.451,1330.03 1185.07,1413.58 1428.73,1181.97C1972.32,665.27 1603.66,112.349 1075.43,429.863', style='fill:none;stroke:rgb(144,144,144);stroke-width:2px;')
+
+        header
+            .logo
+                h1.title Hi, I am a
+                h3.position
+            .nav
+
+        main.main-wrapper
+            article(data-target="home")
+                //.overlay
+                section
+                    h1.title Hi, I am <span>a</span>
+                    h3.position.animate-text &nbsp;
+
+            article(data-target="developer")
+                .overlay
+                .article-wrapper
+                    .left-wrapper(data-icon)
+                        include icon/developer
+                    .right-wrapper.parallax(data-rellax-speed="-1")
+                        h3.title Lead Developer
+                            span.shadow Lead Developer
+                        p.desc I am a <span>Front End developer</span> which mostly develop in <span>React.js</span>, Vanilla JS and old school jQuery as well.
+                            | Most of the time I develop components etc. I'm proficient in styling and the art of <span>CSS</span>.
+                            | For backend development, I do use <span>Express JS</span> and of course <span>Node JS</span> and Java too.
+                            | Other than web development, I develop Desktop Applications using Electron and React Native for Mobile Application.
+
+
+            article(data-target="designer")
+                .overlay
+                .article-wrapper
+                    .left-wrapper.parallax(data-rellax-speed="1")
+                        h3.title Graphic Design
+                            span.shadow Graphic Design
+                        p.desc Before I became a Software Engineer. I was a part time <span>graphic designer</span>,
+                            | this eventually guide me to be more graphical sense to design and logical thinking.
+                            | I was a graphic designer for about 5 years and stopped after I finish my college.
+                    .right-wrapper(data-icon)
+                        include icon/design
+
+            article(data-target="photographer")
+                .overlay
+                .article-wrapper
+                    .left-wrapper.parallax(data-rellax-speed="0.25")
+                        .photo-frame(data-image)
+                            //.photo-row
+                            //    .photo-item
+                            //        img(src="img/photographer/photo1.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo2.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo3.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo4.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo5.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo6.jpg")
+                            //.photo-row
+                            //    .photo-item
+                            //        img(src="img/photographer/photo7.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo8.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo9.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo10.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo11.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo12.jpg")
+                            //.photo-row
+                            //    .photo-item
+                            //        img(src="img/photographer/photo13.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo14.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo15.jpg")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo16.png")
+                            //    .photo-item
+                            //        img(src="img/photographer/photo17.jpg")
+                    .right-wrapper
+                        h3.title Landscape Photographer
+                            span.shadow Landscape Photographer
+                        p.desc Photography is my hobby and I like to capture <span>stilled objects and landscapes</span>.
+                            | Therefore I will capture beautiful scenery during vacations.
+
+            article(data-target="ui")
+                .overlay
+                .article-wrapper
+                    .left-wrapper.parallax(data-rellax-speed="0.5")
+                        h3.title User Experience
+                            span.shadow User Experience
+                        p.desc User interface is the entrance of an application, I am always try to create something that is
+                            | <span> easy to use</span> and <span>simple</span> enough for people to use it. Because I'm graphic designer, I was
+                            | doing UI design by myself as well.
+                    .right-wrapper(data-icon)
+                        include icon/ui
+
+            article(data-target="coffee")
+                .overlay
+                .article-wrapper
+                    .left-wrapper(data-icon)
+                        include icon/coffee
+                    .right-wrapper
+                        h3.title Coffee
+                            span.shadow Coffee
+                        p.desc A good day starts with a cup of nice <span>coffee is a must</span> for developer. Hence, buy me a coffee please.
+                        a.bmc-button(target='_blank', href='https://www.buymeacoffee.com/S6ZXsYT')
+                            img(src='https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg', alt='Buy me a coffee')
+                            span(style='margin-left:15px;font-size:28px !important;') Buy me a coffee
+
+            article(data-target="about")
+                .article-wrapper
+                    .left-wrapper
+                        h3.title Core Skills
+                            span.shadow Core Skills
+                        p.desc I had over <span>4 years</span> of experience on front-end design and development.<br/>
+                            | Develop web applications using web services such as AWS and GCP by applying agile methodology.
+                        .list-wrapper
+                            ul.list-view
+                                li JavaScript
+                                    ul
+                                        li NodeJS
+                                        li ReactJS
+                                        li ExpressJS
+                                        li TypeScript
+                                        li PIXI.js
+                                        li Three.js
+                                        li ES6
+                                        li jQuery
+                                        li VanillaJS
+                                        li Electron JS
+                                        li GSAP
+                                        li Webpack
+                                        li Parcel/Gulp
+
+                            ul.list-view
+                                li HTML
+                                    ul
+                                        li PUG/Jade
+                                        li SVG
+                                        li HTML5 Canvas
+                                        li JSP
+
+                                li CSS
+                                    ul
+                                        li SCSS/SASS
+                                        li Stylus
+                                        li LESS
+                                        li Styled Components
+
+                            ul.list-view
+                                li Others
+                                    ul
+                                        li Amazon Web Services(AWS)
+                                        li Git
+                                        li JIRA
+                                        li Jenkins
+                                        li Bash
+                                        li SEO
+                                        li Prettier
+                                        li JAVA
+                                        li PHP
+
+
+
+                    .right-wrapper
+                        .map-container
+                            #locationMap.map-item
+                .footer
+                    .article-wrapper
+                        h3.minimal-title
+                        .footer-wrapper
+                            p Design by Mason &copy; 2020
+                            .contact-wrapper
+                                .contact Seong6232@gmail.com | +65 8354 6042 (SG) | Singapore
+                                a.icon(href="https://github.com/masonwongcs", target="_blank")
+                                    include icon/github
+                                a.icon(href="https://www.linkedin.com/in/masonwongcs/", target="_blank")
+                                    include icon/linkedin
+
+
+        script(src='https://api.mapbox.com/mapbox-gl-js/v1.8.0/mapbox-gl.js')
+        script(src="js/index.js")
+
+

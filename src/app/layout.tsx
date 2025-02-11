@@ -6,6 +6,7 @@ import { Cormorant_Garamond, Crimson_Text, Poppins } from 'next/font/google';
 import localFont from 'next/font/local';
 
 import { Background, Blob } from '@/components/Background';
+import { Loader } from '@/components/Loader';
 import { Navigation } from '@/components/Navigation';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
 
@@ -108,6 +109,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <Loader />
         <Background />
         {children}
         <Navigation />

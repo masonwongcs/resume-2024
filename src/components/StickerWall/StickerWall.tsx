@@ -69,7 +69,7 @@ const findValidPosition = (
 };
 
 const StickerWall = ({ width = 600, height = 400, maxOverlapTries = 50 }: StickerWallProps) => {
-  const { stickersQueue } = useWorkStore();
+  const stickersQueue = useWorkStore((state) => state.stickersQueue);
   const [placedStickers, setPlacedStickers] = useState<Sticker[]>([]);
 
   useEffect(() => {

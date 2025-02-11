@@ -19,7 +19,7 @@ interface TextProps extends React.HTMLAttributes<HTMLSpanElement> {
 const AnimatedGroup = ({ children, ...props }: any) => {
   const groupRef = useRef<THREE.Group>(null);
   const materialRef = useRef<THREE.Material | null>(null);
-  const { immersiveModeOn } = useHomeStore();
+  const immersiveModeOn = useHomeStore((state) => state.immersiveModeOn);
   const opacityRef = useRef(1);
 
   // Update material reference
@@ -104,7 +104,7 @@ export const BodyCopy: React.FC<TextProps> = Text;
 export function Text({ children, wobble, className, font = 'fonts/Poppins-Regular.woff', ...props }: TextProps) {
   const el = useRef<HTMLSpanElement>(null) as any;
   const { hasSmoothScrollbar } = useScrollRig();
-  const { immersiveModeOn } = useHomeStore();
+  // const { immersiveModeOn } = useHomeStore();
 
   return (
     <>

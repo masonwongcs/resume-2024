@@ -1,0 +1,28 @@
+{
+  "name": "masonwongcs.github.io",
+  "version": "0.1.0",
+  "description": "Mason's Portfolio",
+  "homepage": "masonwongcs.github.io",
+  "repository": "https://github.com/masonwongcs/masonwongcs.github.io",
+  "license": "MIT",
+  "author": "Mason Wong",
+  "keywords": [
+    "mason",
+    "portfolio"
+  ],
+  "devDependencies": {
+    "parcel": "^1.12.4",
+    "pug": "^2.0.4",
+    "sass": "^1.26.2"
+  },
+  "scripts": {
+    "dev": "parcel src/index.pug -d .",
+    "build": "parcel src/index.pug -d .",
+    "test": "echo \"Error: no test specified.\""
+  },
+  "dependencies": {
+    "animejs": "^3.1.0",
+    "jquery": "^3.4.1",
+    "rellax": "^1.12.1"
+  }
+}

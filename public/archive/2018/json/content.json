@@ -1,0 +1,185 @@
+{
+    "content": [{
+        "type": "design",
+        "style": "background-color: rgba(41, 40, 42, 0.4)",
+        "imgUrl": "img/rssMovie.png",
+        "date": "May 8, 2017",
+        "title": " RSS Drama ",
+        "desc": "This a straming websites for watching Asian dramas.<br><a class=\"link-to-website\" target=\"_blank\" href=\"rssMovie\">Link to website</a>"
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(180, 126, 217, 0.4)",
+        "imgUrl": "img/nanahouse.png",
+        "date": "Jan 5, 2016",
+        "title": " Nana House ",
+        "desc": "Nana House is a Homestay comunity located in New Zealand."
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(242, 241, 242, 0.4)",
+        "imgUrl": "img/nanahouse_web.png",
+        "date": "Jan 5, 2016",
+        "title": " Nana House ",
+        "desc": "The website was done is the form of PHP in Weebly. It was launched in 2015.<br><a class=\"link-to-website\" target=\"_blank\" href=\"http://www.nanahousenz.com\">Link to website</a>"
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(242, 241, 242, 0.4)",
+        "imgUrl": "img/img01.png",
+        "date": "Oct 25, 2015",
+        "title": " ParcelPay ",
+        "desc": "ParcelPay was officially launched at 2016. It is a service that helps courier services to deliver parcels in a more efficient way, which is pay on delivery.<br><a class=\"link-to-website\" target=\"_blank\" href=\"http://www.parcelpay.my\">Link to website</a>"
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(255,255,255, 0.4)",
+        "imgUrl": "img/img02.png",
+        "date": "Sept 21, 2015",
+        "title": " eMoney ",
+        "desc": "This portal allows money transfering, transactions checking and balance enquiry.<br><a class=\"link-to-website\" target=\"_blank\" href=\"/mpay2u\">Link to website</a>"
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(204, 202, 203, 0.4)",
+        "imgUrl": "img/img03.png",
+        "date": "Aug 2, 2015",
+        "title": " MPay Pro ",
+        "desc": "UI and UX desin of the mobile Application. This is a mobile application that act as a payment terminal to receive payments from consumer.<br><a class=\"download-from-appstore\" target=\"_blank\" href=\"https://itunes.apple.com/us/app/mpay-pro/id717142540?mt=8\">Download From AppStore</a>"
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(240, 224, 227, 0.4)",
+        "imgUrl": "img/img04.png",
+        "date": "Aug 5, 2015",
+        "title": " 404 ",
+        "desc": "This page was intended to be shown while user navigate to a wrong page."
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(58, 181, 207 ,0.4)",
+        "imgUrl": "img/img05.png",
+        "date": "Sept 5, 2015",
+        "title": " MDEX ",
+        "desc": "This is a count down page for the #MYCyberSales2015. The timer will continue to run until the day of the cyber sales.<br><a class=\"link-to-website\" target=\"_blank\" href=\"/mdex\">Link to website</a>"
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(58, 54, 56, 0.4)",
+        "imgUrl": "img/photo1.jpg",
+        "date": "",
+        "title": " Dunedin ",
+        "desc": ""
+    }, {
+        "type": "design",
+        "style": "background-color: rgba(232, 230, 228, 0.4)",
+        "imgUrl": "img/img06.png",
+        "date": "June 13, 2015",
+        "title": " MPay ",
+        "desc": "The re-design of the Corporate Website.<br><a class=\"link-to-website\" target=\"_blank\" href=\"/mpay\">Link to website</a>"
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(38, 62, 93, 0.4)",
+        "imgUrl": "img/photo2.jpg",
+        "date": "",
+        "title": " Wanaka ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(189, 202, 210, 0.4)",
+        "imgUrl": "img/photo3.jpg",
+        "date": "",
+        "title": " Christchurch ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(101, 132, 160, 0.4)",
+        "imgUrl": "img/photo4.jpg",
+        "date": "",
+        "title": " Nelson ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(189, 58, 67, 0.4)",
+        "imgUrl": "img/photo5.jpg",
+        "date": "",
+        "title": " Motueka ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(57, 44, 31, 0.4)",
+        "imgUrl": "img/photo6.jpg",
+        "date": "",
+        "title": " Tranzalpine ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(38, 101, 169, 0.4)",
+        "imgUrl": "img/photo7.jpg",
+        "date": "",
+        "title": " Kaikoura ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(133, 100, 87, 0.4)",
+        "imgUrl": "img/photo8.jpg",
+        "date": "",
+        "title": " Blenheim ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(43, 51, 53 0.4)",
+        "imgUrl": "img/photo9.jpg",
+        "date": "",
+        "title": " Arthur's Pass ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(111, 130, 62, 0.4)",
+        "imgUrl": "img/photo10.jpg",
+        "date": "",
+        "title": " Rabbit of Tekapo ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(73, 67, 43, 0.4)",
+        "imgUrl": "img/photo11.jpg",
+        "date": "",
+        "title": " Slope Point ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(52, 53, 29, 0.4)",
+        "imgUrl": "img/photo12.jpg",
+        "date": "",
+        "title": " Slope Point ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(58, 63, 57, 0.4)",
+        "imgUrl": "img/photo13.jpg",
+        "date": "",
+        "title": " Slpoe Point ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(57, 55, 45, 0.4)",
+        "imgUrl": "img/photo14.jpg",
+        "date": "",
+        "title": " Mount Cook ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(68, 59, 45, 0.4)",
+        "imgUrl": "img/photo15.jpg",
+        "date": "",
+        "title": " Victoria St Auckland ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(114, 114, 114, 0.4)",
+        "imgUrl": "img/photo16.png",
+        "date": "",
+        "title": " Dunedin ",
+        "desc": ""
+    }, {
+        "type": "photography",
+        "style": "background-color: rgba(40, 122, 173, 0.4)",
+        "imgUrl": "img/photo17.jpg",
+        "date": "",
+        "title": " Mirror Lake ",
+        "desc": ""
+    }]
+}

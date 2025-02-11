@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+
+<html>
+
+	<head>
+
+		<meta charset="UTF-8" />
+		<meta name="author" content="" />
+		<meta name="copyright" content="" />
+		<meta name="robots" content="index, follow" />
+		<meta name="description" content="" />
+		<meta name="keywords" content="" />
+	  	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, minimal-ui' name='viewport' />
+	  	<meta name="viewport" content = "width = device-width, initial-scale = 1.0, minimum-scale = 1, maximum-scale = 1, user-scalable = no" />
+	  	<meta name="apple-mobile-web-app-title" content="LTA Bus" />
+	  	<meta name="apple-mobile-web-app-capable" content="yes">
+	  	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	  	<link rel="apple-touch-icon" href="./bus.png">
+		<link rel="apple-touch-icon" sizes="76x76" href="./bus.png">
+		<link rel="apple-touch-icon" sizes="120x120" href="./bus.png">
+		<link rel="apple-touch-icon" sizes="152x152" href="./bus.png">
+		<title>LTA Bus</title>
+
+		<link rel="Shortcut Icon" href="favicon.ico" type="image/x-icon" />
+		<link rel="stylesheet" href="./css/style.css" type="text/css"/>
+		<link rel="index" title="Bus" href="" />
+		<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
+		<!--[if lt IE 9 ]>
+			<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+		<![endif]-->
+
+	</head>
+
+	<body class="" lang="en-US">
+		<div class="content-wrapper">
+			<div class="submit-input">
+				<input type="text" class="bus-id" placeholder="Bus Stop ID" />
+				<button class="favourite">Favourite</button>
+				<button class="submit">
+					<svg class="search-btn" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+						 width="485.213px" height="485.213px" viewBox="0 0 485.213 485.213" style="enable-background:new 0 0 485.213 485.213;"
+						 xml:space="preserve">
+						<g>
+							<g>
+								<path d="M471.882,407.567L360.567,296.243c-16.586,25.795-38.536,47.734-64.331,64.321l111.324,111.324
+									c17.772,17.768,46.587,17.768,64.321,0C489.654,454.149,489.654,425.334,471.882,407.567z"/>
+								<path d="M363.909,181.955C363.909,81.473,282.44,0,181.956,0C81.474,0,0.001,81.473,0.001,181.955s81.473,181.951,181.955,181.951
+									C282.44,363.906,363.909,282.437,363.909,181.955z M181.956,318.416c-75.252,0-136.465-61.208-136.465-136.46
+									c0-75.252,61.213-136.465,136.465-136.465c75.25,0,136.468,61.213,136.468,136.465
+									C318.424,257.208,257.206,318.416,181.956,318.416z"/>
+								<path d="M75.817,181.955h30.322c0-41.803,34.014-75.814,75.816-75.814V75.816C123.438,75.816,75.817,123.437,75.817,181.955z"/>
+							</g>
+						</g>
+					</svg>
+				</button>
+			</div>
+			<div class="loading"></div>
+			<div class="result"></div>
+		</div>
+	</body>
+    <script src="https://maps.googleapis.com/maps/api/js?key="></script>
+	<script id="bus-template" type="text/x-handlebars-template">
+		{{#each services}}
+			<div class="bus {{next.status}}">
+		    	<div class="info">
+		    		<span class="bus-no">{{no}}</span>
+		    		<span class="next-duration {{next.status}}">{{next.duration_min}}</span>
+		    		<span class="subsequent-duration">{{subsequent.duration_min}} mins</span>
+		    		<div class="extra-info">
+		    			<div class="nav">
+		    				<span class="back">Back</span>
+		    				<span class="bus-no">{{no}}</span>
+		    				<span class="next-duration {{next.status}}">{{next.duration_min}}</span>
+		    			</div>
+		    			<div class="map" id="bus-{{no}}"></div>
+		    			<div class="open-in-maps">
+		    				<a href="http://maps.google.com/maps?q={{next.lat}},{{next.lng}}">Open in Maps</a>
+		    			</div>
+						<!-- <a href="comgooglemaps://?center={{next.lat}},{{next.lng}}&zoom=14&views=traffic">Click here iOS</a> -->
+					    <!-- <a href="geo:{{next.lat}},{{next.lng}}">Click here to open in maps</a> -->
+		    		</div>
+					<!-- {{next.lat}} -->
+					<!-- {{next.lng}} -->
+					<!-- {{next.time}} -->
+			    </div>
+		  	</div>
+	  {{/each}}
+	  <button class="back-to-main">Back to main</button>
+	</script>
+	<script id="favourite-template" type="text/x-handlebars-template">
+		<div class="bus-stop-wrapper">
+		{{#each .}}
+			<div class="bus-stop">
+				<button class="delete">Delete</button>
+		    	<span>{{busNo}}</span>
+		  	</div>
+	  	{{/each}}
+	  </div>
+	</script>
+	<script type="text/javascript" src="./js/jquery.min.js"></script>
+	<script type="text/javascript" src="./js/handlebar.min.js"></script>
+	<script type="text/javascript" src="./js/LocalDB.min.js"></script>
+	<script type="text/javascript" src="./js/main.js"></script>
+</html>
