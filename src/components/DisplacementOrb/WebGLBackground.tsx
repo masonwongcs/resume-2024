@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useRef } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 
 import { UseCanvas } from '@14islands/r3f-scroll-rig';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -31,6 +31,10 @@ export function WebGLBackground({ hovered }: WebGLBackgroundProps) {
   const groupRef = useRef<THREE.Group>(null);
   const viewport = useThree((s) => s.viewport);
   const isMobile = viewport.width * viewport.factor < 700;
+  const [shouldRender, setShouldRender] = useState(false);
+  const isReady = useHomeStore((state) => state.loaded);
+  const shouldDelayRender = useHomeStore((state) => state.shouldDelayRender);
+  const setShouldDelayRender = useHomeStore((state) => state.setShouldDelayRender);
 
   useFrame(() => {
     if (!groupRef.current) return;
@@ -54,6 +58,19 @@ export function WebGLBackground({ hovered }: WebGLBackgroundProps) {
     groupRef.current.scale.y += (targetScaleY - groupRef.current.scale.y) * 0.05;
     groupRef.current.scale.z += (targetScaleZ - groupRef.current.scale.z) * 0.05;
   });
+
+  useEffect(() => {
+    if (isReady && shouldDelayRender) {
+      setTimeout(() => {
+        setShouldRender(true);
+        setShouldDelayRender();
+      }, 600);
+    } else {
+      setShouldRender(true);
+    }
+  }, [isReady]);
+
+  if (!shouldRender) return null;
 
   return (
     <Suspense fallback="">

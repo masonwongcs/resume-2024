@@ -7,12 +7,15 @@ interface HomeState {
   setIsLoaded: () => void;
   loadingProgress: number;
   setLoadingProgress: (progress: number) => void;
+  shouldDelayRender: boolean;
+  setShouldDelayRender: () => void;
 }
 
 const useHomeStore = create<HomeState>((set) => ({
   immersiveModeOn: false,
   loaded: false,
   loadingProgress: 0,
+  shouldDelayRender: true,
   setImmersiveModeOn: (immersiveModeOn) => {
     set({
       immersiveModeOn: immersiveModeOn
@@ -26,6 +29,11 @@ const useHomeStore = create<HomeState>((set) => ({
   setLoadingProgress: (progress) => {
     set({
       loadingProgress: progress
+    });
+  },
+  setShouldDelayRender: () => {
+    set({
+      shouldDelayRender: false
     });
   }
 }));
