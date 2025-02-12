@@ -13,6 +13,20 @@
   background: var(--background);
   inset: 0;
 
+  &.pills {
+    display: block;
+    @media screen and (max-width: 480px) {
+      display: none;
+    }
+  }
+
+  &.roundedRectangle {
+    display: none;
+    @media screen and (max-width: 480px) {
+      display: block;
+    }
+  }
+
   &.loaded {
     transform-origin: bottom right;
     animation: loaded 600ms 600ms var(--material-cubic-bezier) forwards;
@@ -62,10 +76,6 @@
     border-radius: 80px;
     overflow: hidden;
 
-    @media screen and (max-width: 480px) {
-      display: none;
-    }
-
     .pills {
       inset: 0;
       position: absolute;
@@ -94,16 +104,12 @@
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     bottom: 20px;
     width: 184px;
     height: 64px;
-
-    @media screen and (max-width: 480px) {
-      display: flex;
-    }
 
     .roundedRectangle {
       inset: 0;

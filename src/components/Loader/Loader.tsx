@@ -76,7 +76,7 @@ const RoundedRectLoader = () => {
 
   return (
     <div
-      className={cx(styles.loader, {
+      className={cx(styles.loader, styles.roundedRectangle, {
         [styles.loaded]: loaded
       })}
       onAnimationEnd={() => setShouldRender(false)}
@@ -138,7 +138,7 @@ const PillLoader = () => {
 
   return (
     <div
-      className={cx(styles.loader, {
+      className={cx(styles.loader, styles.pills, {
         [styles.loaded]: loaded
       })}
       onAnimationEnd={() => setShouldRender(false)}
@@ -187,9 +187,12 @@ const PillLoader = () => {
 };
 
 const Loader = () => {
-  const isMobile = window.innerWidth <= 480;
-
-  return isMobile ? <RoundedRectLoader /> : <PillLoader />;
+  return (
+    <>
+      <RoundedRectLoader />
+      <PillLoader />
+    </>
+  );
 };
 
 export { Loader, RoundLoader, RoundedRectLoader, PillLoader };
