@@ -1,5 +1,6 @@
 import './globals.scss';
 
+import { GoogleAnalytics } from '@next/third-parties/google';
 import cx from 'classnames';
 import type { Metadata } from 'next';
 import { Cormorant_Garamond, Crimson_Text, Poppins } from 'next/font/google';
@@ -114,6 +115,7 @@ export default function RootLayout({
         {children}
         <Navigation />
       </body>
+      <GoogleAnalytics gaId="G-M70FVE23DR" />
     </html>
   );
 }

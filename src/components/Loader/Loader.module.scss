@@ -48,4 +48,75 @@
       font-family: var(--font-futuraBold), sans-serif;
     }
   }
+
+  .pillsWrapper {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%) translateX(0);
+    left: 5vw;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 77px;
+    height: 207px;
+    border-radius: 80px;
+    overflow: hidden;
+
+    @media screen and (max-width: 480px) {
+      display: none;
+    }
+
+    .pills {
+      inset: 0;
+      position: absolute;
+
+      .pillsProgressBar {
+        transition: stroke-dashoffset 0.3s ease-out;
+      }
+    }
+
+    .pillsProgress {
+      position: absolute;
+      inset: 0;
+      backdrop-filter: blur(20px);
+      background: linear-gradient(to bottom, #ccc, #fff);
+      transform: translateY(100%);
+      transition: transform 200ms var(--material-cubic-bezier);
+    }
+
+    .progress {
+      font-size: clamp(14px, 2vw, 20px);
+      font-family: var(--font-futuraBold), sans-serif;
+    }
+  }
+
+  .roundedRectangleWrapper {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    bottom: 20px;
+    width: 184px;
+    height: 64px;
+
+    @media screen and (max-width: 480px) {
+      display: flex;
+    }
+
+    .roundedRectangle {
+      inset: 0;
+      position: absolute;
+
+      .roundedRectangleProgressBar {
+        transition: stroke-dashoffset 0.3s ease-out;
+      }
+    }
+
+    .progress {
+      font-size: clamp(20px, 4vw, 40px);
+      font-family: var(--font-futuraBold), sans-serif;
+    }
+  }
 }
