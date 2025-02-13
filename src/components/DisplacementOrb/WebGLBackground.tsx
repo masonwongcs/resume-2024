@@ -64,7 +64,7 @@ export function WebGLBackground({ hovered }: WebGLBackgroundProps) {
       setTimeout(() => {
         setShouldRender(true);
         setShouldDelayRender();
-      }, 700);
+      }, 550);
     } else {
       setShouldRender(true);
     }

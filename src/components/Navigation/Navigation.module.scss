@@ -34,7 +34,7 @@ $navItemWidth: 45px;
   --nav-item-width: #{$navItemWidth};
   @include baseNavigationStyle();
 
-  &.hide {
+  &:has(+ .immersiveToggle.active) {
     opacity: 0;
     transform: translateY(-50%) translateX(-20px);
 
