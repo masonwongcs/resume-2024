@@ -2,17 +2,18 @@
 
 import styles from './Navigation.module.scss';
 
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo } from 'react';
 
 import cx from 'classnames';
-import { usePathname } from 'next/navigation';
 
-import { NavLink } from '@/components/NavLink';
 import HomeIcon from '@/icon/home.svg';
 import InfoIcon from '@/icon/info.svg';
 import MagicIcon from '@/icon/magic.svg';
 import WorkIcon from '@/icon/work.svg';
 import { useHomeStore } from '@/store';
+
+import { ImmersiveToggle } from './ImmersiveToggle';
+import { NavigationItem } from './NavigationItem';
 
 const NAV_ITEMS = [
   { icon: HomeIcon, title: 'Home', href: '/' },
@@ -21,9 +22,7 @@ const NAV_ITEMS = [
 ];
 
 const Navigation = () => {
-  const pathname = usePathname() || '/';
-  const isHome = pathname === '/';
-  const { immersiveModeOn, setImmersiveModeOn } = useHomeStore();
+  const immersiveModeOn = useHomeStore((state) => state.immersiveModeOn);
 
   return (
     <>
@@ -32,28 +31,11 @@ const Navigation = () => {
           [styles.hide]: immersiveModeOn
         })}
       >
-        {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => {
-          const isActive = href === pathname;
-          const classNames = cx(styles.navigationItem, {
-            [styles.active]: isActive
-          });
-          return (
-            <NavLink className={classNames} key={href} href={href}>
-              <Icon />
-              <div className={styles.activeBackground} />
-            </NavLink>
-          );
-        })}
+        {NAV_ITEMS.map(({ icon: Icon, href, title }, index) => (
+          <NavigationItem key={href} icon={<Icon />} href={href} />
+        ))}
       </nav>
-      <button
-        className={cx(styles.immersiveToggle, {
-          [styles.active]: immersiveModeOn,
-          [styles.isHome]: isHome
-        })}
-        onClick={() => setImmersiveModeOn(!immersiveModeOn)}
-      >
-        <MagicIcon />
-      </button>
+      <ImmersiveToggle />
     </>
   );
 };

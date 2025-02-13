@@ -111,7 +111,6 @@ const Contact = () => {
                   <img src="/images/icon/arrow-right.svg" alt={`Open GitHub url in new tab`} />
                 </a>
               </div>
-
               <div className={styles.contactItem}>
                 <a
                   className={styles.contactItemCta}
@@ -123,7 +122,16 @@ const Contact = () => {
                   <img src="/images/icon/arrow-right.svg" alt={`Open resume url in new tab`} />
                 </a>
               </div>
-
+              <div className={styles.contactItem}>
+                <a
+                  className={styles.contactItemCta}
+                  href="mailto:hello@masonwongcs.com"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  hello@masonwongcs.com
+                </a>
+              </div>
               <h2 className={styles.subtitle}>or scan</h2>
               <QR />
             </div>
