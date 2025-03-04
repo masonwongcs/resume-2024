@@ -3,7 +3,7 @@ import styles from './Background.module.scss';
 import { Cursor } from '@/components/Cursor';
 
 const Background = () => {
-  return <img className={styles.noise} src={'/images/noise.png'} alt="noise" />;
+  return <div className={styles.noise} />;
 };
 
 const Blob = () => {
