@@ -13,6 +13,7 @@ type WorkItem = {
   name?: string;
   url?: string;
   image?: string;
+  video?: string;
   description?: string;
   skills?: string[];
   stickers?: StickerItem[];

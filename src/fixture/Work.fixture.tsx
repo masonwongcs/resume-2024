@@ -2,7 +2,7 @@ const WORK_HISTORY = [
   {
     name: 'Aquariux',
     url: 'https://www.aquariux.com',
-    image: './images/work/aquariux.gif',
+    image: './images/work/aquariux.jpg',
     thumbnail: './images/work/aquariux_thumbnail.jpg',
     description:
       "Led a comprehensive rebuild of Aquariux's fintech website, focusing on enhancing user experience and modernizing the platform. Implemented responsive design principles and integrated advanced financial tools to provide a seamless experience for users across devices. The revamped site significantly improved load times, security features, and overall functionality, resulting in increased user engagement and conversion rates."
@@ -136,6 +136,7 @@ const WORK_HISTORY = [
     name: 'Click to Meow',
     url: 'https://click-to-meow.vercel.app',
     image: './images/work/clicktomeow.png',
+    video: '/images/work/clicktomeow.webm',
     thumbnail: './images/work/clicktomeow_thumbnail.png',
     description:
       "Created a whimsical and interactive web experience that brings joy through the simple act of clicking. Each click triggers a delightful 'meow' sound, accompanied by playful animations. Implemented a variety of cat-themed visual elements and a click counter, providing users with a fun, stress-relieving break in their day and showcasing creative front-end development skills."
@@ -155,6 +156,14 @@ const WORK_HISTORY = [
     thumbnail: './images/work/photography_thumbnail.jpg',
     description:
       'Designed and implemented a visually stunning photography portfolio to showcase a personal collection of captivating images. The website features a minimalist design that puts the focus squarely on the photographs, with smooth transitions and a responsive gallery layout. Incorporated category filtering and full-screen viewing options, allowing visitors to immerse themselves in the visual storytelling of each captured moment.'
+  },
+  {
+    name: 'Qore3',
+    url: 'https://www.qore3.com',
+    image: './images/work/qore3.jpg',
+    thumbnail: './images/work/qore3_thumbnail.jpg',
+    description:
+      'Led the front-end development for Qore3, a Web3 infrastructure company focused on building reliable systems for trading desks, fintechs, and Web2 companies entering the space. The site was crafted to reflect Qore3’s clean, technical ethos — with fast performance, responsive layouts, and a modern design system that communicates trust and capability. I worked closely with the brand and content teams to ensure the experience aligned with the company’s positioning as “the infrastructure layer Web3 should’ve had all along.”'
   }
 ];
 

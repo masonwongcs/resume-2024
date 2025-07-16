@@ -58,7 +58,12 @@ const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
     if (type === 'work') {
       return (
         <div className={styles.workContentWrapper}>
-          <img className={styles.image} src={selectedWork?.image} alt={selectedWork?.description} />
+          {selectedWork?.video ? (
+            <video className={styles.image} src={selectedWork?.video} autoPlay playsInline muted loop />
+          ) : (
+            <img className={styles.image} src={selectedWork?.image} alt={selectedWork?.description} />
+          )}
+
           <div className={styles.textWrapper}>
             <h1 className={styles.title}>{selectedWork?.name}</h1>
             <p className={styles.description}>{selectedWork?.description}</p>

@@ -11,6 +11,7 @@ interface Work {
   name: string;
   url: string;
   image: string;
+  video?: string;
   thumbnail?: string;
   description: string;
 }
