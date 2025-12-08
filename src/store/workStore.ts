@@ -17,6 +17,7 @@ type WorkItem = {
   description?: string;
   skills?: string[];
   stickers?: StickerItem[];
+  type?: 'work' | 'info';
 };
 
 interface WorkState {
