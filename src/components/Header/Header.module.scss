@@ -118,6 +118,7 @@ $lightGrey: #818181;
   .handle {
     margin: 0 auto;
     width: 50%;
+    max-width: 100px;
     height: 4px;
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 10px;

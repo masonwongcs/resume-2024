@@ -2,7 +2,7 @@
 
 import styles from './Header.module.scss';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import cx from 'classnames';
 import Hamburger from 'hamburger-react';
@@ -12,13 +12,44 @@ import { INFO } from '@/components/Contact/Contact.fixture';
 import { useWorkStore } from '@/store';
 
 const Header = () => {
+  const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
 
+  useEffect(() => {
+    // Calculate scale based on drawer state and drag percentage
+    // When fully open (percentageDragged = 1), scale down to 0.95 (5% smaller)
+    // When closed (percentageDragged = 0), scale is 1.0 (normal size)
+    const scale = isOpen
+      ? 0.98 + percentageDragged * 0.01 // Scale down by 1% when fully open
+      : 1; // Also scale during drag even if not fully open
+    document.documentElement.style.setProperty('--drawer-scale', scale.toString());
+
+    // Cleanup: reset scale when component unmounts
+    return () => {
+      document.documentElement.style.removeProperty('--drawer-scale');
+    };
+  }, [isOpen, percentageDragged]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('is-drawer-open');
+    } else {
+      document.body.classList.remove('is-drawer-open');
+    }
+  }, [isOpen]);
+
   return (
     <header className={styles.header}>
-      <Drawer.Root open={isOpen} onClose={() => setOpen(false)}>
+      <Drawer.Root
+        open={isOpen}
+        onClose={() => {
+          setOpen(false);
+          setPercentageDragged(0);
+        }}
+        onDrag={(_, percentageDragged) => setPercentageDragged(percentageDragged)}
+      >
         <div
           className={cx(styles.headerWrapper, {
             [styles.hidden]: isOpen

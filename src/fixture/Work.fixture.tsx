@@ -42,7 +42,7 @@ const WORK_HISTORY = [
   {
     name: 'SL Edu',
     url: 'https://www.sleducation.edu.sg',
-    image: './images/work/sledu.png',
+    image: './images/work/sledu.jpg',
     thumbnail: './images/work/sledu_thumbnail.jpg',
     description:
       "Spearheaded a comprehensive website rebuild for SL Edu, revolutionizing the educational center's digital presence. The new platform features an intuitive course catalog, streamlined student portal, and responsive design optimized for various devices. This overhaul not only improved user experience but also significantly boosted online enrollments and parent engagement."
@@ -50,7 +50,7 @@ const WORK_HISTORY = [
   {
     name: 'KC Tint',
     url: 'https://www.kc-windows.com',
-    image: './images/work/kctint.png',
+    image: './images/work/kctint.jpg',
     thumbnail: './images/work/kctint_thumbnail.jpg',
     description:
       'Executed a strategic website redesign for KC Tint, a leading window tinting company. The overhaul focused on showcasing their diverse product range and expertise through an interactive gallery and detailed service pages. Implemented SEO best practices and a user-friendly quote request system, resulting in improved search rankings and increased lead generation.'
@@ -164,6 +164,30 @@ const WORK_HISTORY = [
     thumbnail: './images/work/qore3_thumbnail.jpg',
     description:
       'Led the front-end development for Qore3, a Web3 infrastructure company focused on building reliable systems for trading desks, fintechs, and Web2 companies entering the space. The site was crafted to reflect Qore3’s clean, technical ethos — with fast performance, responsive layouts, and a modern design system that communicates trust and capability. I worked closely with the brand and content teams to ensure the experience aligned with the company’s positioning as “the infrastructure layer Web3 should’ve had all along.”'
+  },
+  {
+    name: 'Penguin Swim School',
+    url: 'https://www.penguinswimschool.sg',
+    image: './images/work/penguin.jpg',
+    thumbnail: './images/work/penguin.jpg',
+    description:
+      'Crafted a comprehensive website for Penguin Swim School, transforming their digital presence to better serve students and parents. The platform features an intuitive class schedule, streamlined enrollment system, and detailed course information that makes it easy for families to find and register for swimming lessons. Implemented a responsive design optimized for mobile devices, ensuring parents can easily access class schedules and manage enrollments on the go. The new site significantly improved online registrations and enhanced communication between the school and its community.'
+  },
+  {
+    name: 'Little Penguin Swim School',
+    url: 'https://www.littlepenguinswimschool.sg',
+    image: './images/work/littlepenguin.jpg',
+    thumbnail: './images/work/littlepenguin.jpg',
+    description:
+      "Designed and developed a vibrant, family-friendly website for Little Penguin Swim School, specializing in swimming lessons for young children. The site features an engaging, child-centric design with colorful visuals and easy-to-navigate course offerings tailored for different age groups. Implemented a user-friendly booking system that allows parents to quickly find suitable classes and register their children. The responsive platform ensures seamless access across devices, making it convenient for busy parents to manage their children's swimming lessons while on the move."
+  },
+  {
+    name: 'Liverum',
+    url: 'https://www.liverum.com',
+    image: './images/work/liverum.jpg',
+    thumbnail: './images/work/liverum.jpg',
+    description:
+      "Designed and developed a modern, responsive website for Liverum, creating a polished digital presence that effectively communicates the company's brand and services. Implemented clean, intuitive navigation and optimized performance to ensure fast load times and seamless user experience across all devices. The site features a contemporary design system that balances visual appeal with functional clarity, helping to establish Liverum's professional online identity and improve user engagement."
   }
 ];
 

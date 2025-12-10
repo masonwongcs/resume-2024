@@ -91,32 +91,61 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const generateItemId = (x: number, y: number) => `item_${x}_${y}`;
 
   const seededRandom = (seed: number) => {
+    // Improved random function with better distribution
     const x = Math.sin(seed) * seedFactor;
-    return x - Math.floor(x);
+    const y = Math.cos(seed * 0.5) * (seedFactor * 0.7);
+    return (x + y) - Math.floor(x + y);
   };
 
-  const getAdjacentWorks = (x: number, y: number) => {
+  const getAdjacentWorks = (x: number, y: number, radius: number = 2) => {
     const adjacent: Work[] = [];
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
+    const seen = new Set<string>();
+    // Check a larger radius to avoid duplicates in a wider area
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
         if (dx === 0 && dy === 0) continue;
+        // Use Manhattan distance to prioritize closer cells
+        const distance = Math.abs(dx) + Math.abs(dy);
+        if (distance > radius) continue;
         const id = generateItemId(x + dx, y + dy);
         const item = itemsRef.current.get(id);
-        if (item) adjacent.push(item.work);
+        if (item && !seen.has(item.work.url)) {
+          adjacent.push(item.work);
+          seen.add(item.work.url);
+        }
       }
     }
     return adjacent;
   };
 
   const selectUniqueWork = (x: number, y: number, adjacentWorks: Work[]) => {
-    const seed = x * seedFactor + y;
-    const shuffled = [...works].sort(() => seededRandom(seed) - 0.5);
+    const seed = x * seedFactor + y * seedFactor * 0.7;
 
-    // Sort works by usage count (the least used first)
-    shuffled.sort((a, b) => (workUsageCountRef.current.get(a.url) || 0) - (workUsageCountRef.current.get(b.url) || 0));
+    // Create a set of adjacent work URLs for faster lookup
+    const adjacentUrls = new Set(adjacentWorks.map(w => w.url));
 
-    // Try to find a work that's not in adjacent cells and has been used the least
-    const selectedWork = shuffled.find((work) => !adjacentWorks.includes(work)) || shuffled[0];
+    // Filter out adjacent works first
+    const availableWorks = works.filter(work => !adjacentUrls.has(work.url));
+
+    // If no works are available (edge case), use all works
+    const candidateWorks = availableWorks.length > 0 ? availableWorks : works;
+
+    // Create a weighted selection based on usage count and randomness
+    const weightedWorks = candidateWorks.map(work => {
+      const usageCount = workUsageCountRef.current.get(work.url) || 0;
+      // Lower usage = higher weight, add randomness
+      const randomWeight = seededRandom(seed + work.url.length);
+      const weight = (1 / (usageCount + 1)) * (0.7 + randomWeight * 0.3);
+      return { work, weight };
+    });
+
+    // Sort by weight (highest first)
+    weightedWorks.sort((a, b) => b.weight - a.weight);
+
+    // Select from top candidates with some randomness
+    const topCandidates = Math.min(3, weightedWorks.length);
+    const randomIndex = Math.floor(seededRandom(seed) * topCandidates);
+    const selectedWork = weightedWorks[randomIndex]?.work || weightedWorks[0]?.work || works[0];
 
     // Update usage count
     workUsageCountRef.current.set(selectedWork.url, (workUsageCountRef.current.get(selectedWork.url) || 0) + 1);
@@ -139,7 +168,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         const id = generateItemId(x, y);
         let item = itemsRef.current.get(id);
         if (!item) {
-          const adjacentWorks = getAdjacentWorks(x, y);
+          const adjacentWorks = getAdjacentWorks(x, y, 3); // Increased radius to 2
           const selectedWork = selectUniqueWork(x, y, adjacentWorks);
           const offsetX = 0;
           const offsetY = x % 2 === 0 ? 0 : staggerOffset;

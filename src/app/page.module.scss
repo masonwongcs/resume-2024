@@ -12,8 +12,16 @@
 .main {
   opacity: 0;
   //filter: blur(100px) grayscale(1);
-  will-change: opacity;
-  transition: opacity 1s var(--material-cubic-bezier);
+  will-change: opacity, transform, border-radius;
+  transition:
+    opacity 1s var(--material-cubic-bezier),
+    transform 0.3s var(--material-cubic-bezier),
+    border-radius 0.3s var(--material-cubic-bezier);
+  transform: scale(var(--drawer-scale, 1));
+  transform-origin: center center;
+  box-shadow: 0 0 0 100px #000;
+  overflow: hidden;
+
   &:before {
     content: '';
     position: fixed;
@@ -22,8 +30,21 @@
     animation: scaleFadeIn 1.2s var(--material-cubic-bezier) forwards;
   }
 
+  &:after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+  }
+
   :global(.is-ready) & {
     opacity: 1;
+    //filter: blur(0) grayscale(0);
+  }
+
+  :global(.is-drawer-open) & {
+    border-radius: 40px;
+    //clip-path: inset(0 round 40px);
     //filter: blur(0) grayscale(0);
   }
 }
