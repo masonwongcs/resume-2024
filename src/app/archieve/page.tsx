@@ -1,4 +1,4 @@
-import styles from './page.module.scss';
+import styles from '../page.module.scss';
 
 import { DisplacementOrb } from '@/components/DisplacementOrb';
 import { Hero } from '@/components/Hero';
