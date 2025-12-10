@@ -21,11 +21,7 @@ const formatUrl = (url?: string) => {
   return formattedUrl;
 };
 
-interface FlyoutProps {
-  type?: 'work' | 'info';
-}
-
-const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
+const Flyout: FC = () => {
   const selectedWork = useWorkStore((state) => state.selectedWork);
   const removeSelectedWork = useWorkStore((state) => state.removeSelectedWork);
 
@@ -35,7 +31,7 @@ const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
 
-    if (isOpen && type === 'info') {
+    if (isOpen && selectedWork?.type === 'info') {
       // Reset the active state when closed
       setIsActive(false);
       // Set active state after 100ms when opened
@@ -52,10 +48,10 @@ const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
         clearTimeout(timeoutId);
       }
     };
-  }, [isOpen, type]);
+  }, [isOpen, selectedWork?.type]);
 
   const content = useMemo(() => {
-    if (type === 'work') {
+    if (selectedWork?.type === 'work') {
       return (
         <div className={styles.workContentWrapper}>
           {selectedWork?.video ? (
@@ -81,7 +77,7 @@ const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
       );
     }
 
-    if (type === 'info') {
+    if (selectedWork?.type === 'info') {
       return (
         <div className={styles.infoContentWrapper}>
           <h1 className={styles.title}>{selectedWork?.name}</h1>
@@ -115,7 +111,7 @@ const Flyout: FC<FlyoutProps> = ({ type = 'work' }) => {
         </div>
       );
     }
-  }, [type, selectedWork, isActive]);
+  }, [selectedWork?.type, selectedWork, isActive]);
 
   return createPortal(
     <section

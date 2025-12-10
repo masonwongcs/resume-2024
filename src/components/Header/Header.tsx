@@ -51,7 +51,8 @@ const Header = () => {
                         setSelectedWork({
                           name: title,
                           skills,
-                          stickers
+                          stickers,
+                          type: 'info'
                         });
                         setStickerQueue(stickers);
                       }}

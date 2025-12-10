@@ -223,7 +223,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const handleItemClick = useCallback(
     (work: Work) => {
       if (!isMoving.current) {
-        setSelectedWork(work);
+        setSelectedWork({ ...work, ...{ type: 'work' } });
       }
     },
     [setSelectedWork]
