@@ -9,7 +9,7 @@ export default function Home() {
     <main className={styles.main}>
       <Contact />
       <Blob />
-      <FlyoutCSR type="info" />
+      <FlyoutCSR />
     </main>
   );
 }
