@@ -10,11 +10,20 @@
 }
 
 .main {
+  opacity: 0;
+  //filter: blur(100px) grayscale(1);
+  will-change: opacity;
+  transition: opacity 1s var(--material-cubic-bezier);
   &:before {
     content: '';
     position: fixed;
     inset: 0;
     background-color: var(--background);
     animation: scaleFadeIn 1.2s var(--material-cubic-bezier) forwards;
+  }
+
+  :global(.is-ready) & {
+    opacity: 1;
+    //filter: blur(0) grayscale(0);
   }
 }

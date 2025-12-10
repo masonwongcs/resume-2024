@@ -115,7 +115,7 @@ export default function RootLayout({
         <Background />
         <Header />
         {children}
-        <Navigation />
+        {/*<Navigation />*/}
       </body>
       <GoogleAnalytics gaId="G-M70FVE23DR" />
     </html>

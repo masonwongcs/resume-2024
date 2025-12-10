@@ -79,7 +79,12 @@ const RoundedRectLoader = () => {
       className={cx(styles.loader, styles.roundedRectangle, {
         [styles.loaded]: loaded
       })}
-      onAnimationEnd={() => setShouldRender(false)}
+      onAnimationEnd={() => {
+        setShouldRender(false);
+        if (!document.body.classList.contains('is-ready')) {
+          document.body.classList.add('is-ready');
+        }
+      }}
     >
       <div className={styles.roundedRectangleWrapper}>
         <svg className={styles.roundedRectangle} viewBox="0 0 185 65">
@@ -190,7 +195,7 @@ const Loader = () => {
   return (
     <>
       <RoundedRectLoader />
-      <PillLoader />
+      {/*<PillLoader />*/}
     </>
   );
 };

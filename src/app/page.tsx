@@ -1,14 +1,17 @@
 import styles from './page.module.scss';
 
-import { DisplacementOrb } from '@/components/DisplacementOrb';
-import { Hero } from '@/components/Hero';
+import { Blob } from '@/components/Background';
+import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponent';
+import { WORK_HISTORY } from '@/fixture/Work.fixture';
 
-export default function Home() {
+export default function Work() {
   return (
-    <DisplacementOrb>
-      <main className={styles.main}>
-        <Hero />
-      </main>
-    </DisplacementOrb>
+    <main className={styles.main}>
+      {/*<InfiniteCanvas works={WORK_HISTORY}/>*/}
+      {/*<Flyout/>*/}
+      <InfiniteCanvasCSR works={WORK_HISTORY} />
+      <FlyoutCSR />
+      <Blob />
+    </main>
   );
 }
