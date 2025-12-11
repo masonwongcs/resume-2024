@@ -51,6 +51,7 @@ body {
   &.is-drawer-open {
     &:before {
       opacity: 1;
+      transition: initial;
     }
   }
 }

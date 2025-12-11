@@ -11,15 +11,16 @@ import { Drawer } from 'vaul';
 import { INFO } from '@/components/Contact/Contact.fixture';
 import { useWorkStore } from '@/store';
 
-const SCALE_DOWN_SIZE = 10;
-
 const Header = () => {
+  const isMobile = window.innerWidth <= 480;
   const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
+
+  const SCALE_DOWN_SIZE = isMobile ? 10 : 30;
 
   useEffect(() => {
     const updateScale = () => {
@@ -29,8 +30,8 @@ const Header = () => {
       // Scale = (dimension - [N]) / dimension
       const scaleDownX = (window.innerWidth - SCALE_DOWN_SIZE) / window.innerWidth;
       const scaleDownY = (window.innerHeight - SCALE_DOWN_SIZE) / window.innerHeight;
-      const scaleX = scaleDownX + percentageDragged * 0.05;
-      const scaleY = scaleDownY + percentageDragged * 0.05;
+      const scaleX = (isMobile ? scaleDownX : 0.98) + percentageDragged * 0.05;
+      const scaleY = (isMobile ? scaleDownY : 0.98) + percentageDragged * 0.05;
 
       // When drawer is closed, scale is 1.0 (normal size)
       // When drawer is open, interpolate from 1.0 to the [N]px scale down based on drag percentage
@@ -111,7 +112,10 @@ const Header = () => {
             setOpen(false);
           }
 
-          setIsAnimating(true);
+          if (isMobile) {
+            setIsAnimating(true);
+          }
+
           setPercentageDragged(0);
         }}
         onRelease={() => setIsDragging(false)}
@@ -137,7 +141,9 @@ const Header = () => {
               toggled={isOpen}
               toggle={(openToggle) => {
                 setOpen(openToggle);
-                setIsAnimating(true);
+                if (isMobile) {
+                  setIsAnimating(true);
+                }
               }}
               size={24}
             />
