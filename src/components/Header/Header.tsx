@@ -12,7 +12,7 @@ import { INFO } from '@/components/Contact/Contact.fixture';
 import { useWorkStore } from '@/store';
 
 const Header = () => {
-  const isMobile = window.innerWidth <= 480;
+  const [isMobile, setIsMobile] = useState(false);
   const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -21,6 +21,23 @@ const Header = () => {
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
 
   const SCALE_DOWN_SIZE = isMobile ? 10 : 30;
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice =
+        window.matchMedia('(max-width: 768px)').matches ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(isMobileDevice);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
 
   useEffect(() => {
     const updateScale = () => {
