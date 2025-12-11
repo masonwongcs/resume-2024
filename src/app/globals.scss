@@ -37,6 +37,22 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+
+  &:before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0;
+    z-index: -1;
+    background: #000;
+    transition: opacity 400ms var(--material-cubic-bezier);
+  }
+
+  &.is-drawer-open {
+    &:before {
+      opacity: 1;
+    }
+  }
 }
 
 * {

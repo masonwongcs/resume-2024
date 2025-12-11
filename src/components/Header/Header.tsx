@@ -14,21 +14,63 @@ import { useWorkStore } from '@/store';
 const Header = () => {
   const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
 
   useEffect(() => {
-    // Calculate scale based on drawer state and drag percentage
-    // When fully open (percentageDragged = 1), scale down to 0.95 (5% smaller)
-    // When closed (percentageDragged = 0), scale is 1.0 (normal size)
-    const scale = isOpen
-      ? 0.98 + percentageDragged * 0.01 // Scale down by 1% when fully open
-      : 1; // Also scale during drag even if not fully open
-    document.documentElement.style.setProperty('--drawer-scale', scale.toString());
+    const updateScale = () => {
+      if (typeof window === 'undefined') return;
 
-    // Cleanup: reset scale when component unmounts
+      // Calculate scale to reduce by 10px for both width and height
+      // Scale = (dimension - 10) / dimension
+      const scaleDown10pxX = (window.innerWidth - 10) / window.innerWidth;
+      const scaleDown10pxY = (window.innerHeight - 10) / window.innerHeight;
+      const scaleX = scaleDown10pxX + percentageDragged * 0.05;
+      const scaleY = scaleDown10pxY + percentageDragged * 0.05;
+
+      // When drawer is closed, scale is 1.0 (normal size)
+      // When drawer is open, interpolate from 1.0 to the 10px scale down based on drag percentage
+      const finalScaleX = isOpen
+        ? scaleX > 1
+          ? 1
+          : scaleX // Interpolate from 1.0 to 10px down
+        : 1;
+
+      const finalScaleY = isOpen
+        ? scaleY > 1
+          ? 1
+          : scaleY // Interpolate from 1.0 to 10px down
+        : 1;
+
+      document.documentElement.style.setProperty('--drawer-scale-x', finalScaleX.toString());
+      document.documentElement.style.setProperty('--drawer-scale-y', finalScaleY.toString());
+    };
+
+    // Initial calculation
+    updateScale();
+
+    // Update on window resize
+    window.addEventListener('resize', updateScale);
+
+    // Cleanup
     return () => {
-      document.documentElement.style.removeProperty('--drawer-scale');
+      window.removeEventListener('resize', updateScale);
+      document.documentElement.style.removeProperty('--drawer-scale-x');
+      document.documentElement.style.removeProperty('--drawer-scale-y');
+    };
+  }, [isOpen, percentageDragged]);
+
+  useEffect(() => {
+    // Calculate border radius based on drag percentage
+    // When fully open (percentageDragged = 1), border radius is 40px
+    // When closed (percentageDragged = 0), border radius is 0px
+    const borderRadius = isOpen ? (1 - percentageDragged) * 40 : 0; // Smoothly animate from 0 to 40px
+    document.documentElement.style.setProperty('--drawer-border-radius', `${borderRadius}px`);
+
+    // Cleanup: reset border radius when component unmounts
+    return () => {
+      document.documentElement.style.removeProperty('--drawer-border-radius');
     };
   }, [isOpen, percentageDragged]);
 
@@ -40,6 +82,14 @@ const Header = () => {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isDragging) {
+      document.body.classList.add('is-dragging');
+    } else {
+      document.body.classList.remove('is-dragging');
+    }
+  }, [isDragging]);
+
   return (
     <header className={styles.header}>
       <Drawer.Root
@@ -48,7 +98,13 @@ const Header = () => {
           setOpen(false);
           setPercentageDragged(0);
         }}
-        onDrag={(_, percentageDragged) => setPercentageDragged(percentageDragged)}
+        onRelease={() => setIsDragging(false)}
+        onDrag={(_, percentageDragged) => {
+          setPercentageDragged(percentageDragged);
+          setIsDragging(true);
+        }}
+        disablePreventScroll
+        noBodyStyles
       >
         <div
           className={cx(styles.headerWrapper, {

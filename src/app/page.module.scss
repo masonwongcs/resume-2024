@@ -10,16 +10,17 @@
 }
 
 .main {
+  background: var(--background);
   opacity: 0;
   //filter: blur(100px) grayscale(1);
-  will-change: opacity, transform, border-radius;
+  will-change: opacity, transform, clip-path;
   transition:
     opacity 1s var(--material-cubic-bezier),
     transform 0.3s var(--material-cubic-bezier),
-    border-radius 0.3s var(--material-cubic-bezier);
-  transform: scale(var(--drawer-scale, 1));
+    clip-path 0.3s var(--material-cubic-bezier);
+  clip-path: inset(0 round var(--drawer-border-radius));
+  transform: scale(var(--drawer-scale-x, 1), var(--drawer-scale-y, 1));
   transform-origin: center center;
-  box-shadow: 0 0 0 100px #000;
   overflow: hidden;
 
   &:before {
@@ -43,8 +44,12 @@
   }
 
   :global(.is-drawer-open) & {
-    border-radius: 40px;
-    //clip-path: inset(0 round 40px);
+    //border-radius: 40px;
+    //clip-path: inset(0 round 40px); // Now handled by CSS variable
     //filter: blur(0) grayscale(0);
+  }
+
+  :global(.is-dragging) & {
+    transition: initial;
   }
 }
