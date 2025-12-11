@@ -11,10 +11,13 @@ import { Drawer } from 'vaul';
 import { INFO } from '@/components/Contact/Contact.fixture';
 import { useWorkStore } from '@/store';
 
+const SCALE_DOWN_SIZE = 10;
+
 const Header = () => {
   const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
 
@@ -22,25 +25,25 @@ const Header = () => {
     const updateScale = () => {
       if (typeof window === 'undefined') return;
 
-      // Calculate scale to reduce by 10px for both width and height
-      // Scale = (dimension - 10) / dimension
-      const scaleDown10pxX = (window.innerWidth - 10) / window.innerWidth;
-      const scaleDown10pxY = (window.innerHeight - 10) / window.innerHeight;
-      const scaleX = scaleDown10pxX + percentageDragged * 0.05;
-      const scaleY = scaleDown10pxY + percentageDragged * 0.05;
+      // Calculate scale to reduce by [N]px for both width and height
+      // Scale = (dimension - [N]) / dimension
+      const scaleDownX = (window.innerWidth - SCALE_DOWN_SIZE) / window.innerWidth;
+      const scaleDownY = (window.innerHeight - SCALE_DOWN_SIZE) / window.innerHeight;
+      const scaleX = scaleDownX + percentageDragged * 0.05;
+      const scaleY = scaleDownY + percentageDragged * 0.05;
 
       // When drawer is closed, scale is 1.0 (normal size)
-      // When drawer is open, interpolate from 1.0 to the 10px scale down based on drag percentage
+      // When drawer is open, interpolate from 1.0 to the [N]px scale down based on drag percentage
       const finalScaleX = isOpen
         ? scaleX > 1
           ? 1
-          : scaleX // Interpolate from 1.0 to 10px down
+          : scaleX // Interpolate from 1.0 to [N]px down
         : 1;
 
       const finalScaleY = isOpen
         ? scaleY > 1
           ? 1
-          : scaleY // Interpolate from 1.0 to 10px down
+          : scaleY // Interpolate from 1.0 to [N]px down
         : 1;
 
       document.documentElement.style.setProperty('--drawer-scale-x', finalScaleX.toString());
@@ -90,12 +93,25 @@ const Header = () => {
     }
   }, [isDragging]);
 
+  useEffect(() => {
+    if (isAnimating) {
+      document.body.classList.add('is-animating');
+    } else {
+      document.body.classList.remove('is-animating');
+    }
+  }, [isAnimating]);
+
   return (
     <header className={styles.header}>
       <Drawer.Root
         open={isOpen}
+        onAnimationEnd={() => setIsAnimating(false)}
         onClose={() => {
-          setOpen(false);
+          if (!isAnimating || isDragging) {
+            setOpen(false);
+          }
+
+          setIsAnimating(true);
           setPercentageDragged(0);
         }}
         onRelease={() => setIsDragging(false)}
@@ -116,9 +132,16 @@ const Header = () => {
             Hi, I'm Mason <span>Wong</span>
           </div>
 
-          <Drawer.Trigger className={styles.hamburger}>
-            <Hamburger toggled={isOpen} toggle={setOpen} size={24} />
-          </Drawer.Trigger>
+          <div className={styles.hamburger}>
+            <Hamburger
+              toggled={isOpen}
+              toggle={(openToggle) => {
+                setOpen(openToggle);
+                setIsAnimating(true);
+              }}
+              size={24}
+            />
+          </div>
         </div>
 
         <Drawer.Portal>

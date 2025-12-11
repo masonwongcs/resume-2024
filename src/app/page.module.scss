@@ -20,7 +20,7 @@
     clip-path 0.3s var(--material-cubic-bezier);
   clip-path: inset(0 round var(--drawer-border-radius));
   transform: scale(var(--drawer-scale-x, 1), var(--drawer-scale-y, 1));
-  transform-origin: center center;
+  transform-origin: center bottom;
   overflow: hidden;
 
   &:before {
