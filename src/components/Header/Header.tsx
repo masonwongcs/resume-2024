@@ -66,6 +66,7 @@ const Header = () => {
 
       document.documentElement.style.setProperty('--drawer-scale-x', finalScaleX.toString());
       document.documentElement.style.setProperty('--drawer-scale-y', finalScaleY.toString());
+      document.documentElement.style.setProperty('--drawer-percentage', percentageDragged.toString());
     };
 
     // Initial calculation
@@ -79,6 +80,7 @@ const Header = () => {
       window.removeEventListener('resize', updateScale);
       document.documentElement.style.removeProperty('--drawer-scale-x');
       document.documentElement.style.removeProperty('--drawer-scale-y');
+      document.documentElement.style.removeProperty('--drawer-percentage');
     };
   }, [isOpen, percentageDragged]);
 
@@ -147,6 +149,7 @@ const Header = () => {
           className={cx(styles.headerWrapper, {
             [styles.hidden]: isOpen
           })}
+          style={isDragging ? { transition: 'none' } : undefined}
         >
           {/*<img className={styles.logo} src="/apple-touch-icon.png" alt="I'm Mason" />*/}
           <div className={styles.name}>

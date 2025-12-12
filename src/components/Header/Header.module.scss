@@ -30,8 +30,8 @@ $lightGrey: #818181;
     }
 
     &.hidden {
-      opacity: 0;
-      transform: translateY(-150%);
+      //opacity: 0;
+      transform: translateY(calc(-150% + var(--drawer-percentage, 0) * 100%));
       pointer-events: none;
     }
   }

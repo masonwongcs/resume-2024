@@ -46,7 +46,7 @@
     transform-origin: bottom right;
     animation:
       clipPathAnimation 1s 400ms var(--material-cubic-bezier) forwards,
-      loaded 800ms 1s var(--material-cubic-bezier) forwards;
+      loaded 200ms 1.4s var(--material-cubic-bezier) forwards;
   }
   .progressWrapper {
     width: 250px;
