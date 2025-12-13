@@ -34,7 +34,7 @@ const Sticker: FC<StickerProps> = ({ src, alt = 'Sticker', startX, startY, trans
           position: 'fixed',
           left: startX,
           top: startY,
-          transform: `translate(${transformEndX}px, ${transformEndY}px)`,
+          transform: `translate(${transformEndX}px, ${transformEndY}px) translateZ(1px)`,
           // transitionDuration: `${duration}s`,
           // transitionDelay: `${delay}s`,
           '--rotate': `${rotate}deg`,

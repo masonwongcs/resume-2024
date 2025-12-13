@@ -11,18 +11,33 @@ $lightGrey: #818181;
   z-index: 10;
 
   .headerWrapper {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(20px);
-    border-radius: 40px;
+    position: relative;
+    background: rgba(255, 255, 255, 0.01);
+    //backdrop-filter: blur(20px);
+    border-radius: 50px;
     padding: 16px 20px;
     width: 50vw;
     min-width: 400px;
     max-width: 500px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: 0 2px 60px rgba(0, 0, 0, 0.1);
     display: flex;
     align-items: center;
     opacity: 1;
     transition: all 300ms var(--material-cubic-bezier);
+
+    &:before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      height: 200%;
+      background: linear-gradient(to bottom, hsl(0deg 0% 100%) 0%, transparent 50%);
+      backdrop-filter: blur(16px);
+      mask-image: linear-gradient(to bottom, black 0% 50%, transparent 50% 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
 
     @media screen and (max-width: 480px) {
       width: 90vw;
@@ -31,7 +46,7 @@ $lightGrey: #818181;
 
     &.hidden {
       //opacity: 0;
-      transform: translateY(calc(-150% + var(--drawer-percentage, 0) * 100%));
+      transform: translateY(calc(-150% + var(--drawer-percentage, 0) * 100% + 1px)) translateZ(1px);
       pointer-events: none;
     }
   }
@@ -116,12 +131,17 @@ $lightGrey: #818181;
   }
 
   .handle {
+    //cursor: grab;
     margin: 0 auto;
     width: 50%;
     max-width: 100px;
     height: 4px;
     background-color: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
+
+    //&:active {
+    //  cursor: grabbing;
+    //}
   }
 
   .content {

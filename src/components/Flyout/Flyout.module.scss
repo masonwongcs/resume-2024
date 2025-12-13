@@ -55,7 +55,7 @@
 
     @media screen and (min-width: 1920px) {
       padding-top: 15vh;
-      max-width: 800px;
+      max-width: 700px;
     }
 
     @media screen and (max-width: 480px) {
@@ -83,7 +83,7 @@
       }
 
       .title {
-        font-size: 30px;
+        font-size: clamp(16px, 6vw, 30px);
         font-family: var(--font-futura), sans-serif;
         font-weight: normal;
         margin: 40px 0 20px;
@@ -91,7 +91,7 @@
       }
 
       .description {
-        font-size: 16px;
+        font-size: clamp(14px, 3vw, 16px);
         font-family: var(--font-futura), sans-serif;
         color: rgba(0, 0, 0, 0.75);
         margin-bottom: 20px;
@@ -99,7 +99,7 @@
       }
 
       .cta {
-        font-size: 18px;
+        font-size: clamp(14px, 3vw, 16px);
         line-height: 1;
         padding: 12px 16px;
         border-radius: 10px;
@@ -166,7 +166,7 @@
   height: 50px;
   border-radius: 50%;
   background-color: #000;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
   outline: none;
   display: flex;
   align-items: center;

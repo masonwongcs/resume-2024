@@ -106,7 +106,7 @@ const StickerWall = ({ width = 600, height = 400, maxOverlapTries = 50 }: Sticke
           key={sticker.id}
           className={styles.stickerWrapper}
           style={{
-            transform: `translate(${sticker.x}px, ${sticker.y}px) rotate(${sticker.rotation}deg)`,
+            transform: `translate(${sticker.x}px, ${sticker.y}px) rotate(${sticker.rotation}deg) translateZ(1px)`,
             width: sticker.width,
             height: sticker.height
           }}
