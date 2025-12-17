@@ -1,0 +1,39 @@
+.infiniteCanvasItem {
+  cursor: pointer;
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1000px;
+
+  .infiniteCanvasItemBackground {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: opacity 300ms var(--material-cubic-bezier);
+    z-index: 1;
+  }
+
+  .infiniteCanvasItemInner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+  }
+
+  .infiniteCanvasItemImage {
+    pointer-events: none;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+    transition: opacity 300ms var(--material-cubic-bezier);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
+    display: block;
+    will-change: transform;
+  }
+}

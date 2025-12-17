@@ -21,6 +21,7 @@
     "hamburger-react": "^2.5.2",
     "lodash": "^4.17.21",
     "maath": "^0.10.4",
+    "motion": "^12.23.26",
     "next": "15.5.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

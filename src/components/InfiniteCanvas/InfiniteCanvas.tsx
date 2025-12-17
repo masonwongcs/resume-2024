@@ -4,8 +4,8 @@ import styles from './InfiniteCanvas.module.scss';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useImageLoad } from '@/hooks/useImageLoad';
 import { useHomeStore, useWorkStore } from '@/store';
+import { InfiniteCanvasItem } from './InfiniteCanvasItem';
 
 interface Work {
   name: string;
@@ -26,32 +26,6 @@ interface GridItem {
 interface InfiniteCanvasProps {
   works: Work[];
 }
-
-const InfiniteCanvasItem: React.FC<{ work: Work; style: React.CSSProperties; onClick: () => void }> = ({
-  work,
-  style,
-  onClick
-}) => {
-  const isLoaded = useImageLoad(work.image);
-  return (
-    <div className={styles.infiniteCanvasItem} onClick={onClick} style={style}>
-      <div
-        className={styles.infiniteCanvasItemBackground}
-        style={{
-          opacity: isLoaded ? 0 : 1
-        }}
-      />
-      <img
-        className={styles.infiniteCanvasItemImage}
-        src={work?.thumbnail ? work?.thumbnail : work.image}
-        alt={work.name}
-        style={{
-          opacity: isLoaded ? 1 : 0
-        }}
-      />
-    </div>
-  );
-};
 
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });

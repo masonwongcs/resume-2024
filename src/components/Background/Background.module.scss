@@ -25,6 +25,47 @@
   aspect-ratio: 3 / 2;
 }
 
+@keyframes floatAround {
+  0% {
+    transform: translate(-50%, -50%) translate(25vw, 25vh) rotate(0deg);
+  }
+  20% {
+    transform: translate(-50%, -50%) translate(65vw, 35vh) rotate(90deg);
+  }
+  40% {
+    transform: translate(-50%, -50%) translate(35vw, 55vh) rotate(180deg);
+  }
+  60% {
+    transform: translate(-50%, -50%) translate(55vw, 45vh) rotate(240deg);
+  }
+  80% {
+    transform: translate(-50%, -50%) translate(45vw, 65vh) rotate(300deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(25vw, 25vh) rotate(360deg);
+  }
+}
+
+@keyframes pulseScale {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.1;
+  }
+}
+
+.mobileBlob {
+  @include baseBlob();
+  height: 50vh;
+  background-color: #e1bd00;
+  aspect-ratio: 2 / 1;
+  animation:
+    floatAround 10s infinite cubic-bezier(0.4, 0, 0.2, 1),
+    pulseScale 5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 .noise {
   position: fixed;
   inset: 0;
