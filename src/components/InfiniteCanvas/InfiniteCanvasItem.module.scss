@@ -6,6 +6,16 @@
   justify-content: center;
   perspective: 1000px;
 
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .infiniteCanvasItemInner {
+        &:before {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
   .infiniteCanvasItemBackground {
     position: absolute;
     top: 0;
@@ -18,11 +28,46 @@
   }
 
   .infiniteCanvasItemInner {
+    --card-border-radius: 20px;
+    --card-border-width: 0.2vw;
+    --card-border-gradiet-angle: 135deg;
     position: relative;
     width: 100%;
     height: 100%;
     transform-style: preserve-3d;
     backface-visibility: hidden;
+    overflow: hidden;
+    border-radius: var(--card-border-radius);
+    border: var(--card-border-width) solid transparent;
+    will-change: transform, opacity;
+
+    @media screen and (max-width: 480px) {
+      --card-border-radius: 12px;
+    }
+
+    &:before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: inherit;
+      border-radius: calc(var(--card-border-radius) - var(--card-border-width));
+      background: linear-gradient(
+          var(--card-border-gradiet-angle),
+          rgba(255, 255, 255, 0.75),
+          transparent,
+          transparent,
+          transparent,
+          transparent
+        )
+        border-box;
+      mask:
+        conic-gradient(#000 0 0) padding-box exclude,
+        conic-gradient(#000 0 0);
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0;
+      transition: opacity 400ms var(--material-cubic-bezier);
+    }
   }
 
   .infiniteCanvasItemImage {
@@ -35,5 +80,16 @@
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
     display: block;
     will-change: transform;
+  }
+
+  .infiniteCanvasItemShine {
+    position: absolute;
+    top: -25%;
+    left: -25%;
+    width: 150%;
+    height: 150%;
+    pointer-events: none;
+    z-index: 4;
+    border-radius: inherit;
   }
 }

@@ -5,6 +5,7 @@ import styles from './InfiniteCanvas.module.scss';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useHomeStore, useWorkStore } from '@/store';
+
 import { InfiniteCanvasItem } from './InfiniteCanvasItem';
 
 interface Work {
@@ -68,7 +69,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     // Improved random function with better distribution
     const x = Math.sin(seed) * seedFactor;
     const y = Math.cos(seed * 0.5) * (seedFactor * 0.7);
-    return (x + y) - Math.floor(x + y);
+    return x + y - Math.floor(x + y);
   };
 
   const getAdjacentWorks = (x: number, y: number, radius: number = 2) => {
@@ -96,16 +97,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const seed = x * seedFactor + y * seedFactor * 0.7;
 
     // Create a set of adjacent work URLs for faster lookup
-    const adjacentUrls = new Set(adjacentWorks.map(w => w.url));
+    const adjacentUrls = new Set(adjacentWorks.map((w) => w.url));
 
     // Filter out adjacent works first
-    const availableWorks = works.filter(work => !adjacentUrls.has(work.url));
+    const availableWorks = works.filter((work) => !adjacentUrls.has(work.url));
 
     // If no works are available (edge case), use all works
     const candidateWorks = availableWorks.length > 0 ? availableWorks : works;
 
     // Create a weighted selection based on usage count and randomness
-    const weightedWorks = candidateWorks.map(work => {
+    const weightedWorks = candidateWorks.map((work) => {
       const usageCount = workUsageCountRef.current.get(work.url) || 0;
       // Lower usage = higher weight, add randomness
       const randomWeight = seededRandom(seed + work.url.length);
