@@ -9,6 +9,7 @@ import Hamburger from 'hamburger-react';
 import { Drawer } from 'vaul';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
+import GlassSurface from '@/components/GlassSurface/GlassSurface';
 import { useWorkStore } from '@/store';
 
 const Header = () => {
@@ -145,10 +146,11 @@ const Header = () => {
         disablePreventScroll
         noBodyStyles
       >
-        <div
+        <GlassSurface
           className={cx(styles.headerWrapper, {
             [styles.hidden]: isOpen
           })}
+          borderRadius={50}
           style={isDragging ? { transition: 'none' } : undefined}
         >
           {/*<img className={styles.logo} src="/apple-touch-icon.png" alt="I'm Mason" />*/}
@@ -168,7 +170,7 @@ const Header = () => {
               size={24}
             />
           </div>
-        </div>
+        </GlassSurface>
 
         <Drawer.Portal>
           <Drawer.Overlay className={styles.overlay} />
