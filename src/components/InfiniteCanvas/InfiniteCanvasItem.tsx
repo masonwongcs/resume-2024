@@ -43,6 +43,7 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
   const shineX = useSpring(50, springValues);
   const shineY = useSpring(50, springValues);
   const shineOpacity = useSpring(useMotionValue(0), springValues);
+  const angle = useSpring(useMotionValue(180), springValues); // Initial angle for tilt.js style (180deg = default glare position)
 
   // Calculate border gradient angle based on card tilt
   // The angle follows the direction of the tilt for a more realistic effect
@@ -86,6 +87,9 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
     return `radial-gradient(ellipse ${scaleX}% ${scaleY}% at ${adjustedX}% ${adjustedY}%, rgba(255, 255, 255, ${0.1 * intensity}), transparent 70%)`;
   });
 
+  // Calculate shine rotation based on tilt.js angle
+  const shineRotation = useTransform(angle, (a: number) => `${a}deg`);
+
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!itemRef.current) return;
@@ -101,12 +105,19 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
       const shineXPercent = ((e.clientX - rect.left) / rect.width) * 100;
       const shineYPercent = ((e.clientY - rect.top) / rect.height) * 100;
 
+      // Calculate angle for glare/shine rotation - tilt.js style
+      // angle = atan2(x - centerX, -(y - centerY)) * (180/Math.PI)
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const calculatedAngle = (Math.atan2(e.clientX - centerX, -(e.clientY - centerY)) * 180) / Math.PI;
+
       rotateX.set(rotationX);
       rotateY.set(rotationY);
+      angle.set(calculatedAngle);
       shineX.set(shineXPercent);
       shineY.set(shineYPercent);
     },
-    [rotateX, rotateY, shineX, shineY]
+    [rotateX, rotateY, angle, shineX, shineY]
   );
 
   const handleMouseEnter = useCallback(() => {
@@ -118,8 +129,9 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
     scale.set(1);
     rotateX.set(0);
     rotateY.set(0);
+    angle.set(180); // Reset to default angle (tilt.js style)
     shineOpacity.set(0);
-  }, [scale, rotateX, rotateY, shineOpacity]);
+  }, [scale, rotateX, rotateY, angle, shineOpacity]);
 
   return (
     <div
@@ -164,7 +176,8 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
             opacity: shineOpacity,
             pointerEvents: 'none',
             transformStyle: 'preserve-3d',
-            backfaceVisibility: 'hidden'
+            backfaceVisibility: 'hidden',
+            rotate: shineRotation
           }}
         />
       </motion.div>

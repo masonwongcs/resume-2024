@@ -32,14 +32,6 @@ const WORK_HISTORY = [
       "Orchestrated a complete digital transformation for Blonde Boudoir, a high-end hair salon. The website rebuild focused on showcasing their luxurious services, incorporating an elegant design that reflects the salon's sophisticated atmosphere. Enhanced user experience with intuitive navigation and a sleek appointment booking system, resulting in increased online visibility and client engagement."
   },
   {
-    name: '$duck',
-    url: 'https://www.duck.fun',
-    image: './images/work/duckfun.jpg',
-    thumbnail: './images/work/duckfun_thumbnail.jpg',
-    description:
-      'Developed the official website for $duck coin, a new player in the cryptocurrency space. Created an engaging and informative platform that explains the unique features and potential of $duck coin to both crypto enthusiasts and newcomers. Implemented real-time price tracking, a user-friendly wallet interface, and educational resources about blockchain technology. The website played a crucial role in building the $duck coin community and driving adoption of the new cryptocurrency.'
-  },
-  {
     name: 'SL Edu',
     url: 'https://www.sleducation.edu.sg',
     image: './images/work/sledu.jpg',
