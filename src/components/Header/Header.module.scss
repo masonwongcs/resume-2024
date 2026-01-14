@@ -49,6 +49,7 @@ $lightGrey: #818181;
     @media screen and (max-width: 480px) {
       width: 90vw;
       min-width: 90vw;
+      max-width: 90vw;
     }
 
     &.hidden {
