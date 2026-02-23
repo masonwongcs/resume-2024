@@ -1,0 +1,77 @@
+.main {
+  position: relative;
+  z-index: 9999;
+  min-height: 100svh;
+  background: #000;
+  color: #fff;
+  padding: 2rem 0;
+  font-family: var(--font-futura), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  .wrapper {
+    width: 800px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+
+    @media screen and (max-width: 799px) {
+      width: 100%;
+    }
+  }
+
+  .logo {
+    max-width: 128px;
+  }
+
+  .carouselWrapper {
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .carousel {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    gap: 20px;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+
+    > img {
+      flex: 0 0 100%;
+      width: 100%;
+      min-width: 0;
+      object-fit: contain;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+    }
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  p {
+    line-height: 1.6;
+  }
+
+  .lastUpdated {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+  }
+
+  a {
+    text-decoration: underline;
+    color: inherit;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
