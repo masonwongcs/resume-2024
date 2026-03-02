@@ -203,84 +203,75 @@ const Header = () => {
                 <Drawer.Title className={styles.title} />
                 <div className={styles.content}>
                   <h2 className={styles.contentTitle}>skills</h2>
-                {INFO.map(({ title, skills, stickers }) => {
-                  return (
-                    <button
-                      key={title}
-                      className={styles.subtitle}
-                      onClick={() => {
-                        setSelectedWork({
-                          name: title,
-                          skills,
-                          stickers,
-                          type: 'info'
-                        });
-                        setStickerQueue(stickers);
-                      }}
-                    >
-                      {title}
-                      <span className={styles.infoItemCta}>
-                        <img src="/images/icon/plus.svg" alt={`View more ${title}`} />
-                      </span>
-                    </button>
-                  );
-                })}
+                  {INFO.map(({ title, skills, stickers }) => {
+                    return (
+                      <button
+                        key={title}
+                        className={styles.subtitle}
+                        onClick={() => {
+                          setSelectedWork({
+                            name: title,
+                            skills,
+                            stickers,
+                            type: 'info'
+                          });
+                          setStickerQueue(stickers);
+                        }}
+                      >
+                        {title}
+                        <span className={styles.infoItemCta}>
+                          <img src="/images/icon/plus.svg" alt={`View more ${title}`} />
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className={styles.content}>
                   <h2 className={styles.contentTitle}>contact</h2>
-                <div className={styles.contactItem}>
-                  <a
-                    className={styles.contactItemCta}
-                    href="/game"
-                  >
-                    3D Work Gallery
-                    <img src="/images/icon/arrow-right.svg" alt="Open 3D gallery" />
-                  </a>
+                  <div className={styles.contactItem}>
+                    <a
+                      className={styles.contactItemCta}
+                      href="https://www.linkedin.com/in/masonwongcs/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      LinkedIn
+                      <img src="/images/icon/arrow-right.svg" alt={`Open LinkedIn url in new tab`} />
+                    </a>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <a
+                      className={cx(styles.contactItemCta, 'githubCta')}
+                      href="https://github.com/masonwongcs"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      GitHub
+                      <img src="/images/icon/arrow-right.svg" alt={`Open GitHub url in new tab`} />
+                    </a>
+                  </div>
+                  <div className={styles.contactItem}>
+                    <a
+                      className={styles.contactItemCta}
+                      href="https://masonwongcs.com/resume.pdf"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Resume
+                      <img src="/images/icon/arrow-right.svg" alt={`Open resume url in new tab`} />
+                    </a>
+                  </div>
+                  <div className={cx(styles.contactItem, styles.email)}>
+                    <a
+                      className={styles.contactItemCta}
+                      href="mailto:hello@masonwongcs.com"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      hello@masonwongcs.com
+                    </a>
+                  </div>
                 </div>
-                <div className={styles.contactItem}>
-                  <a
-                    className={styles.contactItemCta}
-                    href="https://www.linkedin.com/in/masonwongcs/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    LinkedIn
-                    <img src="/images/icon/arrow-right.svg" alt={`Open LinkedIn url in new tab`} />
-                  </a>
-                </div>
-                <div className={styles.contactItem}>
-                  <a
-                    className={cx(styles.contactItemCta, 'githubCta')}
-                    href="https://github.com/masonwongcs"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    GitHub
-                    <img src="/images/icon/arrow-right.svg" alt={`Open GitHub url in new tab`} />
-                  </a>
-                </div>
-                <div className={styles.contactItem}>
-                  <a
-                    className={styles.contactItemCta}
-                    href="https://masonwongcs.com/resume.pdf"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Resume
-                    <img src="/images/icon/arrow-right.svg" alt={`Open resume url in new tab`} />
-                  </a>
-                </div>
-                <div className={cx(styles.contactItem, styles.email)}>
-                  <a
-                    className={styles.contactItemCta}
-                    href="mailto:hello@masonwongcs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    hello@masonwongcs.com
-                  </a>
-                </div>
-              </div>
               </div>
             </Drawer.Content>
           </Drawer.Portal>

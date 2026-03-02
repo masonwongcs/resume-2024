@@ -44,8 +44,6 @@ $lightGrey: #818181;
       }
     }
 
-
-
     @media screen and (max-width: 480px) {
       width: 90vw;
       min-width: 90vw;
@@ -251,6 +249,13 @@ $lightGrey: #818181;
 
     > img {
       margin-left: auto;
+      transition: transform 200ms var(--material-cubic-bezier);
+    }
+
+    &:hover {
+      > img {
+        transform: translateX(4px);
+      }
     }
   }
 }
