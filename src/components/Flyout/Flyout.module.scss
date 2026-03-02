@@ -209,10 +209,8 @@
 
   &.active {
     :global(.sticker) {
-      opacity: 1;
-      transform: translate(0, 0) rotate(var(--rotate)) scale(var(--scale)) !important;
-      transition-duration: var(--duration);
-      transition-delay: var(--delay);
+      pointer-events: auto;
+      /* Transform/opacity are now handled by motion in Sticker for drag support */
     }
   }
 }

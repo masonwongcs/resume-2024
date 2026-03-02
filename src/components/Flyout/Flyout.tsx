@@ -135,6 +135,7 @@ const Flyout: FC = () => {
                   startY={startY}
                   transformEndX={transformEndX}
                   transformEndY={transformEndY}
+                  active={isActive && !isClosing}
                 />
               ))}
             </div>,
