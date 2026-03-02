@@ -39,13 +39,15 @@ const Sticker: FC<StickerProps> = ({
   return (
     <motion.div
       className={cx(styles.sticker, 'sticker')}
-      style={{
-        position: 'fixed',
-        left: startX,
-        top: startY,
-        rotate,
-        scale
-      } as React.CSSProperties}
+      style={
+        {
+          position: 'fixed',
+          left: startX,
+          top: startY,
+          rotate,
+          scale
+        } as unknown as React.CSSProperties
+      }
       initial={false}
       animate={
         active

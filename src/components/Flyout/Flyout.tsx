@@ -30,7 +30,7 @@ const Flyout: FC = () => {
   // Defer .open class by one frame so flyout can mount in closed state and fade in
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const TRANSITION_MS = 600;
 
