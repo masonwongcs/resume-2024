@@ -2,7 +2,7 @@
 
 import styles from './Header.module.scss';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import cx from 'classnames';
 import Hamburger from 'hamburger-react';
@@ -18,8 +18,14 @@ const Header = () => {
   const [isOpen, setOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  // Pre-mount drawer content on hover to avoid lag on first open
+  const [shouldMountDrawer, setShouldMountDrawer] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
+
+  const handleHamburgerHover = useCallback(() => {
+    setShouldMountDrawer(true);
+  }, []);
 
   const SCALE_DOWN_SIZE = isMobile ? 10 : 30;
 
@@ -38,6 +44,16 @@ const Header = () => {
     return () => {
       window.removeEventListener('resize', checkMobile);
     };
+  }, []);
+
+  // Pre-mount drawer during idle to avoid lag on first open (helps mobile/tap users)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('requestIdleCallback' in window)) {
+      const t = setTimeout(() => setShouldMountDrawer(true), 2000);
+      return () => clearTimeout(t);
+    }
+    const id = requestIdleCallback(() => setShouldMountDrawer(true), { timeout: 3000 });
+    return () => cancelIdleCallback(id);
   }, []);
 
   useEffect(() => {
@@ -158,10 +174,16 @@ const Header = () => {
             Hi, I'm Mason <span>Wong</span>
           </div>
 
-          <div className={styles.hamburger}>
+          <div
+            className={styles.hamburger}
+            onMouseEnter={handleHamburgerHover}
+            onFocus={handleHamburgerHover}
+            onTouchStart={handleHamburgerHover}
+          >
             <Hamburger
               toggled={isOpen}
               toggle={(openToggle) => {
+                setShouldMountDrawer(true); // Ensure drawer is mounted before opening
                 setOpen(openToggle);
                 if (isMobile) {
                   setIsAnimating(true);
@@ -172,14 +194,15 @@ const Header = () => {
           </div>
         </GlassSurface>
 
-        <Drawer.Portal>
-          <Drawer.Overlay className={styles.overlay} />
-          <Drawer.Content className={styles.drawer}>
-            <div className={styles.handle}></div>
-            <div className={styles.container}>
-              <Drawer.Title className={styles.title} />
-              <div className={styles.content}>
-                <h2 className={styles.contentTitle}>skills</h2>
+        {(shouldMountDrawer || isOpen) && (
+          <Drawer.Portal>
+            <Drawer.Overlay className={styles.overlay} />
+            <Drawer.Content className={styles.drawer}>
+              <div className={styles.handle}></div>
+              <div className={styles.container}>
+                <Drawer.Title className={styles.title} />
+                <div className={styles.content}>
+                  <h2 className={styles.contentTitle}>skills</h2>
                 {INFO.map(({ title, skills, stickers }) => {
                   return (
                     <button
@@ -202,9 +225,18 @@ const Header = () => {
                     </button>
                   );
                 })}
-              </div>
-              <div className={styles.content}>
-                <h2 className={styles.contentTitle}>contact</h2>
+                </div>
+                <div className={styles.content}>
+                  <h2 className={styles.contentTitle}>contact</h2>
+                <div className={styles.contactItem}>
+                  <a
+                    className={styles.contactItemCta}
+                    href="/game"
+                  >
+                    3D Work Gallery
+                    <img src="/images/icon/arrow-right.svg" alt="Open 3D gallery" />
+                  </a>
+                </div>
                 <div className={styles.contactItem}>
                   <a
                     className={styles.contactItemCta}
@@ -249,9 +281,10 @@ const Header = () => {
                   </a>
                 </div>
               </div>
-            </div>
-          </Drawer.Content>
-        </Drawer.Portal>
+              </div>
+            </Drawer.Content>
+          </Drawer.Portal>
+        )}
       </Drawer.Root>
     </header>
   );

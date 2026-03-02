@@ -2,7 +2,7 @@
 
 import styles from './Flyout.module.scss';
 
-import { FC, useEffect, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import cx from 'classnames';
@@ -27,6 +27,38 @@ const Flyout: FC = () => {
 
   const isOpen = !!selectedWork;
   const [isActive, setIsActive] = useState(false);
+  // Defer .open class by one frame so flyout can mount in closed state and fade in
+  const [isVisible, setIsVisible] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const TRANSITION_MS = 600;
+
+  useEffect(() => {
+    if (selectedWork) {
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = undefined;
+      }
+      setIsClosing(false);
+    }
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, [selectedWork]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsClosing(false);
+      setIsVisible(false);
+      const frameId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setIsVisible(true));
+      });
+      return () => cancelAnimationFrame(frameId);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -91,10 +123,10 @@ const Flyout: FC = () => {
           {createPortal(
             <div
               className={cx(styles.stickerWrapper, {
-                [styles.active]: isActive
+                [styles.active]: isActive && !isClosing
               })}
             >
-              {selectedWork?.stickers?.map(({ src, alt, startX, startY, transformEndX, transformEndY }, index) => (
+              {selectedWork?.stickers?.map(({ src, alt, startX, startY, transformEndX, transformEndY }) => (
                 <Sticker
                   key={src}
                   src={src}
@@ -111,20 +143,37 @@ const Flyout: FC = () => {
         </div>
       );
     }
-  }, [selectedWork?.type, selectedWork, isActive]);
+  }, [selectedWork?.type, selectedWork, isActive, isClosing]);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    closeTimeoutRef.current = setTimeout(() => {
+      removeSelectedWork();
+      setIsClosing(false);
+      closeTimeoutRef.current = undefined;
+    }, TRANSITION_MS);
+  };
+
+  // Don't render when closed - keep mounted during fade out
+  if (!selectedWork && !isClosing) {
+    return null;
+  }
+
+  const showOpen = isOpen && isVisible && !isClosing;
 
   return createPortal(
     <section
       className={cx(styles.flyout, {
-        [styles.open]: isOpen
+        [styles.open]: showOpen
       })}
     >
       {createPortal(
         <button
           className={cx(styles.closeBtn, {
-            [styles.open]: isOpen
+            [styles.open]: showOpen
           })}
-          onClick={removeSelectedWork}
+          onClick={handleClose}
         >
           <img src="/images/icon/close.svg" alt="Close modal" />
         </button>,

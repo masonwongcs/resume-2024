@@ -13,7 +13,8 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  backdrop-filter: blur(40px);
+  /* Reduced from 40px - backdrop-filter is expensive; 20px still looks frosted */
+  backdrop-filter: blur(20px);
   background-color: rgba(255, 255, 255, 0.75);
   display: flex;
   justify-content: center;
@@ -21,8 +22,10 @@
   visibility: hidden;
   transition: all 600ms var(--material-cubic-bezier);
   isolation: isolate;
+  contain: layout paint;
   pointer-events: none;
   overflow: auto;
+  transform: translateZ(0); /* Promote to own layer for cheaper compositing */
 
   &.open {
     opacity: 1;
@@ -201,6 +204,8 @@
   position: fixed;
   inset: 0;
   z-index: 1100;
+  contain: layout;
+  transform: translateZ(0);
 
   &.active {
     :global(.sticker) {
