@@ -7,12 +7,14 @@ import { useCallback, useEffect, useState } from 'react';
 import cx from 'classnames';
 import Hamburger from 'hamburger-react';
 import { Drawer } from 'vaul';
+import { useWebHaptics } from 'web-haptics/react';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
 import GlassSurface from '@/components/GlassSurface/GlassSurface';
 import { useWorkStore } from '@/store';
 
 const Header = () => {
+  const { trigger } = useWebHaptics();
   const [isMobile, setIsMobile] = useState(false);
   const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
@@ -143,6 +145,9 @@ const Header = () => {
       <Drawer.Root
         open={isOpen}
         onAnimationEnd={() => setIsAnimating(false)}
+        onOpenChange={() => {
+          trigger();
+        }}
         onClose={() => {
           if (!isAnimating || isDragging) {
             setOpen(false);
@@ -185,6 +190,7 @@ const Header = () => {
               toggle={(openToggle) => {
                 setShouldMountDrawer(true); // Ensure drawer is mounted before opening
                 setOpen(openToggle);
+                trigger('success');
                 if (isMobile) {
                   setIsAnimating(true);
                 }
@@ -216,6 +222,7 @@ const Header = () => {
                             type: 'info'
                           });
                           setStickerQueue(stickers);
+                          trigger('success');
                         }}
                       >
                         {title}

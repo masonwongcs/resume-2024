@@ -6,6 +6,7 @@ import { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import cx from 'classnames';
+import { useWebHaptics } from 'web-haptics/react';
 
 import { Sticker } from '@/components/Sticker';
 import { useWorkStore } from '@/store';
@@ -22,6 +23,7 @@ const formatUrl = (url?: string) => {
 };
 
 const Flyout: FC = () => {
+  const { trigger } = useWebHaptics();
   const selectedWork = useWorkStore((state) => state.selectedWork);
   const removeSelectedWork = useWorkStore((state) => state.removeSelectedWork);
 
@@ -149,6 +151,7 @@ const Flyout: FC = () => {
   const handleClose = () => {
     if (isClosing) return;
     setIsClosing(true);
+    trigger();
     closeTimeoutRef.current = setTimeout(() => {
       removeSelectedWork();
       setIsClosing(false);
