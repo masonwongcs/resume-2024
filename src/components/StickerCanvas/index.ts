@@ -1,0 +1,1 @@
+export { StickerCanvas } from './StickerCanvas';

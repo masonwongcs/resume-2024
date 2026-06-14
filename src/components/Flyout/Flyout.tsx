@@ -8,7 +8,8 @@ import { createPortal } from 'react-dom';
 import cx from 'classnames';
 import { useWebHaptics } from 'web-haptics/react';
 
-import { Sticker } from '@/components/Sticker';
+import { StickerCanvas } from '@/components/StickerCanvas';
+import stickerCanvasStyles from '@/components/StickerCanvas/StickerCanvas.module.scss';
 import { useWorkStore } from '@/store';
 
 const formatUrl = (url?: string) => {
@@ -122,27 +123,15 @@ const Flyout: FC = () => {
               </div>
             ))}
           </div>
-          {createPortal(
-            <div
-              className={cx(styles.stickerWrapper, {
-                [styles.active]: isActive && !isClosing
-              })}
-            >
-              {selectedWork?.stickers?.map(({ src, alt, startX, startY, transformEndX, transformEndY }) => (
-                <Sticker
-                  key={src}
-                  src={src}
-                  alt={alt}
-                  startX={startX}
-                  startY={startY}
-                  transformEndX={transformEndX}
-                  transformEndY={transformEndY}
-                  active={isActive && !isClosing}
-                />
-              ))}
-            </div>,
-            document.body
-          )}
+          {!!selectedWork?.stickers?.length &&
+            createPortal(
+              <StickerCanvas
+                className={stickerCanvasStyles.canvas}
+                stickers={selectedWork.stickers}
+                active={isActive && !isClosing}
+              />,
+              document.body
+            )}
         </div>
       );
     }

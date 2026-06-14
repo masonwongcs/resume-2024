@@ -205,19 +205,3 @@
     width: 24px;
   }
 }
-
-.stickerWrapper {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  contain: layout;
-  transform: translateZ(0);
-
-  &.active {
-    :global(.sticker) {
-      pointer-events: auto;
-      /* Transform/opacity are now handled by motion in Sticker for drag support */
-    }
-  }
-}
