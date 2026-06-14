@@ -80,6 +80,12 @@ const INERTIA_POWER = 0.15;
 const INERTIA_TIME_CONSTANT = 0.15; // seconds
 const DRAG_SCALE = 1.08;
 
+// Direction-aware lean: map drag velocity (px/s) to an extra tilt (radians)
+// so the sticker banks into the direction it's being flung.
+const TILT_PER_VELOCITY = 0.00022;
+const MAX_TILT = (22 * Math.PI) / 180; // ~22deg
+const TILT_SMOOTH_TAU = 0.09; // seconds, how fast tilt chases its target
+
 interface StickerState {
   data: StickerData;
   // Stable randomised look, matching the original useMemo values.
@@ -92,6 +98,8 @@ interface StickerState {
   y: number;
   opacity: number;
   scaleMul: number;
+  tilt: number; // current direction-aware lean (radians)
+  tiltTarget: number; // where the lean is heading (radians)
   // Base geometry in CSS px (recomputed on resize).
   left: number;
   top: number;
@@ -143,6 +151,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const statesRef = useRef<StickerState[]>([]);
   const rafRef = useRef<number>(0);
+  const lastFrameRef = useRef<number>(0);
   const runningRef = useRef(false);
   const activeRef = useRef(active);
   const dragRef = useRef<{
@@ -171,6 +180,8 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
         y: data.transformEndY,
         opacity: 0,
         scaleMul: 1,
+        tilt: 0,
+        tiltTarget: 0,
         left: 0,
         top: 0,
         w: 0,
@@ -227,6 +238,8 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
     statesRef.current.forEach((s) => {
       s.inertia = null;
       s.dragging = false;
+      s.tilt = 0;
+      s.tiltTarget = 0;
       if (active) {
         s.settled = false;
         s.txX = { from: s.x, to: 0, start: now + s.delay * 1000, dur: s.duration * 1000, ease };
@@ -250,6 +263,8 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
     const now = performance.now();
+    const frameDt = lastFrameRef.current ? Math.min((now - lastFrameRef.current) / 1000, 0.05) : 0;
+    lastFrameRef.current = now;
     let animating = false;
 
     ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
@@ -297,6 +312,15 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
         }
       }
 
+      // Ease the direction-aware lean toward its target.
+      if (Math.abs(s.tilt - s.tiltTarget) > 1e-4) {
+        const k = frameDt > 0 ? 1 - Math.exp(-frameDt / TILT_SMOOTH_TAU) : 1;
+        s.tilt += (s.tiltTarget - s.tilt) * k;
+        animating = true;
+      } else {
+        s.tilt = s.tiltTarget;
+      }
+
       if (s.dragging) animating = true;
 
       // Settle once the entrance has finished (enables the drop-shadow).
@@ -314,7 +338,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, s.opacity));
       ctx.translate(cx, cy);
-      ctx.rotate(s.rotate);
+      ctx.rotate(s.rotate + s.tilt);
       ctx.scale(totalScale, totalScale);
       if (s.settled) {
         // drop-shadow(12px 12px 12px rgba(107,107,107,0.1))
@@ -414,6 +438,11 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       drag.lastT = now;
       drag.state.x = e.clientX - drag.grabX;
       drag.state.y = e.clientY - drag.grabY;
+      // Bank into the horizontal drag direction.
+      drag.state.tiltTarget = Math.max(
+        -MAX_TILT,
+        Math.min(MAX_TILT, drag.vx * TILT_PER_VELOCITY)
+      );
       kick();
     };
 
@@ -427,6 +456,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       const ampY = drag.vy * INERTIA_POWER;
       s.inertia = { ampX, ampY, targetX: s.x + ampX, targetY: s.y + ampY, start: now };
       s.txS = { from: s.scaleMul, to: 1, start: now, dur: 150, ease: easeOut };
+      s.tiltTarget = 0; // ease back upright on release
       dragRef.current = null;
       kick();
     };
