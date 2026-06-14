@@ -13,14 +13,19 @@
   position: fixed;
   inset: 0;
   z-index: 1000;
-  /* Reduced from 40px - backdrop-filter is expensive; 20px still looks frosted */
-  backdrop-filter: blur(20px);
+  /* Blur starts at 0 and is deferred (see &.open) so it doesn't composite a
+     full-screen blur while the flyout fades in and the stickers animate. */
+  backdrop-filter: blur(0px);
   background-color: rgba(255, 255, 255, 0.75);
   display: flex;
   justify-content: center;
   opacity: 0;
   visibility: hidden;
-  transition: all 600ms var(--material-cubic-bezier);
+  /* Fade in fast; ramp the (expensive) blur in afterwards. */
+  transition:
+    opacity 600ms var(--material-cubic-bezier),
+    visibility 600ms var(--material-cubic-bezier),
+    backdrop-filter 400ms var(--material-cubic-bezier) 300ms;
   isolation: isolate;
   contain: layout paint;
   pointer-events: none;
@@ -31,6 +36,8 @@
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
+    /* Reduced from 20px - lighter to composite, still reads as frosted. */
+    backdrop-filter: blur(12px);
 
     .flyoutContent {
       transition-duration: 300ms;
@@ -196,21 +203,5 @@
 
   > img {
     width: 24px;
-  }
-}
-
-.stickerWrapper {
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 1100;
-  contain: layout;
-  transform: translateZ(0);
-
-  &.active {
-    :global(.sticker) {
-      pointer-events: auto;
-      /* Transform/opacity are now handled by motion in Sticker for drag support */
-    }
   }
 }

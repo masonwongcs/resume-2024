@@ -1,0 +1,10 @@
+.canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  // Hit-testing + dragging are handled on window listeners, so the canvas
+  // itself stays transparent to pointer events and lets clicks (e.g. the
+  // close button) pass through everywhere except where a sticker is grabbed.
+  pointer-events: none;
+  touch-action: none;
+}

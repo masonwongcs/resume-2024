@@ -2,7 +2,7 @@
 
 import styles from './Header.module.scss';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import Hamburger from 'hamburger-react';
@@ -16,7 +16,6 @@ import { useWorkStore } from '@/store';
 const Header = () => {
   const { trigger } = useWebHaptics();
   const [isMobile, setIsMobile] = useState(false);
-  const [percentageDragged, setPercentageDragged] = useState(0);
   const [isOpen, setOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -25,11 +24,47 @@ const Header = () => {
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
 
+  // Drag progress is kept in a ref (not state) so dragging the drawer doesn't
+  // re-render Header / the expensive GlassSurface subtree on every frame.
+  const percentageRef = useRef(0);
+  const rafRef = useRef<number | null>(null);
+
   const handleHamburgerHover = useCallback(() => {
     setShouldMountDrawer(true);
   }, []);
 
-  const SCALE_DOWN_SIZE = isMobile ? 10 : 30;
+  // Compute + write the drawer CSS vars directly to the document, coalesced to
+  // one write per animation frame. No React state on the drag hot path.
+  const writeDrawerVars = useCallback(() => {
+    rafRef.current = null;
+    if (typeof window === 'undefined') return;
+
+    const percentage = percentageRef.current;
+    const scaleDownSize = isMobile ? 10 : 30;
+    const scaleDownX = (window.innerWidth - scaleDownSize) / window.innerWidth;
+    const scaleDownY = (window.innerHeight - scaleDownSize) / window.innerHeight;
+    const scaleX = (isMobile ? scaleDownX : 0.98) + percentage * 0.05;
+    const scaleY = (isMobile ? scaleDownY : 0.98) + percentage * 0.05;
+
+    const finalScaleX = isOpen ? (scaleX > 1 ? 1 : scaleX) : 1;
+    const finalScaleY = isOpen ? (scaleY > 1 ? 1 : scaleY) : 1;
+    const borderRadius = isOpen ? (1 - percentage) * 40 : 0;
+
+    const root = document.documentElement.style;
+    root.setProperty('--drawer-scale-x', finalScaleX.toString());
+    root.setProperty('--drawer-scale-y', finalScaleY.toString());
+    root.setProperty('--drawer-percentage', percentage.toString());
+    root.setProperty('--drawer-border-radius', `${borderRadius}px`);
+  }, [isMobile, isOpen]);
+
+  const scheduleDrawerVars = useCallback(() => {
+    if (typeof window === 'undefined') {
+      writeDrawerVars();
+      return;
+    }
+    if (rafRef.current != null) return;
+    rafRef.current = requestAnimationFrame(writeDrawerVars);
+  }, [writeDrawerVars]);
 
   // Check if device is mobile
   useEffect(() => {
@@ -58,63 +93,25 @@ const Header = () => {
     return () => cancelIdleCallback(id);
   }, []);
 
+  // Recompute drawer vars when open/mobile state changes, and on resize.
   useEffect(() => {
-    const updateScale = () => {
-      if (typeof window === 'undefined') return;
+    scheduleDrawerVars();
 
-      // Calculate scale to reduce by [N]px for both width and height
-      // Scale = (dimension - [N]) / dimension
-      const scaleDownX = (window.innerWidth - SCALE_DOWN_SIZE) / window.innerWidth;
-      const scaleDownY = (window.innerHeight - SCALE_DOWN_SIZE) / window.innerHeight;
-      const scaleX = (isMobile ? scaleDownX : 0.98) + percentageDragged * 0.05;
-      const scaleY = (isMobile ? scaleDownY : 0.98) + percentageDragged * 0.05;
+    window.addEventListener('resize', scheduleDrawerVars);
 
-      // When drawer is closed, scale is 1.0 (normal size)
-      // When drawer is open, interpolate from 1.0 to the [N]px scale down based on drag percentage
-      const finalScaleX = isOpen
-        ? scaleX > 1
-          ? 1
-          : scaleX // Interpolate from 1.0 to [N]px down
-        : 1;
-
-      const finalScaleY = isOpen
-        ? scaleY > 1
-          ? 1
-          : scaleY // Interpolate from 1.0 to [N]px down
-        : 1;
-
-      document.documentElement.style.setProperty('--drawer-scale-x', finalScaleX.toString());
-      document.documentElement.style.setProperty('--drawer-scale-y', finalScaleY.toString());
-      document.documentElement.style.setProperty('--drawer-percentage', percentageDragged.toString());
-    };
-
-    // Initial calculation
-    updateScale();
-
-    // Update on window resize
-    window.addEventListener('resize', updateScale);
-
-    // Cleanup
     return () => {
-      window.removeEventListener('resize', updateScale);
-      document.documentElement.style.removeProperty('--drawer-scale-x');
-      document.documentElement.style.removeProperty('--drawer-scale-y');
-      document.documentElement.style.removeProperty('--drawer-percentage');
+      window.removeEventListener('resize', scheduleDrawerVars);
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      const root = document.documentElement.style;
+      root.removeProperty('--drawer-scale-x');
+      root.removeProperty('--drawer-scale-y');
+      root.removeProperty('--drawer-percentage');
+      root.removeProperty('--drawer-border-radius');
     };
-  }, [isOpen, percentageDragged]);
-
-  useEffect(() => {
-    // Calculate border radius based on drag percentage
-    // When fully open (percentageDragged = 1), border radius is 40px
-    // When closed (percentageDragged = 0), border radius is 0px
-    const borderRadius = isOpen ? (1 - percentageDragged) * 40 : 0; // Smoothly animate from 0 to 40px
-    document.documentElement.style.setProperty('--drawer-border-radius', `${borderRadius}px`);
-
-    // Cleanup: reset border radius when component unmounts
-    return () => {
-      document.documentElement.style.removeProperty('--drawer-border-radius');
-    };
-  }, [isOpen, percentageDragged]);
+  }, [scheduleDrawerVars]);
 
   useEffect(() => {
     if (isOpen) {
@@ -157,11 +154,14 @@ const Header = () => {
             setIsAnimating(true);
           }
 
-          setPercentageDragged(0);
+          percentageRef.current = 0;
+          scheduleDrawerVars();
         }}
         onRelease={() => setIsDragging(false)}
         onDrag={(_, percentageDragged) => {
-          setPercentageDragged(percentageDragged);
+          percentageRef.current = percentageDragged;
+          scheduleDrawerVars();
+          // setState bails out once already true, so no re-render per frame.
           setIsDragging(true);
         }}
         disablePreventScroll

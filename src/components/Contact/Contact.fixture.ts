@@ -1,4 +1,4 @@
-import { backendStickers, devopsSticker, frontEndStickers, softSkillSticker } from '@/fixture/Info.fixture';
+import { aiStickers, backendStickers, devopsSticker, frontEndStickers, softSkillSticker } from '@/fixture/Info.fixture';
 
 export const INFO = [
   {
@@ -19,8 +19,24 @@ export const INFO = [
   },
   {
     title: 'Backend',
-    skills: ['Node.js', 'Express.js', 'Bun.js', 'Deno.js', 'RESTful APIs', 'GraphQL', 'SQL', 'PostgreSQL'],
+    skills: ['Node.js', 'Express.js', 'Bun.js', 'Deno.js', 'RESTful APIs', 'GraphQL', 'SQL', 'PostgreSQL', 'FastAPI'],
     stickers: backendStickers
+  },
+  {
+    title: 'AI',
+    skills: [
+      'Generative AI',
+      'Image Generation',
+      'Video Generation',
+      'Prompt Engineering',
+      'AI-Assisted Development',
+      'Cursor',
+      'Claude Code',
+      'LLM Integration',
+      'MCP',
+      'Agentic Workflows'
+    ],
+    stickers: aiStickers
   },
   {
     title: 'DevOps',
