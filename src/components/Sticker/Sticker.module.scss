@@ -11,7 +11,12 @@
 
   > img {
     width: 100%;
-    filter: drop-shadow(12px 12px 12px rgba(107, 107, 107, 0.1));
     pointer-events: none;
+  }
+
+  // Only apply the (expensive) drop-shadow once the sticker has settled,
+  // so it isn't re-blurred every frame during the entrance animation.
+  &.settled > img {
+    filter: drop-shadow(12px 12px 12px rgba(107, 107, 107, 0.1));
   }
 }

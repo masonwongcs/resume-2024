@@ -2,7 +2,7 @@
 
 import styles from './Sticker.module.scss';
 
-import React, { FC, useMemo } from 'react';
+import React, { FC, useEffect, useMemo, useState } from 'react';
 
 import cx from 'classnames';
 import { motion } from 'motion/react';
@@ -17,7 +17,7 @@ interface StickerProps {
   active?: boolean;
 }
 
-const Sticker: FC<StickerProps> = ({
+const StickerComponent: FC<StickerProps> = ({
   src,
   alt = 'Sticker',
   startX,
@@ -30,22 +30,34 @@ const Sticker: FC<StickerProps> = ({
     () => ({
       rotate: Math.random() * 50 - 25,
       scale: Math.random() * 0.2 + 0.85,
-      duration: Math.random() * 0.5 + 0.3,
-      delay: Math.random() * 0.3
+      // Lighter entrance: shorter, tighter spread so 7 stickers animate cheaper.
+      duration: Math.random() * 0.3 + 0.3,
+      delay: Math.random() * 0.15
     }),
     []
   );
 
+  // Drop-shadow is expensive to blur every frame, so only enable it once the
+  // sticker has settled (after the entrance animation completes).
+  const [settled, setSettled] = useState(false);
+
+  // Reset settled state whenever the sticker animates back out.
+  useEffect(() => {
+    if (!active) setSettled(false);
+  }, [active]);
+
   return (
     <motion.div
-      className={cx(styles.sticker, 'sticker')}
+      className={cx(styles.sticker, 'sticker', { [styles.settled]: settled })}
       style={
         {
           position: 'fixed',
           left: startX,
           top: startY,
           rotate,
-          scale
+          scale,
+          // Promote to its own layer only while animating; dropped once settled.
+          willChange: settled ? 'auto' : 'transform'
         } as unknown as React.CSSProperties
       }
       initial={false}
@@ -68,6 +80,9 @@ const Sticker: FC<StickerProps> = ({
               transition: { duration: 0.3, ease: [0.32, 0.72, 0, 1] }
             }
       }
+      onAnimationComplete={() => {
+        if (active) setSettled(true);
+      }}
       drag={active}
       dragElastic={0.05}
       dragTransition={{
@@ -94,5 +109,7 @@ const Sticker: FC<StickerProps> = ({
     </motion.div>
   );
 };
+
+const Sticker = React.memo(StickerComponent);
 
 export { Sticker };
