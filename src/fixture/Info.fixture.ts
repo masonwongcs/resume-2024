@@ -133,6 +133,41 @@ export const devopsSticker = [
   }
 ];
 
+export const aiStickers  = [
+  {
+    src: '/images/sticker/openai.svg',
+    alt: 'OpenAI Sticker',
+    startX: '70vw',
+    startY: '5vh',
+    transformEndX: 300,
+    transformEndY: 0
+  },
+  {
+    src: '/images/sticker/claude.svg',
+    alt: 'Claude Sticker',
+    startX: '80vw',
+    startY: '25vh',
+    transformEndX: 300,
+    transformEndY: 0
+  },
+  {
+    src: '/images/sticker/gemini.svg',
+    alt: 'Gemini Sticker',
+    startX: '75vw',
+    startY: '75vh',
+    transformEndX: 200,
+    transformEndY: 300
+  },
+  {
+    src: '/images/sticker/huggingface.svg',
+    alt: 'Hugging Face Sticker',
+    startX: '80vw',
+    startY: '50vh',
+    transformEndX: 200,
+    transformEndY: -200
+  }
+];
+
 export const softSkillSticker = [
   {
     src: '/images/sticker/atlassian.svg',
