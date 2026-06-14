@@ -165,6 +165,14 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
     vx: number;
     vy: number;
   } | null>(null);
+  // Tracks the cursor we've applied to <body> so we only write on change.
+  const cursorRef = useRef('');
+
+  const setCursor = (cursor: '' | 'grab' | 'grabbing') => {
+    if (cursorRef.current === cursor) return;
+    cursorRef.current = cursor;
+    document.body.style.cursor = cursor;
+  };
 
   // Build per-sticker state once (and when the sticker list identity changes).
   useEffect(() => {
@@ -234,6 +242,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
   // Trigger entrance / exit animations whenever `active` flips.
   useEffect(() => {
     activeRef.current = active;
+    if (!active) setCursor('');
     const now = performance.now();
     statesRef.current.forEach((s) => {
       s.inertia = null;
@@ -403,6 +412,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       const s = stickerAt(e.clientX, e.clientY);
       if (!s) return;
       e.preventDefault();
+      setCursor('grabbing');
       s.dragging = true;
       s.settled = false;
       s.txX = null;
@@ -425,7 +435,11 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
 
     const onPointerMove = (e: PointerEvent) => {
       const drag = dragRef.current;
-      if (!drag || e.pointerId !== drag.pointerId) return;
+      if (!drag || e.pointerId !== drag.pointerId) {
+        // Not dragging: show the grab cursor while hovering a sticker.
+        if (!drag) setCursor(activeRef.current && stickerAt(e.clientX, e.clientY) ? 'grab' : '');
+        return;
+      }
       e.preventDefault();
       const now = performance.now();
       const dt = (now - drag.lastT) / 1000;
@@ -458,6 +472,8 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       s.txS = { from: s.scaleMul, to: 1, start: now, dur: 150, ease: easeOut };
       s.tiltTarget = 0; // ease back upright on release
       dragRef.current = null;
+      // Back to grab if the pointer is still resting on a sticker.
+      setCursor(activeRef.current && stickerAt(e.clientX, e.clientY) ? 'grab' : '');
       kick();
     };
 
@@ -475,6 +491,7 @@ const StickerCanvas: FC<StickerCanvasProps> = ({ stickers, active, className }) 
       window.removeEventListener('pointercancel', onPointerUp);
       cancelAnimationFrame(rafRef.current);
       runningRef.current = false;
+      setCursor('');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
