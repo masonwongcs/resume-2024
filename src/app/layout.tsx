@@ -52,8 +52,23 @@ const BASE_URL = 'https://masonwongcs.com';
 const title = 'Mason Wong | UI Enthusiast & Front-End Engineer';
 const description = `With over ${years} years of experience, I aim to excel in front-end development, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`;
 export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
   title,
   description,
+  manifest: '/site.webmanifest',
+  authors: [{ name: 'Mason Wong', url: BASE_URL }],
+  creator: 'Mason Wong',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1
+    }
+  },
   icons: {
     icon: [
       {
@@ -96,11 +111,34 @@ export const metadata: Metadata = {
     type: 'website'
   },
   twitter: {
+    card: 'summary_large_image',
     title: title,
     description: description,
     site: BASE_URL,
     images: `${BASE_URL}/banner-twitter.jpg`
   }
+};
+
+const personJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Mason Wong',
+  alternateName: 'masonwongcs',
+  url: BASE_URL,
+  image: `${BASE_URL}/banner-og.jpg`,
+  jobTitle: 'Front-End Engineer',
+  description,
+  email: 'hello@masonwongcs.com',
+  knowsAbout: [
+    'Front-End Development',
+    'UI Design',
+    'UX Design',
+    'React',
+    'Next.js',
+    'TypeScript',
+    'Web Development'
+  ],
+  sameAs: ['https://github.com/masonwongcs', 'https://www.linkedin.com/in/masonwongcs/']
 };
 
 export default function RootLayout({
@@ -111,6 +149,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
+        />
         <Loader />
         <Background />
         <Header />
