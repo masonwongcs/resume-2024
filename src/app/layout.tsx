@@ -153,9 +153,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
         />
-        <Loader />
-        <Background />
-        <Header />
         {children}
         {/*<Navigation />*/}
       </body>

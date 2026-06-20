@@ -2,7 +2,10 @@
 
 import styles from './StickerCarousel.module.scss';
 
-import { FC, useCallback, useEffect, useRef } from 'react';
+import { FC, memo, useCallback, useEffect, useRef, useState } from 'react';
+
+import { type MotionValue, motion, useMotionValue, useMotionValueEvent, useSpring, useTransform } from 'motion/react';
+import type { SpringOptions } from 'motion/react';
 
 import type { StickerItem } from '@/fixture/Stickers.fixture';
 import { useHomeStore } from '@/store';
@@ -11,8 +14,27 @@ interface StickerCarouselProps {
   stickers: StickerItem[];
 }
 
-const TAU = Math.PI * 2;
-const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
+const VISIBLE_COUNT = 11;
+const MAX_OFFSET = (VISIBLE_COUNT - 1) / 2;
+const FADE_OUT = 0.5;
+
+const SAMPLE_SCALE_DROP = 0.7;
+const SAMPLE_TRANSLATE_Z_STEP = 72;
+const SAMPLE_OVERLAY_MAX = 0.3;
+const SAMPLE_Y_PERCENT = 15;
+const SAMPLE_INNER_X = 118;
+const SAMPLE_INNER_SCALE_DROP = 0.283;
+const CENTER_CLEARANCE_RATIO = 0.22;
+const STACK_OVERLAP_FRACTION = 0.5;
+const VIEWPORT_EDGE_OVERFLOW_RATIO = 0.68;
+
+const SCROLL_SPRING: SpringOptions = {
+  stiffness: 220,
+  damping: 42,
+  mass: 0.45,
+  restDelta: 0.0005,
+  restSpeed: 0.0005
+};
 
 const wrapOffset = (offset: number, count: number) => {
   let wrapped = ((offset % count) + count) % count;
@@ -25,30 +47,241 @@ const smoothstep = (t: number) => {
   return x * x * (3 - 2 * x);
 };
 
-const GAP_MULTIPLIER = 1.1;
-const VISIBLE_COUNT = 9;
-const MAX_OFFSET = (VISIBLE_COUNT - 1) / 2;
-const FADE_OUT = 0.8;
+const getItemSize = () => Math.min(window.innerWidth * 0.18, window.innerHeight * 0.28);
 
-const getLayout = (count: number) => {
-  const angleStep = (TAU / count) * GAP_MULTIPLIER;
-  const radiusX = window.innerWidth * 0.48;
-  const radiusZ = window.innerWidth * 0.2;
-  const dragSensitivity = radiusX * angleStep * 0.52;
-
-  return { radiusX, radiusZ, angleStep, dragSensitivity };
+const getTargetMaxSpread = (itemSize: number) => {
+  const edgeHalf = (itemSize * (1 - SAMPLE_SCALE_DROP)) / 2;
+  const edgeOverflow = itemSize * VIEWPORT_EDGE_OVERFLOW_RATIO;
+  return window.innerWidth / 2 - edgeHalf + edgeOverflow;
 };
+
+const getRawStackDistance = (absOffset: number, itemSize: number) => {
+  if (absOffset <= 0) return 0;
+
+  const clearance = itemSize * CENTER_CLEARANCE_RATIO;
+
+  const ringHalf = (ring: number) => {
+    const offsetNorm = ring / MAX_OFFSET;
+    return (itemSize * (1 - offsetNorm * SAMPLE_SCALE_DROP)) / 2;
+  };
+
+  const ringStep = (ring: number) => {
+    const prevHalf = ringHalf(ring - 1);
+    const half = ringHalf(ring);
+    return (prevHalf + half) * (1 - STACK_OVERLAP_FRACTION);
+  };
+
+  const ring1Dist = itemSize / 2 + clearance + ringHalf(1);
+
+  if (absOffset <= 1) {
+    return ring1Dist * absOffset;
+  }
+
+  let distance = ring1Dist;
+  const fullRings = Math.floor(absOffset);
+  const fraction = absOffset - fullRings;
+
+  for (let ring = 2; ring <= fullRings; ring++) {
+    distance += ringStep(ring);
+  }
+
+  if (fraction > 0 && fullRings < MAX_OFFSET) {
+    distance += fraction * ringStep(fullRings + 1);
+  }
+
+  return distance;
+};
+
+const getStackDistance = (absOffset: number, itemSize: number) => {
+  if (absOffset <= 0) return 0;
+
+  const raw = getRawStackDistance(absOffset, itemSize);
+  const rawMax = getRawStackDistance(MAX_OFFSET, itemSize);
+  const ring1 = getRawStackDistance(1, itemSize);
+  const targetMax = getTargetMaxSpread(itemSize);
+
+  if (absOffset <= 1) {
+    return raw;
+  }
+
+  const outerRaw = raw - ring1;
+  const outerRawMax = rawMax - ring1;
+  const outerTargetMax = targetMax - ring1;
+
+  if (outerRawMax <= 0) return raw;
+
+  return ring1 + (outerRaw / outerRawMax) * outerTargetMax;
+};
+
+const getDragSensitivity = (itemSize: number) => getStackDistance(1, itemSize) * 0.52;
+
+const getSampleRotations = (offsetNorm: number, sideSign: number) => {
+  if (sideSign === 0 || offsetNorm === 0) {
+    return { rotateZ: 0, rotateY: 0, rotateX: 0 };
+  }
+
+  if (sideSign > 0) {
+    return {
+      rotateZ: -offsetNorm * 100,
+      rotateY: -offsetNorm * 110,
+      rotateX: -offsetNorm * 30
+    };
+  }
+
+  return {
+    rotateZ: offsetNorm * 130,
+    rotateY: -offsetNorm * 28,
+    rotateX: offsetNorm * 120
+  };
+};
+
+interface ItemMotion {
+  x: number;
+  yPercent: number;
+  translateZ: number;
+  rotateZ: number;
+  rotateY: number;
+  rotateX: number;
+  scale: number;
+  opacity: number;
+  zIndex: number;
+  overlayOpacity: number;
+  innerX: number;
+  innerScale: number;
+  interactive: boolean;
+}
+
+const computeItemMotion = (index: number, scroll: number, count: number, itemSize: number): ItemMotion => {
+  const wrappedOffset = wrapOffset(index - scroll, count);
+  const absOffset = Math.abs(wrappedOffset);
+  const outerLimit = MAX_OFFSET + FADE_OUT;
+
+  if (absOffset > outerLimit) {
+    return {
+      x: 0,
+      yPercent: 0,
+      translateZ: 0,
+      rotateZ: 0,
+      rotateY: 0,
+      rotateX: 0,
+      scale: 0.3,
+      opacity: 0,
+      zIndex: 0,
+      overlayOpacity: 0,
+      innerX: 0,
+      innerScale: 1,
+      interactive: false
+    };
+  }
+
+  const offsetNorm = Math.min(1, absOffset / MAX_OFFSET);
+  const sideSign = wrappedOffset === 0 ? 0 : Math.sign(wrappedOffset);
+
+  const scrollFade = absOffset <= MAX_OFFSET ? 1 : 1 - smoothstep((absOffset - MAX_OFFSET) / FADE_OUT);
+
+  const { rotateZ, rotateY, rotateX } = getSampleRotations(offsetNorm, sideSign);
+
+  return {
+    x: sideSign * getStackDistance(absOffset, itemSize),
+    yPercent: sideSign * offsetNorm * SAMPLE_Y_PERCENT,
+    translateZ: Math.round((MAX_OFFSET - absOffset) * SAMPLE_TRANSLATE_Z_STEP),
+    rotateZ,
+    rotateY,
+    rotateX,
+    scale: 1 - offsetNorm * SAMPLE_SCALE_DROP,
+    opacity: scrollFade,
+    zIndex: Math.round(1000 - absOffset * 100),
+    overlayOpacity: offsetNorm * SAMPLE_OVERLAY_MAX,
+    innerX: sideSign * offsetNorm * SAMPLE_INNER_X,
+    innerScale: 1 - offsetNorm * SAMPLE_INNER_SCALE_DROP,
+    interactive: offsetNorm < 0.72 && scrollFade > 0.35
+  };
+};
+
+const buildItemTransform = (m: ItemMotion) =>
+  [
+    'translate(-50%, -50%)',
+    `translate3d(${m.x}px, ${m.yPercent}%, ${m.translateZ}px)`,
+    `rotate(${m.rotateZ}deg)`,
+    `rotateY(${m.rotateY}deg)`,
+    `rotateX(${m.rotateX}deg)`,
+    `scale(${m.scale})`
+  ].join(' ');
+
+interface StickerCarouselItemProps {
+  index: number;
+  sticker: StickerItem;
+  scroll: MotionValue<number>;
+  count: number;
+  itemSize: number;
+  onSnap: (index: number) => void;
+}
+
+const StickerCarouselItem = memo(function StickerCarouselItem({
+  index,
+  sticker,
+  scroll,
+  count,
+  itemSize,
+  onSnap
+}: StickerCarouselItemProps) {
+  const motionCache = useRef({ scroll: NaN, motion: null as ItemMotion | null });
+
+  const getMotion = (s: number) => {
+    if (motionCache.current.scroll !== s) {
+      motionCache.current = { scroll: s, motion: computeItemMotion(index, s, count, itemSize) };
+    }
+    return motionCache.current.motion!;
+  };
+
+  const transform = useTransform(scroll, (s) => buildItemTransform(getMotion(s)));
+  const opacity = useTransform(scroll, (s) => getMotion(s).opacity);
+  const zIndex = useTransform(scroll, (s) => getMotion(s).zIndex);
+  const imageBrightness = useTransform(scroll, (s) => 1 - getMotion(s).overlayOpacity);
+  const innerX = useTransform(scroll, (s) => `${getMotion(s).innerX}px`);
+  const innerScale = useTransform(scroll, (s) => getMotion(s).innerScale);
+  const pointerEvents = useTransform(scroll, (s) => (getMotion(s).interactive ? 'auto' : 'none'));
+
+  return (
+    <motion.div
+      className={styles.item}
+      style={{
+        transform,
+        opacity,
+        zIndex,
+        pointerEvents,
+        ['--inner-x' as string]: innerX,
+        ['--inner-scale' as string]: innerScale,
+        ['--image-brightness' as string]: imageBrightness
+      }}
+      onClick={() => onSnap(index)}
+    >
+      <div className={styles.media}>
+        <div className={styles.inner}>
+          <img
+            src={sticker.src}
+            alt={sticker.alt}
+            className={styles.image}
+            draggable={false}
+            decoding="async"
+            loading="eager"
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+});
 
 const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const counterRef = useRef<HTMLParagraphElement>(null);
-  const scrollRef = useRef(0);
-  const targetScrollRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
+  const scrollTarget = useMotionValue(0);
+  const scroll = useSpring(scrollTarget, SCROLL_SPRING);
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
+
+  const [itemSize, setItemSize] = useState(0);
 
   const count = stickers.length;
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
@@ -59,138 +292,82 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
     setIsLoaded();
   }, [setIsLoaded, setLoadingProgress]);
 
+  useEffect(() => {
+    stickers.forEach((sticker) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = sticker.src;
+    });
+  }, [stickers]);
+
+  useEffect(() => {
+    const updateSize = () => setItemSize(getItemSize());
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
+
   const getActiveIndex = useCallback(
-    (scroll: number) => {
+    (value: number) => {
       if (count === 0) return 0;
-      return ((Math.round(scroll) % count) + count) % count;
+      return ((Math.round(value) % count) + count) % count;
     },
     [count]
   );
 
-  const applyTransforms = useCallback(
-    (scroll: number) => {
+  useMotionValueEvent(scroll, 'change', (value) => {
+    if (counterRef.current) {
+      counterRef.current.textContent = `${getActiveIndex(value) + 1} / ${count}`;
+    }
+  });
+
+  const snapToIndex = useCallback(
+    (index: number) => {
       if (count === 0) return;
 
-      const { radiusX, radiusZ, angleStep } = getLayout(count);
+      const current = scrollTarget.get();
+      const activeIndex = getActiveIndex(current);
+      let delta = index - activeIndex;
 
-      itemRefs.current.forEach((item, index) => {
-        if (!item) return;
+      if (delta > count / 2) delta -= count;
+      if (delta < -count / 2) delta += count;
 
-        const wrappedOffset = wrapOffset(index - scroll, count);
-        const absOffset = Math.abs(wrappedOffset);
-        const outerLimit = MAX_OFFSET + FADE_OUT;
-
-        if (absOffset > outerLimit) {
-          item.style.visibility = 'hidden';
-          item.style.pointerEvents = 'none';
-          item.style.opacity = '0';
-          return;
-        }
-
-        const angle = wrappedOffset * angleStep;
-        const edgeT = Math.min(1, absOffset / MAX_OFFSET);
-        const edgeCurve = edgeT * edgeT;
-
-        const x = Math.sin(angle) * radiusX;
-        const z = Math.cos(angle) * radiusZ - radiusZ;
-        const depth = (z + radiusZ) / radiusZ;
-        const scaleFactor = 1 - edgeT * 0.22;
-        const baseScale = (0.74 + depth * 0.24) * scaleFactor;
-
-        const edgeFalloff = 1 - smoothstep((edgeT - 0.45) / 0.55) * 0.38;
-        const scrollFade =
-          absOffset <= MAX_OFFSET ? 1 : 1 - smoothstep((absOffset - MAX_OFFSET) / FADE_OUT);
-        const presence = edgeFalloff * scrollFade;
-
-        const scale = baseScale * (0.86 + presence * 0.14);
-        const opacity = (0.94 + depth * 0.06) * presence;
-        const sideSign = wrappedOffset === 0 ? 0 : Math.sign(wrappedOffset);
-        const curlStrength = (8 + edgeCurve * 28) * edgeT;
-        const rawRotateY = (-(angle * 180) / Math.PI) * (1 + edgeCurve * 0.2);
-        const rotateY = Math.sign(rawRotateY) * Math.min(Math.abs(rawRotateY), 58);
-        const rotateX = -sideSign * curlStrength;
-        const rotateZ = sideSign * (3 + edgeCurve * 12) * edgeT;
-        const verticalLift = (14 + edgeCurve * 42) * edgeT;
-        const y = sideSign * verticalLift;
-        const scaleX = 1 - Math.abs(Math.sin(angle)) * (0.02 + edgeCurve * 0.1);
-
-        item.style.visibility = opacity > 0.02 ? 'visible' : 'hidden';
-        item.style.pointerEvents = depth > 0.35 && presence > 0.35 ? 'auto' : 'none';
-        item.style.opacity = String(opacity);
-        item.style.zIndex = String(Math.round(depth * 100));
-        item.style.transform = [
-          'translate(-50%, -50%)',
-          `translate3d(${x}px, ${y}px, ${z}px)`,
-          `rotateY(${rotateY}deg)`,
-          `rotateX(${rotateX}deg)`,
-          `rotateZ(${rotateZ}deg)`,
-          `scale3d(${scale * scaleX}, ${scale}, 1)`
-        ].join(' ');
-      });
-
-      if (counterRef.current) {
-        counterRef.current.textContent = `${getActiveIndex(scroll) + 1} / ${count}`;
-      }
+      scrollTarget.set(current + delta);
     },
-    [count, getActiveIndex]
+    [count, getActiveIndex, scrollTarget]
   );
-
-  const animate = useCallback(() => {
-    scrollRef.current = lerp(scrollRef.current, targetScrollRef.current, 0.11);
-
-    if (Math.abs(scrollRef.current - targetScrollRef.current) < 0.0005) {
-      scrollRef.current = targetScrollRef.current;
-    }
-
-    applyTransforms(scrollRef.current);
-    rafRef.current = requestAnimationFrame(animate);
-  }, [applyTransforms]);
-
-  useEffect(() => {
-    applyTransforms(0);
-    rafRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (rafRef.current) {
-        cancelAnimationFrame(rafRef.current);
-      }
-    };
-  }, [animate, applyTransforms]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || count === 0) return;
+    if (!container || count === 0 || itemSize === 0) return;
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const delta = event.deltaY + event.deltaX;
-      targetScrollRef.current += delta * 0.0022;
+      scrollTarget.set(scrollTarget.get() + delta * 0.0022);
     };
 
     container.addEventListener('wheel', onWheel, { passive: false });
-
-    return () => {
-      container.removeEventListener('wheel', onWheel);
-    };
-  }, [count]);
+    return () => container.removeEventListener('wheel', onWheel);
+  }, [count, itemSize, scrollTarget]);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || count === 0) return;
+    if (!container || count === 0 || itemSize === 0) return;
 
     const onPointerDown = (event: PointerEvent) => {
       isDraggingRef.current = true;
       dragStartXRef.current = event.clientX;
-      dragStartScrollRef.current = targetScrollRef.current;
+      dragStartScrollRef.current = scrollTarget.get();
       container.setPointerCapture(event.pointerId);
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (!isDraggingRef.current) return;
 
-      const { dragSensitivity } = getLayout(count);
+      const dragSensitivity = getDragSensitivity(itemSize);
       const deltaX = event.clientX - dragStartXRef.current;
-      targetScrollRef.current = dragStartScrollRef.current - deltaX / dragSensitivity;
+      scrollTarget.jump(dragStartScrollRef.current - deltaX / dragSensitivity);
     };
 
     const endDrag = (event: PointerEvent) => {
@@ -211,50 +388,26 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
       container.removeEventListener('pointerup', endDrag);
       container.removeEventListener('pointercancel', endDrag);
     };
-  }, [count]);
-
-  const snapToIndex = useCallback(
-    (index: number) => {
-      if (count === 0) return;
-
-      const current = targetScrollRef.current;
-      const activeIndex = getActiveIndex(current);
-      let delta = index - activeIndex;
-
-      if (delta > count / 2) delta -= count;
-      if (delta < -count / 2) delta += count;
-
-      targetScrollRef.current = current + delta;
-    },
-    [count, getActiveIndex]
-  );
+  }, [count, itemSize, scrollTarget]);
 
   return (
     <section ref={containerRef} className={styles.carousel} aria-label="Sticker carousel">
-      <p ref={counterRef} className={styles.counter}>
-        1 / {count}
-      </p>
-
       <div className={styles.stage}>
         <div className={styles.track}>
-          {stickers.map((sticker, index) => (
-            <div
-              key={sticker.src}
-              ref={(element) => {
-                itemRefs.current[index] = element;
-              }}
-              className={styles.item}
-              onClick={() => snapToIndex(index)}
-            >
-              <div className={styles.card}>
-                <img src={sticker.src} alt={sticker.alt} className={styles.image} draggable={false} />
-              </div>
-            </div>
-          ))}
+          {itemSize > 0 &&
+            stickers.map((sticker, index) => (
+              <StickerCarouselItem
+                key={sticker.src}
+                index={index}
+                sticker={sticker}
+                scroll={scroll}
+                count={count}
+                itemSize={itemSize}
+                onSnap={snapToIndex}
+              />
+            ))}
         </div>
       </div>
-
-      <p className={styles.hint}>Scroll or drag to browse</p>
     </section>
   );
 };
