@@ -28,12 +28,28 @@ const CENTER_CLEARANCE_RATIO = 0.22;
 const STACK_OVERLAP_FRACTION = 0.5;
 const VIEWPORT_EDGE_OVERFLOW_RATIO = 0.68;
 
+const TRACK_BASE_ROTATE_Y = -3;
+const TRACK_BASE_ROTATE_X = -4;
+const STAGE_TILT_AMPLITUDE = 3.5;
+
+/** Wheel: lower = slower scroll per wheel tick */
+const WHEEL_SCROLL_FACTOR = 0.001;
+
+/** Drag: higher = more pixels needed to move one sticker */
+const DRAG_SENSITIVITY_FACTOR = 0.85;
+
 const SCROLL_SPRING: SpringOptions = {
   stiffness: 220,
   damping: 42,
   mass: 0.45,
   restDelta: 0.0005,
   restSpeed: 0.0005
+};
+
+const TILT_SPRING: SpringOptions = {
+  stiffness: 180,
+  damping: 28,
+  mass: 1.1
 };
 
 const wrapOffset = (offset: number, count: number) => {
@@ -113,7 +129,7 @@ const getStackDistance = (absOffset: number, itemSize: number) => {
   return ring1 + (outerRaw / outerRawMax) * outerTargetMax;
 };
 
-const getDragSensitivity = (itemSize: number) => getStackDistance(1, itemSize) * 0.52;
+const getDragSensitivity = (itemSize: number) => getStackDistance(1, itemSize) * DRAG_SENSITIVITY_FACTOR;
 
 const getSampleRotations = (offsetNorm: number, sideSign: number) => {
   if (sideSign === 0 || offsetNorm === 0) {
@@ -237,7 +253,7 @@ const StickerCarouselItem = memo(function StickerCarouselItem({
   const transform = useTransform(scroll, (s) => buildItemTransform(getMotion(s)));
   const opacity = useTransform(scroll, (s) => getMotion(s).opacity);
   const zIndex = useTransform(scroll, (s) => getMotion(s).zIndex);
-  const imageBrightness = useTransform(scroll, (s) => 1 - getMotion(s).overlayOpacity);
+  const imageBrightness = useTransform(scroll, (s) => 1 - getMotion(s).overlayOpacity * 3);
   const innerX = useTransform(scroll, (s) => `${getMotion(s).innerX}px`);
   const innerScale = useTransform(scroll, (s) => getMotion(s).innerScale);
   const pointerEvents = useTransform(scroll, (s) => (getMotion(s).interactive ? 'auto' : 'none'));
@@ -274,9 +290,18 @@ const StickerCarouselItem = memo(function StickerCarouselItem({
 
 const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const counterRef = useRef<HTMLParagraphElement>(null);
   const scrollTarget = useMotionValue(0);
   const scroll = useSpring(scrollTarget, SCROLL_SPRING);
+  const hoverRotateX = useSpring(useMotionValue(0), TILT_SPRING);
+  const hoverRotateY = useSpring(useMotionValue(0), TILT_SPRING);
+  const trackRotateX = useTransform(hoverRotateX, (x) => TRACK_BASE_ROTATE_X + x);
+  const trackRotateY = useTransform(hoverRotateY, (y) => TRACK_BASE_ROTATE_Y + y);
+  const trackTransform = useTransform(
+    [trackRotateX, trackRotateY],
+    ([rx, ry]) => `translate(-50%, -50%) rotateY(${ry}deg) rotateX(${rx}deg)`
+  );
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
@@ -337,6 +362,25 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
     [count, getActiveIndex, scrollTarget]
   );
 
+  const handleStageMouseMove = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isDraggingRef.current || !stageRef.current) return;
+
+      const rect = stageRef.current.getBoundingClientRect();
+      const offsetX = event.clientX - rect.left - rect.width / 2;
+      const offsetY = event.clientY - rect.top - rect.height / 2;
+
+      hoverRotateX.set((offsetY / (rect.height / 2)) * -STAGE_TILT_AMPLITUDE);
+      hoverRotateY.set((offsetX / (rect.width / 2)) * STAGE_TILT_AMPLITUDE);
+    },
+    [hoverRotateX, hoverRotateY]
+  );
+
+  const resetStageTilt = useCallback(() => {
+    hoverRotateX.set(0);
+    hoverRotateY.set(0);
+  }, [hoverRotateX, hoverRotateY]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || count === 0 || itemSize === 0) return;
@@ -344,7 +388,7 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
       const delta = event.deltaY + event.deltaX;
-      scrollTarget.set(scrollTarget.get() + delta * 0.0022);
+      scrollTarget.set(scrollTarget.get() + delta * WHEEL_SCROLL_FACTOR);
     };
 
     container.addEventListener('wheel', onWheel, { passive: false });
@@ -357,6 +401,7 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
 
     const onPointerDown = (event: PointerEvent) => {
       isDraggingRef.current = true;
+      resetStageTilt();
       dragStartXRef.current = event.clientX;
       dragStartScrollRef.current = scrollTarget.get();
       container.setPointerCapture(event.pointerId);
@@ -388,12 +433,12 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
       container.removeEventListener('pointerup', endDrag);
       container.removeEventListener('pointercancel', endDrag);
     };
-  }, [count, itemSize, scrollTarget]);
+  }, [count, itemSize, scrollTarget, resetStageTilt]);
 
   return (
     <section ref={containerRef} className={styles.carousel} aria-label="Sticker carousel">
-      <div className={styles.stage}>
-        <div className={styles.track}>
+      <div ref={stageRef} className={styles.stage} onMouseMove={handleStageMouseMove} onMouseLeave={resetStageTilt}>
+        <motion.div className={styles.track} style={{ transform: trackTransform }}>
           {itemSize > 0 &&
             stickers.map((sticker, index) => (
               <StickerCarouselItem
@@ -406,7 +451,7 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
                 onSnap={snapToIndex}
               />
             ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
