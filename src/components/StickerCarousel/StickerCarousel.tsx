@@ -38,6 +38,12 @@ const WHEEL_SCROLL_FACTOR = 0.001;
 /** Drag: higher = more pixels needed to move one sticker */
 const DRAG_SENSITIVITY_FACTOR = 0.85;
 
+/** Autoplay: scroll units advanced per millisecond (~1 sticker every 5s) */
+const AUTOPLAY_SCROLL_SPEED = 0.00016;
+
+/** Resume autoplay after manual interaction */
+const AUTOPLAY_RESUME_DELAY_MS = 2500;
+
 const SCROLL_SPRING: SpringOptions = {
   stiffness: 220,
   damping: 42,
@@ -303,10 +309,13 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
     ([rx, ry]) => `translate(-50%, -50%) rotateY(${ry}deg) rotateX(${rx}deg)`
   );
   const isDraggingRef = useRef(false);
+  const isAutoplayPausedRef = useRef(false);
+  const autoplayResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
 
   const [itemSize, setItemSize] = useState(0);
+  const [isAutoplayEnabled, setIsAutoplayEnabled] = useState(false);
 
   const count = stickers.length;
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
@@ -381,26 +390,74 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
     hoverRotateY.set(0);
   }, [hoverRotateX, hoverRotateY]);
 
+  const pauseAutoplayTemporarily = useCallback(() => {
+    isAutoplayPausedRef.current = true;
+
+    if (autoplayResumeTimeoutRef.current) {
+      clearTimeout(autoplayResumeTimeoutRef.current);
+    }
+
+    if (!isAutoplayEnabled) return;
+
+    autoplayResumeTimeoutRef.current = setTimeout(() => {
+      isAutoplayPausedRef.current = false;
+    }, AUTOPLAY_RESUME_DELAY_MS);
+  }, [isAutoplayEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (autoplayResumeTimeoutRef.current) {
+        clearTimeout(autoplayResumeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAutoplayEnabled || count === 0) return;
+
+    let rafId = 0;
+    let lastTime = performance.now();
+
+    const tick = (now: number) => {
+      const delta = now - lastTime;
+      lastTime = now;
+
+      if (!isAutoplayPausedRef.current && !isDraggingRef.current) {
+        scrollTarget.set(scrollTarget.get() + delta * AUTOPLAY_SCROLL_SPEED);
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [isAutoplayEnabled, count, scrollTarget]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || count === 0 || itemSize === 0) return;
 
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      pauseAutoplayTemporarily();
       const delta = event.deltaY + event.deltaX;
       scrollTarget.set(scrollTarget.get() + delta * WHEEL_SCROLL_FACTOR);
     };
 
     container.addEventListener('wheel', onWheel, { passive: false });
     return () => container.removeEventListener('wheel', onWheel);
-  }, [count, itemSize, scrollTarget]);
+  }, [count, itemSize, scrollTarget, pauseAutoplayTemporarily]);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container || count === 0 || itemSize === 0) return;
 
     const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest('button, a, input, textarea, select')) return;
+
       isDraggingRef.current = true;
+      pauseAutoplayTemporarily();
       resetStageTilt();
       dragStartXRef.current = event.clientX;
       dragStartScrollRef.current = scrollTarget.get();
@@ -433,27 +490,62 @@ const StickerCarousel: FC<StickerCarouselProps> = ({ stickers }) => {
       container.removeEventListener('pointerup', endDrag);
       container.removeEventListener('pointercancel', endDrag);
     };
-  }, [count, itemSize, scrollTarget, resetStageTilt]);
+  }, [count, itemSize, scrollTarget, resetStageTilt, pauseAutoplayTemporarily]);
+
+  const toggleAutoplay = useCallback(() => {
+    setIsAutoplayEnabled((enabled) => {
+      const next = !enabled;
+      isAutoplayPausedRef.current = false;
+
+      if (autoplayResumeTimeoutRef.current) {
+        clearTimeout(autoplayResumeTimeoutRef.current);
+        autoplayResumeTimeoutRef.current = null;
+      }
+
+      return next;
+    });
+  }, []);
 
   return (
-    <section ref={containerRef} className={styles.carousel} aria-label="Sticker carousel">
-      <div ref={stageRef} className={styles.stage} onMouseMove={handleStageMouseMove} onMouseLeave={resetStageTilt}>
-        <motion.div className={styles.track} style={{ transform: trackTransform }}>
-          {itemSize > 0 &&
-            stickers.map((sticker, index) => (
-              <StickerCarouselItem
-                key={sticker.src}
-                index={index}
-                sticker={sticker}
-                scroll={scroll}
-                count={count}
-                itemSize={itemSize}
-                onSnap={snapToIndex}
-              />
-            ))}
-        </motion.div>
-      </div>
-    </section>
+    <div className={styles.wrapper}>
+      <section ref={containerRef} className={styles.carousel} aria-label="Sticker carousel">
+        <div ref={stageRef} className={styles.stage} onMouseMove={handleStageMouseMove} onMouseLeave={resetStageTilt}>
+          <motion.div className={styles.track} style={{ transform: trackTransform }}>
+            {itemSize > 0 &&
+              stickers.map((sticker, index) => (
+                <StickerCarouselItem
+                  key={sticker.src}
+                  index={index}
+                  sticker={sticker}
+                  scroll={scroll}
+                  count={count}
+                  itemSize={itemSize}
+                  onSnap={snapToIndex}
+                />
+              ))}
+          </motion.div>
+        </div>
+      </section>
+
+      <button
+        type="button"
+        className={styles.autoplayButton}
+        onClick={toggleAutoplay}
+        aria-label={isAutoplayEnabled ? 'Pause autoplay' : 'Play autoplay'}
+        aria-pressed={isAutoplayEnabled}
+      >
+        {isAutoplayEnabled ? (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 5.5v13l11-6.5-11-6.5z" />
+          </svg>
+        )}
+      </button>
+    </div>
   );
 };
 
