@@ -1,0 +1,9 @@
+.main {
+  background: #050505;
+  opacity: 1;
+  overflow: hidden;
+
+  &:before {
+    display: none;
+  }
+}

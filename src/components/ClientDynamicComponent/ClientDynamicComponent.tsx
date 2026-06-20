@@ -12,3 +12,10 @@ export const InfiniteCanvasCSR = dynamic(
 export const FlyoutCSR = dynamic(() => import('@/components/Flyout').then((mod) => mod.Flyout), {
   ssr: false
 });
+
+export const StickerCarouselCSR = dynamic(
+  () => import('@/components/StickerCarousel').then((mod) => mod.StickerCarousel),
+  {
+    ssr: false
+  }
+);
