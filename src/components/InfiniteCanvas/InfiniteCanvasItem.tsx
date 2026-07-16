@@ -4,7 +4,7 @@ import styles from './InfiniteCanvasItem.module.scss';
 
 import React, { useCallback, useRef } from 'react';
 
-import { motion, useMotionValue, useSpring, useTransform } from 'motion/react';
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
 import type { SpringOptions } from 'motion/react';
 
 import { useImageLoad } from '@/hooks/useImageLoad';
@@ -18,10 +18,27 @@ interface Work {
   description: string;
 }
 
+export interface InfiniteCanvasItemIntro {
+  x: number;
+  y: number;
+  rotate: number;
+  scale: number;
+  delay: number;
+  opacity: number;
+  zIndex: number;
+}
+
 interface InfiniteCanvasItemProps {
   work: Work;
-  style: React.CSSProperties;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  intro?: InfiniteCanvasItemIntro;
+  /** When false, intro items stay clustered until the spread is triggered */
+  shouldSpread?: boolean;
   onClick: () => void;
+  onIntroComplete?: () => void;
 }
 
 const springValues: SpringOptions = {
@@ -33,9 +50,22 @@ const springValues: SpringOptions = {
 const ROTATE_AMPLITUDE = 14; // Maximum tilt angle in degrees
 const SCALE_ON_HOVER = 1.05;
 
-export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, style, onClick }) => {
+export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
+  work,
+  x,
+  y,
+  width,
+  height,
+  intro,
+  shouldSpread = true,
+  onClick,
+  onIntroComplete
+}) => {
   const isLoaded = useImageLoad(work.image);
   const itemRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const shouldPlayIntro = Boolean(intro) && !prefersReducedMotion;
+  const isClustered = shouldPlayIntro && !shouldSpread;
 
   const rotateX = useSpring(useMotionValue(0), springValues);
   const rotateY = useSpring(useMotionValue(0), springValues);
@@ -134,14 +164,45 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
   }, [scale, rotateX, rotateY, angle, shineOpacity]);
 
   return (
-    <div
+    <motion.div
       ref={itemRef}
       className={styles.infiniteCanvasItem}
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={style}
+      initial={
+        shouldPlayIntro && intro
+          ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
+          : { x, y, rotate: 0, scale: 1, opacity: 1 }
+      }
+      animate={
+        isClustered && intro
+          ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
+          : { x, y, rotate: 0, scale: 1, opacity: 1 }
+      }
+      transition={
+        shouldPlayIntro && intro && shouldSpread
+          ? {
+              type: 'spring',
+              stiffness: 82,
+              damping: 16,
+              mass: 0.95,
+              delay: intro.delay
+            }
+          : { duration: 0 }
+      }
+      onAnimationComplete={() => {
+        if (shouldPlayIntro && shouldSpread) {
+          onIntroComplete?.();
+        }
+      }}
+      style={{
+        width,
+        height,
+        zIndex: intro?.zIndex,
+        willChange: 'transform, opacity'
+      }}
     >
       <div
         className={styles.infiniteCanvasItemBackground}
@@ -181,6 +242,6 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({ work, st
           }}
         />
       </motion.div>
-    </div>
+    </motion.div>
   );
 };

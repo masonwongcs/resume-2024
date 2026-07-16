@@ -4,9 +4,11 @@ import styles from './InfiniteCanvas.module.scss';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useReducedMotion } from 'motion/react';
+
 import { useHomeStore, useWorkStore } from '@/store';
 
-import { InfiniteCanvasItem } from './InfiniteCanvasItem';
+import { InfiniteCanvasItem, type InfiniteCanvasItemIntro } from './InfiniteCanvasItem';
 
 interface Work {
   name: string;
@@ -28,12 +30,19 @@ interface InfiniteCanvasProps {
   works: Work[];
 }
 
+// Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
+const INTRO_SPREAD_DELAY_MS = 2000;
+const INTRO_SPREAD_RIPPLE_S = 0.42;
+const INTRO_SPREAD_SAFETY_MS = 2800;
+const INTRO_CLUSTER_ROTATION_RANGE = 32;
+
 const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
   const setIsLoaded = useHomeStore((state) => state.setIsLoaded);
+  const loaded = useHomeStore((state) => state.loaded);
 
   const outerContainerRef = useRef<HTMLDivElement>(null);
   const innerContainerRef = useRef<HTMLDivElement>(null);
@@ -47,6 +56,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const lastTouchDistance = useRef<number | null>(null);
   const isMoving = useRef(false);
   const moveTimeout = useRef<NodeJS.Timeout>(null);
+  const prefersReducedMotion = useReducedMotion();
+  const introConfigRef = useRef<Map<string, InfiniteCanvasItemIntro> | null>(null);
+  const introCompletedIdsRef = useRef<Set<string>>(new Set());
+  const [shouldSpread, setShouldSpread] = useState(false);
+  const [isIntroPlaying, setIsIntroPlaying] = useState(() => !prefersReducedMotion);
 
   const isMobile = window.innerWidth <= 480;
 
@@ -406,15 +420,164 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     setIsLoaded();
   }, []);
 
+  const getItemPosition = useCallback(
+    (item: GridItem & { x: number; y: number }) => ({
+      x: item.x * (cellWidth + gapSize) + item.offsetX,
+      y: item.y * (cellHeight + gapSize) + item.offsetY
+    }),
+    [cellWidth, cellHeight, gapSize]
+  );
+
+  const getViewportContentBounds = useCallback(
+    (viewportWidth: number, viewportHeight: number, viewportOffsetX: number, viewportOffsetY: number, viewportZoom: number) => {
+      const originOffsetX = (viewportWidth / 2) * (1 - 1 / viewportZoom);
+      const originOffsetY = (viewportHeight / 2) * (1 - 1 / viewportZoom);
+
+      return {
+        left: originOffsetX - viewportOffsetX / viewportZoom,
+        top: originOffsetY - viewportOffsetY / viewportZoom,
+        right: originOffsetX - viewportOffsetX / viewportZoom + viewportWidth / viewportZoom,
+        bottom: originOffsetY - viewportOffsetY / viewportZoom + viewportHeight / viewportZoom
+      };
+    },
+    []
+  );
+
+  const isItemInViewport = useCallback(
+    (
+      item: GridItem & { x: number; y: number },
+      bounds: ReturnType<typeof getViewportContentBounds>,
+      itemWidth: number,
+      itemHeight: number
+    ) => {
+      const pos = getItemPosition(item);
+
+      return (
+        pos.x + itemWidth > bounds.left &&
+        pos.x < bounds.right &&
+        pos.y + itemHeight > bounds.top &&
+        pos.y < bounds.bottom
+      );
+    },
+    [getItemPosition]
+  );
+
+  // Capture a one-shot clustered intro layout for viewport items only
+  if (visibleItems.length > 0 && !introConfigRef.current && !prefersReducedMotion && outerContainerRef.current) {
+    const { width, height } = outerContainerRef.current.getBoundingClientRect();
+    const viewportZoom = targetZoomRef.current;
+    const centerX = width / 2 - initialOffsetX / viewportZoom;
+    const centerY = height / 2;
+
+    const viewportBounds = getViewportContentBounds(width, height, initialOffsetX, 0, viewportZoom);
+    const viewportItems = visibleItems.filter((item) =>
+      isItemInViewport(item, viewportBounds, cellWidth, cellHeight)
+    );
+
+    const itemTargets = viewportItems.map((item) => {
+      const pos = getItemPosition(item);
+      const targetCenterX = pos.x + cellWidth / 2;
+      const targetCenterY = pos.y + cellHeight / 2;
+      const dx = targetCenterX - centerX;
+      const dy = targetCenterY - centerY;
+      return {
+        item,
+        distance: Math.hypot(dx, dy)
+      };
+    });
+
+    const maxDistance = Math.max(...itemTargets.map((target) => target.distance), 1);
+    const minStackOpacity = 0.32;
+    const clusterX = centerX - cellWidth / 2;
+    const clusterY = centerY - cellHeight / 2;
+
+    const stackEntries = itemTargets.map(({ item, distance }) => {
+      const seed = item.x * 12.9898 + item.y * 78.233 + item.id.length * 3.17;
+      const randB = seededRandom(seed + 1);
+      const randC = seededRandom(seed + 2);
+      const randD = seededRandom(seed + 3);
+      const randE = seededRandom(seed * 1.73 + 9.41);
+      const rotationMix = randD * 0.55 + randE * 0.45;
+
+      return {
+        item,
+        distance,
+        stackOrder: randC,
+        x: clusterX,
+        y: clusterY,
+        rotate: (rotationMix - 0.5) * INTRO_CLUSTER_ROTATION_RANGE,
+        scale: 1,
+        delay: 0.03 + (distance / maxDistance) * INTRO_SPREAD_RIPPLE_S + randB * 0.04
+      };
+    });
+
+    // Lower cards in the stack fade out gradually
+    stackEntries.sort((a, b) => a.stackOrder - b.stackOrder);
+
+    const configs = new Map<string, InfiniteCanvasItemIntro>();
+    stackEntries.forEach((entry, stackIndex) => {
+      const stackDepth = stackEntries.length <= 1 ? 1 : stackIndex / (stackEntries.length - 1);
+      const opacity = minStackOpacity + stackDepth * (1 - minStackOpacity);
+
+      configs.set(entry.item.id, {
+        x: entry.x,
+        y: entry.y,
+        rotate: entry.rotate,
+        scale: entry.scale,
+        delay: entry.delay,
+        opacity,
+        zIndex: stackIndex + 1
+      });
+    });
+
+    introConfigRef.current = configs.size > 0 ? configs : new Map();
+    introCompletedIdsRef.current = new Set();
+  }
+
+  const isClusterHold = Boolean(introConfigRef.current?.size) && !shouldSpread && !prefersReducedMotion;
+
+  // Hold the cluster until the interstitial finishes, then spread
+  useEffect(() => {
+    if (prefersReducedMotion) {
+      setShouldSpread(true);
+      setIsIntroPlaying(false);
+      return;
+    }
+    if (!loaded || !introConfigRef.current) return;
+    const timeout = setTimeout(() => setShouldSpread(true), INTRO_SPREAD_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [loaded, visibleItems.length, prefersReducedMotion]);
+
+  const handleIntroComplete = useCallback(
+    (itemId: string) => {
+      const total = introConfigRef.current?.size ?? 0;
+      if (total === 0 || !isIntroPlaying) return;
+
+      introCompletedIdsRef.current.add(itemId);
+      if (introCompletedIdsRef.current.size >= total) {
+        setIsIntroPlaying(false);
+      }
+    },
+    [isIntroPlaying]
+  );
+
+  // Safety timeout in case some items never fire onAnimationComplete
+  useEffect(() => {
+    if (!shouldSpread || !isIntroPlaying) return;
+    const timeout = setTimeout(() => setIsIntroPlaying(false), INTRO_SPREAD_SAFETY_MS);
+    return () => clearTimeout(timeout);
+  }, [shouldSpread, isIntroPlaying]);
+
   return (
     <div
       ref={outerContainerRef}
       className={styles.infiniteCanvas}
       data-total={visibleItems.length}
-      onMouseDown={handleMouseDown}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onMouseDown={isClusterHold ? undefined : handleMouseDown}
+      onTouchStart={isClusterHold ? undefined : handleTouchStart}
+      onTouchMove={isClusterHold ? undefined : handleTouchMove}
+      onTouchEnd={isClusterHold ? undefined : handleTouchEnd}
+      style={{ pointerEvents: isClusterHold ? 'none' : undefined }}
     >
       <div
         ref={innerContainerRef}
@@ -424,19 +587,25 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
           willChange: 'transform'
         }}
       >
-        {visibleItems.map((item) => (
-          <InfiniteCanvasItem
-            key={item.id}
-            onClick={() => handleItemClick(item.work)}
-            work={item.work}
-            style={{
-              width: `${cellWidth}px`,
-              height: `${cellHeight}px`,
-              transform: `translate3d(${item.x * (cellWidth + gapSize) + item.offsetX}px, ${item.y * (cellHeight + gapSize) + item.offsetY}px, 0)`,
-              willChange: 'transform'
-            }}
-          />
-        ))}
+        {visibleItems.map((item) => {
+          const position = getItemPosition(item);
+          const intro = introConfigRef.current?.get(item.id);
+
+          return (
+            <InfiniteCanvasItem
+              key={item.id}
+              onClick={() => handleItemClick(item.work)}
+              work={item.work}
+              x={position.x}
+              y={position.y}
+              width={cellWidth}
+              height={cellHeight}
+              intro={intro}
+              shouldSpread={shouldSpread}
+              onIntroComplete={intro ? () => handleIntroComplete(item.id) : undefined}
+            />
+          );
+        })}
       </div>
     </div>
   );
