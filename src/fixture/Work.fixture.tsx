@@ -25,7 +25,7 @@ const WORK_HISTORY = [
   },
   {
     name: 'Blonde Boudoir',
-    url: 'https://www.blondeboudoir.sg',
+    url: 'https://blonde-boudoir-hk.vercel.app',
     image: './images/work/blondeboudoir.gif',
     thumbnail: './images/work/blondeboudoir_thumbnail.jpg',
     description:
@@ -33,7 +33,7 @@ const WORK_HISTORY = [
   },
   {
     name: 'SL Edu',
-    url: 'https://www.sleducation.edu.sg',
+    url: 'https://sledu.vercel.app',
     image: './images/work/sledu.jpg',
     thumbnail: './images/work/sledu_thumbnail.jpg',
     description:
@@ -41,7 +41,7 @@ const WORK_HISTORY = [
   },
   {
     name: 'KC Tint',
-    url: 'https://www.kc-windows.com',
+    // url: 'https://www.kc-windows.com',
     image: './images/work/kctint.jpg',
     thumbnail: './images/work/kctint_thumbnail.jpg',
     description:
@@ -65,7 +65,7 @@ const WORK_HISTORY = [
   },
   {
     name: 'Liv3lynft',
-    url: 'https://liv3lynft.vercel.app',
+    // url: 'https://liv3lynft.vercel.app',
     image: './images/work/liv3lynft.png',
     thumbnail: './images/work/liv3lynft_thumbnail.jpg',
     description:
@@ -81,7 +81,7 @@ const WORK_HISTORY = [
   },
   {
     name: 'Aspirasi',
-    url: 'https://aspirasi.co',
+    // url: 'https://aspirasi.co',
     image: './images/work/aspirasi.png',
     description:
       "Crafted a compelling landing page for Aspirasi, an innovative insurance company. The design emphasizes trust, security, and accessibility, featuring clear product information and easy-to-use quote tools. Incorporated customer testimonials and a streamlined claims process overview, effectively communicating the company's commitment to customer satisfaction and financial peace of mind."
@@ -103,8 +103,9 @@ const WORK_HISTORY = [
   },
   {
     name: 'Allianz Adventure',
-    url: 'https://www.allianzadventure.com',
+    // url: 'https://www.allianzadventure.com',
     image: './images/work/allianz.png',
+    thumbnail: './images/work/allianz_thumbnail.jpg',
     description:
       'Conceptualized and built an engaging game page for Allianz, transforming complex insurance concepts into an interactive adventure. The game educates users about various insurance products through fun, scenario-based challenges. Incorporated leaderboards and shareable results to boost user engagement and viral potential, successfully increasing brand awareness and lead generation for Allianz.'
   },
@@ -180,6 +181,14 @@ const WORK_HISTORY = [
     thumbnail: './images/work/liverum.jpg',
     description:
       "Designed and developed a modern, responsive website for Liverum, creating a polished digital presence that effectively communicates the company's brand and services. Implemented clean, intuitive navigation and optimized performance to ensure fast load times and seamless user experience across all devices. The site features a contemporary design system that balances visual appeal with functional clarity, helping to establish Liverum's professional online identity and improve user engagement."
+  },
+  {
+    name: 'Progressive Performance',
+    url: 'https://www.progressiveperformance.sg',
+    image: './images/work/progressiveperformance.jpg',
+    thumbnail: './images/work/progressiveperformance_thumbnail.jpg',
+    description:
+      'Progressive Performance is a Singapore-based performance and fitness company focused on helping individuals achieve their health, strength, and athletic goals through evidence-based coaching, personalised training, and sustainable long-term development. With a results-driven approach, Progressive Performance aims to empower clients to perform at their best, whether for sport, fitness, or everyday life.'
   }
 ];
 

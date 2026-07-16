@@ -123,7 +123,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const weightedWorks = candidateWorks.map((work) => {
       const usageCount = workUsageCountRef.current.get(work.url) || 0;
       // Lower usage = higher weight, add randomness
-      const randomWeight = seededRandom(seed + work.url.length);
+      const randomWeight = seededRandom(seed + work.description.length);
       const weight = (1 / (usageCount + 1)) * (0.7 + randomWeight * 0.3);
       return { work, weight };
     });
