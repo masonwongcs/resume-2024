@@ -1,0 +1,14 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  pointer-events: none;
+  overflow: visible;
+  touch-action: none;
+}
+
+.slot {
+  position: absolute;
+  pointer-events: auto;
+  overflow: visible;
+}

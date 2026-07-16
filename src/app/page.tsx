@@ -17,11 +17,11 @@ export default function Work() {
       <Header />
       <main className={styles.main}>
         <section className="sr-only">
-          <h1>Mason Wong — UI Enthusiast &amp; Front-End Engineer</h1>
+          <h1>Mason Wong — Front-End Engineer in Singapore</h1>
           <p>
-            I&apos;m Mason Wong (masonwongcs), a front-end engineer with over {years} years of experience specializing
-            in UI and UX design for web and mobile applications, with a background as a self-taught graphic and UI
-            designer.
+            I&apos;m Mason Wong (masonwongcs), a front-end engineer based in Singapore with over {years} years of
+            experience specializing in UI and UX design for web and mobile applications, with a background as a
+            self-taught graphic and UI designer.
           </p>
           <p>
             I build interfaces with React, Next.js, TypeScript and modern web technologies, and care deeply about

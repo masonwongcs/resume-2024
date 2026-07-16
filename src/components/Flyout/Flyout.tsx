@@ -8,8 +8,8 @@ import { createPortal } from 'react-dom';
 import cx from 'classnames';
 import { useWebHaptics } from 'web-haptics/react';
 
-import { StickerCanvas } from '@/components/StickerCanvas';
-import stickerCanvasStyles from '@/components/StickerCanvas/StickerCanvas.module.scss';
+import { StickerDragLayer } from '@/components/StickerDragLayer';
+import stickerDragLayerStyles from '@/components/StickerDragLayer/StickerDragLayer.module.scss';
 import { useWorkStore } from '@/store';
 
 const formatUrl = (url?: string) => {
@@ -125,8 +125,8 @@ const Flyout: FC = () => {
           </div>
           {!!selectedWork?.stickers?.length &&
             createPortal(
-              <StickerCanvas
-                className={stickerCanvasStyles.canvas}
+              <StickerDragLayer
+                className={stickerDragLayerStyles.layer}
                 stickers={selectedWork.stickers}
                 active={isActive && !isClosing}
               />,

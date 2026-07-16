@@ -49,8 +49,8 @@ const poppins = Poppins({
 const years = calculateYearDifference('2017-01-01');
 
 const BASE_URL = 'https://masonwongcs.com';
-const title = 'Mason Wong | UI Enthusiast & Front-End Engineer';
-const description = `With over ${years} years of experience, I aim to excel in front-end development, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`;
+const title = 'Mason Wong | Front-End Engineer in Singapore';
+const description = `Front-end engineer based in Singapore with over ${years} years of experience, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`;
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title,
@@ -96,7 +96,11 @@ export const metadata: Metadata = {
     'front-end',
     'front-end developer',
     'front-end engineer',
-    'ui/ux engineer'
+    'ui/ux engineer',
+    'front-end engineer Singapore',
+    'front-end developer Singapore',
+    'ui/ux designer Singapore',
+    'web developer Singapore'
   ],
   alternates: {
     canonical: BASE_URL
@@ -107,7 +111,7 @@ export const metadata: Metadata = {
     url: BASE_URL,
     siteName: title,
     images: `${BASE_URL}/banner-og.jpg`,
-    locale: 'en_US',
+    locale: 'en_SG',
     type: 'website'
   },
   twitter: {
@@ -129,6 +133,19 @@ const personJsonLd = {
   jobTitle: 'Front-End Engineer',
   description,
   email: 'hello@masonwongcs.com',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Singapore',
+    addressCountry: 'SG'
+  },
+  homeLocation: {
+    '@type': 'Place',
+    name: 'Singapore'
+  },
+  workLocation: {
+    '@type': 'Place',
+    name: 'Singapore'
+  },
   knowsAbout: [
     'Front-End Development',
     'UI Design',
