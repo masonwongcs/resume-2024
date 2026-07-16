@@ -28,7 +28,6 @@
   }
 
   .infiniteCanvasItemInner {
-    --card-border-radius: 20px;
     --card-border-width: 0.125vw;
     --card-border-gradiet-angle: 135deg;
     position: relative;
@@ -40,10 +39,6 @@
     border-radius: var(--card-border-radius);
     border: var(--card-border-width) solid transparent;
     will-change: transform, opacity;
-
-    @media screen and (max-width: 480px) {
-      --card-border-radius: 12px;
-    }
 
     &:before {
       content: '';

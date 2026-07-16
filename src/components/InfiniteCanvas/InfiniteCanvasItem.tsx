@@ -49,6 +49,8 @@ const springValues: SpringOptions = {
 
 const ROTATE_AMPLITUDE = 14; // Maximum tilt angle in degrees
 const SCALE_ON_HOVER = 1.05;
+// Matches desktop reference (20px radius at 1440px viewport / 4.6 cell width)
+const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
 
 export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
   work,
@@ -163,6 +165,8 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
     shineOpacity.set(0);
   }, [scale, rotateX, rotateY, angle, shineOpacity]);
 
+  const cardBorderRadius = width * CARD_BORDER_RADIUS_RATIO;
+
   return (
     <motion.div
       ref={itemRef}
@@ -219,6 +223,7 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
           transformStyle: 'preserve-3d',
           width: '100%',
           height: '100%',
+          ['--card-border-radius' as string]: `${cardBorderRadius}px`,
           ['--card-border-gradiet-angle' as string]: borderGradientAngle
         }}
       >

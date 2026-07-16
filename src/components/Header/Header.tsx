@@ -40,19 +40,12 @@ const Header = () => {
     if (typeof window === 'undefined') return;
 
     const percentage = percentageRef.current;
-    const scaleDownSize = isMobile ? 10 : 30;
-    const scaleDownX = (window.innerWidth - scaleDownSize) / window.innerWidth;
-    const scaleDownY = (window.innerHeight - scaleDownSize) / window.innerHeight;
-    const scaleX = (isMobile ? scaleDownX : 0.98) + percentage * 0.05;
-    const scaleY = (isMobile ? scaleDownY : 0.98) + percentage * 0.05;
-
-    const finalScaleX = isOpen ? (scaleX > 1 ? 1 : scaleX) : 1;
-    const finalScaleY = isOpen ? (scaleY > 1 ? 1 : scaleY) : 1;
+    const padding = isMobile ? 10 : 30;
+    const inset = isOpen ? padding * (1 - percentage) : 0;
     const borderRadius = isOpen ? (1 - percentage) * 40 : 0;
 
     const root = document.documentElement.style;
-    root.setProperty('--drawer-scale-x', finalScaleX.toString());
-    root.setProperty('--drawer-scale-y', finalScaleY.toString());
+    root.setProperty('--drawer-inset', `${inset}px`);
     root.setProperty('--drawer-percentage', percentage.toString());
     root.setProperty('--drawer-border-radius', `${borderRadius}px`);
   }, [isMobile, isOpen]);
@@ -106,8 +99,7 @@ const Header = () => {
         rafRef.current = null;
       }
       const root = document.documentElement.style;
-      root.removeProperty('--drawer-scale-x');
-      root.removeProperty('--drawer-scale-y');
+      root.removeProperty('--drawer-inset');
       root.removeProperty('--drawer-percentage');
       root.removeProperty('--drawer-border-radius');
     };
