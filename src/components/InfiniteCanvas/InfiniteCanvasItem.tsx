@@ -11,7 +11,7 @@ import { useImageLoad } from '@/hooks/useImageLoad';
 
 interface Work {
   name: string;
-  url: string;
+  url?: string;
   image: string;
   video?: string;
   thumbnail?: string;

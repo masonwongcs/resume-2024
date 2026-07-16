@@ -12,7 +12,7 @@ import { InfiniteCanvasItem, type InfiniteCanvasItemIntro } from './InfiniteCanv
 
 interface Work {
   name: string;
-  url: string;
+  url?: string;
   image: string;
   video?: string;
   thumbnail?: string;
@@ -79,6 +79,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
   const generateItemId = (x: number, y: number) => `item_${x}_${y}`;
 
+  const getWorkKey = (work: Work) => work.url ?? work.name;
+
   const seededRandom = (seed: number) => {
     // Improved random function with better distribution
     const x = Math.sin(seed) * seedFactor;
@@ -98,9 +100,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         if (distance > radius) continue;
         const id = generateItemId(x + dx, y + dy);
         const item = itemsRef.current.get(id);
-        if (item && !seen.has(item.work.url)) {
+        if (item?.work && !seen.has(getWorkKey(item.work))) {
           adjacent.push(item.work);
-          seen.add(item.work.url);
+          seen.add(getWorkKey(item.work));
         }
       }
     }
@@ -111,17 +113,17 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const seed = x * seedFactor + y * seedFactor * 0.7;
 
     // Create a set of adjacent work URLs for faster lookup
-    const adjacentUrls = new Set(adjacentWorks.map((w) => w.url));
+    const adjacentKeys = new Set(adjacentWorks.map(getWorkKey));
 
     // Filter out adjacent works first
-    const availableWorks = works.filter((work) => !adjacentUrls.has(work.url));
+    const availableWorks = works.filter((work) => !adjacentKeys.has(getWorkKey(work)));
 
     // If no works are available (edge case), use all works
     const candidateWorks = availableWorks.length > 0 ? availableWorks : works;
 
     // Create a weighted selection based on usage count and randomness
     const weightedWorks = candidateWorks.map((work) => {
-      const usageCount = workUsageCountRef.current.get(work.url) || 0;
+      const usageCount = workUsageCountRef.current.get(getWorkKey(work)) || 0;
       // Lower usage = higher weight, add randomness
       const randomWeight = seededRandom(seed + work.description.length);
       const weight = (1 / (usageCount + 1)) * (0.7 + randomWeight * 0.3);
@@ -137,7 +139,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const selectedWork = weightedWorks[randomIndex]?.work || weightedWorks[0]?.work || works[0];
 
     // Update usage count
-    workUsageCountRef.current.set(selectedWork.url, (workUsageCountRef.current.get(selectedWork.url) || 0) + 1);
+    const selectedWorkKey = getWorkKey(selectedWork);
+    workUsageCountRef.current.set(
+      selectedWorkKey,
+      (workUsageCountRef.current.get(selectedWorkKey) || 0) + 1
+    );
 
     return selectedWork;
   };
@@ -429,7 +435,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   );
 
   const getViewportContentBounds = useCallback(
-    (viewportWidth: number, viewportHeight: number, viewportOffsetX: number, viewportOffsetY: number, viewportZoom: number) => {
+    (
+      viewportWidth: number,
+      viewportHeight: number,
+      viewportOffsetX: number,
+      viewportOffsetY: number,
+      viewportZoom: number
+    ) => {
       const originOffsetX = (viewportWidth / 2) * (1 - 1 / viewportZoom);
       const originOffsetY = (viewportHeight / 2) * (1 - 1 / viewportZoom);
 
@@ -470,9 +482,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     const centerY = height / 2;
 
     const viewportBounds = getViewportContentBounds(width, height, initialOffsetX, 0, viewportZoom);
-    const viewportItems = visibleItems.filter((item) =>
-      isItemInViewport(item, viewportBounds, cellWidth, cellHeight)
-    );
+    const viewportItems = visibleItems.filter((item) => isItemInViewport(item, viewportBounds, cellWidth, cellHeight));
 
     const itemTargets = viewportItems.map((item) => {
       const pos = getItemPosition(item);
