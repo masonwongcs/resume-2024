@@ -22,6 +22,8 @@ export interface StickerDragProps {
   image?: ResponsiveImageSource;
   imageWidth?: number;
   imageHeight?: number;
+  /** Static base rotation in degrees (e.g. a random scatter angle). */
+  rotation?: number;
   tilt?: number;
   tiltSmoothing?: number;
   lighting?: boolean;
@@ -49,6 +51,15 @@ function getNextZIndex(): number {
 
 const DRAG_TILT_SENSITIVITY = 3;
 const DRAG_TILT_SMOOTHING = 0.05;
+
+// Direction-aware swing: the sticker pivots around the grab point like a
+// pendulum, trailing opposite to the horizontal drag direction and swinging
+// back (slightly underdamped) when the drag slows or ends.
+const SWING_SENSITIVITY = 0.9; // deg per px/frame of horizontal velocity
+const SWING_MAX = 24; // deg
+const SWING_STIFFNESS = 200; // spring stiffness (1/s^2)
+const SWING_DAMPING = 20; // spring damping (1/s) — lower = more wobble
+const SWING_VEL_DECAY = 0.82; // decay of stale pointer velocity per frame
 const SHEEN_TILT_SHIFT = 0.05;
 const SHEEN_TILT_DEADZONE = 0.035;
 const ANIM_SPEED = 1.92;
@@ -312,6 +323,7 @@ const StickerDrag: React.FC<StickerDragProps> = ({
   image,
   imageWidth = 200,
   imageHeight = 200,
+  rotation = 0,
   tilt = 10,
   tiltSmoothing = DRAG_TILT_SMOOTHING,
   lighting = true,
@@ -396,6 +408,9 @@ const StickerDrag: React.FC<StickerDragProps> = ({
     currentTiltY: 0,
     prevTiltX: 0,
     prevTiltY: 0,
+    velX: 0,
+    swing: 0,
+    swingVel: 0,
     holoMotion: 0,
     lastMoveX: 0,
     lastMoveY: 0,
@@ -558,14 +573,37 @@ const StickerDrag: React.FC<StickerDragProps> = ({
 
         state.currentTiltX = state.dragTiltX;
         state.currentTiltY = state.dragTiltY;
-
-        const inner = innerRef.current;
-        if (inner) {
-          inner.style.transform = state.settling
-            ? `rotateX(${state.dragTiltX}deg) rotateY(${state.dragTiltY}deg)`
-            : '';
-        }
         changed = true;
+      }
+
+      // Swing spring around the grab point. Target trails opposite to the
+      // horizontal drag velocity while held, and returns to 0 on release.
+      const swingTarget = state.held
+        ? Math.max(-SWING_MAX, Math.min(SWING_MAX, -state.velX * SWING_SENSITIVITY))
+        : 0;
+      // Sub-step cap keeps the explicit Euler integration stable on dropped frames.
+      const sdt = Math.min(dt, 1 / 30);
+      const swingAccel = SWING_STIFFNESS * (swingTarget - state.swing) - SWING_DAMPING * state.swingVel;
+      state.swingVel += swingAccel * sdt;
+      state.swing += state.swingVel * sdt;
+      state.velX *= SWING_VEL_DECAY;
+
+      if (!state.held && Math.abs(state.swing) < 0.05 && Math.abs(state.swingVel) < 0.5) {
+        state.swing = 0;
+        state.swingVel = 0;
+      }
+      const swingActive = state.swing !== 0 || state.swingVel !== 0;
+
+      // Single writer for the inner transform (tilt + swing + rest rotation).
+      // Rest rotation is always applied so stickers stay scattered when idle.
+      const inner = innerRef.current;
+      if (inner) {
+        const zRotate = rotation + state.swing;
+        if (state.held || state.settling || swingActive) {
+          inner.style.transform = `rotateX(${state.dragTiltX}deg) rotateY(${state.dragTiltY}deg) rotate(${zRotate}deg)`;
+        } else {
+          inner.style.transform = zRotate !== 0 ? `rotate(${zRotate}deg)` : '';
+        }
       }
 
       const holoDecayActive = sheenMode === 'holo' && state.holoMotion > 0.005;
@@ -584,7 +622,7 @@ const StickerDrag: React.FC<StickerDragProps> = ({
         draw();
       }
 
-      if (state.held || state.peeling || state.sticking || state.settling || holoDecayActive) {
+      if (state.held || state.peeling || state.sticking || state.settling || holoDecayActive || swingActive) {
         animationRef.current = requestAnimationFrame(tick);
       } else {
         animationRef.current = null;
@@ -603,7 +641,7 @@ const StickerDrag: React.FC<StickerDragProps> = ({
         }
       }
     },
-    [draw, updateShadowCSS, sheenMode]
+    [draw, updateShadowCSS, sheenMode, rotation]
   );
 
   const ensureTickRunning = useCallback(() => {
@@ -963,6 +1001,8 @@ const StickerDrag: React.FC<StickerDragProps> = ({
       state.lastMoveY = clientY;
       state.lastMoveT = now;
 
+      state.velX = velX;
+
       const targetTiltY = Math.max(-maxTilt, Math.min(maxTilt, velX * tiltSensitivity));
       const targetTiltX = Math.max(-maxTilt, Math.min(maxTilt, -velY * tiltSensitivity));
 
@@ -980,8 +1020,8 @@ const StickerDrag: React.FC<StickerDragProps> = ({
         state.prevTiltY = state.dragTiltY;
       }
 
-      // Shadow is updated by the rAF tick, not per pointermove event.
-      inner.style.transform = `rotateX(${state.dragTiltX}deg) rotateY(${state.dragTiltY}deg)`;
+      // Transform and shadow are written by the rAF tick (single writer),
+      // not per pointermove event.
     },
     [maxTilt, tiltSensitivity, tiltSmoothing, sheenMode]
   );
@@ -1070,7 +1110,8 @@ const StickerDrag: React.FC<StickerDragProps> = ({
             width: '100%',
             height: '100%',
             transformStyle: 'preserve-3d',
-            overflow: 'visible'
+            overflow: 'visible',
+            transform: rotation !== 0 ? `rotate(${rotation}deg)` : undefined
           }}
         >
           <img

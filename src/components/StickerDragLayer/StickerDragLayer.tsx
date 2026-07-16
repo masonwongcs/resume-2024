@@ -29,6 +29,9 @@ const getStickerWidth = (vw: number, isMobile: boolean) => (isMobile ? 0.3 : 0.1
 
 const ENTRANCE_EASE: [number, number, number, number] = [0.32, 0.72, 0, 1];
 
+/** Scatter stickers so they don't all sit axis-aligned. */
+const randomRestRotation = () => (Math.random() - 0.5) * 28; // ~±14°
+
 const StickerDragLayer: FC<StickerDragLayerProps> = ({ stickers, active, className }) => {
   const [layout, setLayout] = useState({ vw: 0, vh: 0, isMobile: false });
   const [aspects, setAspects] = useState<Record<string, number>>({});
@@ -39,6 +42,7 @@ const StickerDragLayer: FC<StickerDragLayerProps> = ({ stickers, active, classNa
         ...sticker,
         duration: Math.random() * 0.3 + 0.3,
         delay: Math.random() * 0.15,
+        rotation: randomRestRotation(),
         key: `${sticker.src}-${index}`
       })),
     [stickers]
@@ -107,7 +111,12 @@ const StickerDragLayer: FC<StickerDragLayerProps> = ({ stickers, active, classNa
               ease: ENTRANCE_EASE
             }}
           >
-            <StickerDrag image={sticker.src} imageWidth={width} imageHeight={height} />
+            <StickerDrag
+              image={sticker.src}
+              imageWidth={width}
+              imageHeight={height}
+              rotation={sticker.rotation}
+            />
           </motion.div>
         );
       })}
