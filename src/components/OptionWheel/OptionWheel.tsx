@@ -6,7 +6,7 @@ import { CSSProperties, useCallback, useEffect, useLayoutEffect, useRef, useStat
 
 type Side = 'left' | 'right';
 
-interface OptionWheelProps {
+export type OptionWheelProps = {
   items: string[];
   defaultSelected?: number;
   onChange?: (index: number, item: string) => void;
@@ -25,8 +25,9 @@ interface OptionWheelProps {
   inset?: number;
   loop?: boolean;
   draggable?: boolean;
+  scrollContainerRef?: { current: HTMLElement | null };
   className?: string;
-}
+};
 
 interface WheelConfig {
   count: number;
@@ -62,8 +63,9 @@ const OptionWheel = ({
   inset = 80,
   loop = false,
   draggable = true,
+  scrollContainerRef,
   className = ''
-}: OptionWheelProps) => {
+}: OptionWheelProps): React.JSX.Element => {
   const rootRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const positionRef = useRef(defaultSelected);
@@ -174,8 +176,10 @@ const OptionWheel = ({
   );
 
   useEffect(() => {
-    const element = rootRef.current;
-    if (!element) return;
+    const elements = [rootRef.current, scrollContainerRef?.current].filter(
+      (element): element is HTMLElement => element !== null
+    );
+    if (!elements.length) return;
 
     const handleWheel = (event: WheelEvent) => {
       event.preventDefault();
@@ -187,12 +191,12 @@ const OptionWheel = ({
       wheelTimerRef.current = setTimeout(() => applyTarget(targetRef.current, true), 140);
     };
 
-    element.addEventListener('wheel', handleWheel, { passive: false });
+    elements.forEach((element) => element.addEventListener('wheel', handleWheel, { passive: false }));
     return () => {
-      element.removeEventListener('wheel', handleWheel);
+      elements.forEach((element) => element.removeEventListener('wheel', handleWheel));
       if (wheelTimerRef.current) clearTimeout(wheelTimerRef.current);
     };
-  }, [applyTarget]);
+  }, [applyTarget, scrollContainerRef]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     if (!configRef.current.draggable) return;

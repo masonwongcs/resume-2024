@@ -2,7 +2,7 @@
 
 import styles from './ReadingPortfolio.module.scss';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Image from 'next/image';
@@ -57,12 +57,10 @@ const ProjectImageSlide = ({ work, reduceMotion, priority = false }: ProjectImag
 const ReadingPortfolio = ({ works }: ReadingPortfolioProps) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
+  const visualPanelRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
-  const sortedWorks = useMemo(
-    () => [...works].sort((a, b) => a.name.localeCompare(b.name)),
-    [works]
-  );
+  const sortedWorks = useMemo(() => [...works].sort((a, b) => a.name.localeCompare(b.name)), [works]);
   const selectedWork = sortedWorks[selectedIndex] ?? sortedWorks[0];
 
   const openFlyout = (work: PortfolioWork) => {
@@ -106,16 +104,17 @@ const ReadingPortfolio = ({ works }: ReadingPortfolioProps) => {
             activeColor="var(--wheel-active)"
             fontSize={isMobile ? 1.5 : 3}
             spacing={isMobile ? 2 : 1.85}
-            tilt={isMobile ? 0 : 6}
+            tilt={0}
             blur={reduceMotion ? 0 : 2}
             fade={0.25}
             smoothing={reduceMotion ? 1 : 200}
             inset={48}
+            scrollContainerRef={visualPanelRef}
           />
         </div>
       </div>
 
-      <div className={styles.visualPanel}>
+      <div ref={visualPanelRef} className={styles.visualPanel}>
         <button
           type="button"
           className={styles.imageStage}

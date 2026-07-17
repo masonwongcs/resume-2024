@@ -1,1 +1,4 @@
-export { default as OptionWheel } from './OptionWheel';
+import OptionWheel from './OptionWheel';
+
+export { OptionWheel };
+export type { OptionWheelProps } from './OptionWheel';
