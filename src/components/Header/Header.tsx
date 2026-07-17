@@ -30,6 +30,8 @@ const Header = () => {
   // re-render Header / the expensive GlassSurface subtree on every frame.
   const percentageRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+  const pendingOpenAnimationRef = useRef(false);
+  const isOpenRef = useRef(false);
 
   const handleHamburgerHover = useCallback(() => {
     setShouldMountDrawer(true);
@@ -45,9 +47,12 @@ const Header = () => {
     const padding = isMobile ? 10 : 30;
     const inset = isOpen ? padding * (1 - percentage) : 0;
     const borderRadius = isOpen ? (1 - percentage) * 40 : 0;
+    const scaleX = (window.innerWidth - inset * 2) / window.innerWidth;
+    const scaleY = (window.innerHeight - inset * 2) / window.innerHeight;
 
     const root = document.documentElement.style;
-    root.setProperty('--drawer-inset', `${inset}px`);
+    root.setProperty('--drawer-scale-x', scaleX.toString());
+    root.setProperty('--drawer-scale-y', scaleY.toString());
     root.setProperty('--drawer-percentage', percentage.toString());
     root.setProperty('--drawer-border-radius', `${borderRadius}px`);
   }, [isMobile, isOpen]);
@@ -60,6 +65,30 @@ const Header = () => {
     if (rafRef.current != null) return;
     rafRef.current = requestAnimationFrame(writeDrawerVars);
   }, [writeDrawerVars]);
+
+  const beginDrawerOpen = useCallback(() => {
+    pendingOpenAnimationRef.current = true;
+    percentageRef.current = 1;
+    scheduleDrawerVars();
+  }, [scheduleDrawerVars]);
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open === isOpenRef.current) return;
+
+      if (open) {
+        setShouldMountDrawer(true);
+        beginDrawerOpen();
+      } else if (isMobile) {
+        setIsAnimating(true);
+      }
+
+      isOpenRef.current = open;
+      setOpen(open);
+      trigger();
+    },
+    [beginDrawerOpen, isMobile, trigger]
+  );
 
   // Check if device is mobile
   useEffect(() => {
@@ -101,19 +130,38 @@ const Header = () => {
         rafRef.current = null;
       }
       const root = document.documentElement.style;
-      root.removeProperty('--drawer-inset');
+      root.removeProperty('--drawer-scale-x');
+      root.removeProperty('--drawer-scale-y');
       root.removeProperty('--drawer-percentage');
       root.removeProperty('--drawer-border-radius');
     };
   }, [scheduleDrawerVars]);
 
   useEffect(() => {
+    isOpenRef.current = isOpen;
+
     if (isOpen) {
       document.body.classList.add('is-drawer-open');
     } else {
       document.body.classList.remove('is-drawer-open');
+      percentageRef.current = 0;
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !pendingOpenAnimationRef.current) return;
+
+    pendingOpenAnimationRef.current = false;
+    percentageRef.current = 1;
+    scheduleDrawerVars();
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        percentageRef.current = 0;
+        scheduleDrawerVars();
+      });
+    });
+  }, [isOpen, scheduleDrawerVars]);
 
   useEffect(() => {
     if (isDragging) {
@@ -136,21 +184,7 @@ const Header = () => {
       <Drawer.Root
         open={isOpen}
         onAnimationEnd={() => setIsAnimating(false)}
-        onOpenChange={() => {
-          trigger();
-        }}
-        onClose={() => {
-          if (!isAnimating || isDragging) {
-            setOpen(false);
-          }
-
-          if (isMobile) {
-            setIsAnimating(true);
-          }
-
-          percentageRef.current = 0;
-          scheduleDrawerVars();
-        }}
+        onOpenChange={handleOpenChange}
         onRelease={() => setIsDragging(false)}
         onDrag={(_, percentageDragged) => {
           percentageRef.current = percentageDragged;
@@ -182,12 +216,9 @@ const Header = () => {
             <Hamburger
               toggled={isOpen}
               toggle={(openToggle) => {
-                setShouldMountDrawer(true); // Ensure drawer is mounted before opening
-                setOpen(openToggle);
                 trigger('success');
-                if (isMobile) {
-                  setIsAnimating(true);
-                }
+                const nextOpen = typeof openToggle === 'function' ? openToggle(isOpenRef.current) : openToggle;
+                handleOpenChange(nextOpen);
               }}
               size={24}
             />

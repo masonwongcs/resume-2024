@@ -18,12 +18,30 @@
   font-weight: 400;
   font-style: normal;
   font-display: swap;
+@property --drawer-scale-x {
+  syntax: '<number>';
+  initial-value: 1;
+  inherits: true;
+}
+
+@property --drawer-scale-y {
+  syntax: '<number>';
+  initial-value: 1;
+  inherits: true;
+}
+
+@property --drawer-border-radius {
+  syntax: '<length>';
+  initial-value: 0px;
+  inherits: true;
 }
 
 :root {
   --background: #fffef0;
   --foreground: #333333;
   --material-cubic-bezier: cubic-bezier(0.4, 0, 0.2, 1);
+  --drawer-easing: cubic-bezier(0.32, 0.72, 0, 1);
+  --drawer-duration: 0.5s;
   --font-futura: 'Futura Regular';
   --font-futuraBold: 'Futura Bold';
   --font-crimson: 'Crimson Text';
@@ -54,13 +72,12 @@ body {
     opacity: 0;
     z-index: -1;
     background: #000;
-    transition: opacity 1s var(--material-cubic-bezier);
+    transition: opacity var(--drawer-duration) var(--drawer-easing);
   }
 
   &.is-drawer-open {
     &:before {
       opacity: 1;
-      transition: initial;
     }
   }
 }
