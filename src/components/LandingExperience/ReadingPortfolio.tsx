@@ -2,7 +2,7 @@
 
 import styles from './ReadingPortfolio.module.scss';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Image from 'next/image';
@@ -59,14 +59,18 @@ const ReadingPortfolio = ({ works }: ReadingPortfolioProps) => {
   const [isMobile, setIsMobile] = useState(false);
   const reduceMotion = useReducedMotion();
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
-  const selectedWork = works[selectedIndex] ?? works[0];
+  const sortedWorks = useMemo(
+    () => [...works].sort((a, b) => a.name.localeCompare(b.name)),
+    [works]
+  );
+  const selectedWork = sortedWorks[selectedIndex] ?? sortedWorks[0];
 
   const openFlyout = (work: PortfolioWork) => {
     setSelectedWork(toFlyoutWork(work));
   };
 
   const handleItemClick = (index: number) => {
-    const work = works[index];
+    const work = sortedWorks[index];
     if (!work) return;
     openFlyout(work);
   };
@@ -80,12 +84,12 @@ const ReadingPortfolio = ({ works }: ReadingPortfolioProps) => {
   }, []);
 
   useEffect(() => {
-    works.forEach((work, index) => {
+    sortedWorks.forEach((work, index) => {
       if (Math.abs(index - selectedIndex) > 2) return;
       const img = new window.Image();
       img.src = getImageSource(work);
     });
-  }, [selectedIndex, works]);
+  }, [selectedIndex, sortedWorks]);
 
   if (!selectedWork) return null;
 
@@ -94,7 +98,7 @@ const ReadingPortfolio = ({ works }: ReadingPortfolioProps) => {
       <div className={styles.wheelPanel}>
         <div className={styles.wheelFrame}>
           <OptionWheel
-            items={works.sort((a, b) => a.name.localeCompare(b.name)).map((work) => work.name)}
+            items={sortedWorks.map((work) => work.name)}
             defaultSelected={0}
             onChange={setSelectedIndex}
             onItemClick={handleItemClick}
