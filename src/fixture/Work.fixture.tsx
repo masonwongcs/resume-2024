@@ -79,13 +79,13 @@ const WORK_HISTORY = [
     description:
       'Designed and launched a dynamic landing page for Seedverse, a cutting-edge blockchain enterprise. The page effectively communicates complex blockchain concepts through engaging visuals and concise content. Incorporated interactive elements to demonstrate the potential applications of their technology, successfully attracting potential investors and partners while establishing Seedverse as a thought leader in the blockchain space.'
   },
-  {
-    name: 'Aspirasi',
-    // url: 'https://aspirasi.co',
-    image: './images/work/aspirasi.png',
-    description:
-      "Crafted a compelling landing page for Aspirasi, an innovative insurance company. The design emphasizes trust, security, and accessibility, featuring clear product information and easy-to-use quote tools. Incorporated customer testimonials and a streamlined claims process overview, effectively communicating the company's commitment to customer satisfaction and financial peace of mind."
-  },
+  // {
+  //   name: 'Aspirasi',
+  //   url: 'https://aspirasi.co',
+  //   image: './images/work/aspirasi.png',
+  //   description:
+  //     "Crafted a compelling landing page for Aspirasi, an innovative insurance company. The design emphasizes trust, security, and accessibility, featuring clear product information and easy-to-use quote tools. Incorporated customer testimonials and a streamlined claims process overview, effectively communicating the company's commitment to customer satisfaction and financial peace of mind."
+  // },
   {
     name: 'Bond Capital',
     url: 'https://bond.sg',
