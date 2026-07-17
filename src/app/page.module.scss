@@ -29,7 +29,8 @@
   &.readingMode {
     overflow: hidden;
     contain: layout paint style;
-    
+  }
+
   @media screen and (max-width: 480px) {
     transform-origin: center bottom;
   }
