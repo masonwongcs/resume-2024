@@ -1,0 +1,95 @@
+.experience {
+  --surface: #fffef0;
+  --text: #333333;
+  --muted: #74746e;
+  --wheel-text: var(--muted);
+  --wheel-active: var(--text);
+  --preview-fill: 0.55;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+  color: var(--text);
+  background: var(--surface);
+  font-family: var(--font-futura), sans-serif;
+}
+
+.wheelPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  min-width: 0;
+  padding: clamp(24px, 4vw, 48px) clamp(20px, 3vw, 40px) clamp(24px, 4vw, 48px) clamp(12px, 2vw, 24px);
+}
+
+.wheelFrame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.visualPanel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  min-width: 0;
+  padding: clamp(24px, 4vw, 48px);
+  container-type: size;
+}
+
+.imageStage {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: min(100cqw, calc(min(100cqh, calc(100dvh * var(--preview-fill))) * 16 / 9));
+  max-height: min(100cqh, calc(100dvh * var(--preview-fill)));
+  height: auto;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  //border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 4px;
+  }
+}
+
+.imageBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--surface);
+}
+
+.imageFrame {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  will-change: opacity;
+
+  img {
+    object-fit: contain;
+    pointer-events: none;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .experience {
+    grid-template-columns: 1fr;
+    min-height: 100dvh;
+  }
+
+  .visualPanel {
+    display: none;
+  }
+
+  .wheelPanel {
+    min-height: 100dvh;
+    padding: 0 4px max(24px, env(safe-area-inset-bottom, 0px)) 0;
+  }
+}

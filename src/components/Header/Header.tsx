@@ -11,7 +11,7 @@ import { useWebHaptics } from 'web-haptics/react';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
 import GlassSurface from '@/components/GlassSurface/GlassSurface';
-import { useWorkStore } from '@/store';
+import { usePortfolioViewStore, useWorkStore } from '@/store';
 
 const Header = () => {
   const { trigger } = useWebHaptics();
@@ -23,6 +23,8 @@ const Header = () => {
   const [shouldMountDrawer, setShouldMountDrawer] = useState(false);
   const setSelectedWork = useWorkStore((state) => state.setSelectedWork);
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
+  const viewMode = usePortfolioViewStore((state) => state.viewMode);
+  const setViewMode = usePortfolioViewStore((state) => state.setViewMode);
 
   // Drag progress is kept in a ref (not state) so dragging the drawer doesn't
   // re-render Header / the expensive GlassSurface subtree on every frame.
@@ -269,6 +271,33 @@ const Header = () => {
                     >
                       hello@masonwongcs.com
                     </a>
+                  </div>
+                </div>
+                <div className={cx(styles.content, styles.viewSettingContent)}>
+                  <div className={styles.viewSettingCard}>
+                    <div className={styles.viewSettingRow}>
+                      <span className={styles.viewSettingLabel}>experience mode</span>
+                      <div className={styles.viewTabPicker} role="tablist" aria-label="Experience mode">
+                        {(['canvas', 'reading'] as const).map((mode) => {
+                          const isActive = viewMode === mode;
+                          return (
+                            <button
+                              key={mode}
+                              type="button"
+                              role="tab"
+                              aria-selected={isActive}
+                              className={cx(styles.viewTab, { [styles.viewTabActive]: isActive })}
+                              onClick={() => {
+                                setViewMode(mode);
+                                trigger('success');
+                              }}
+                            >
+                              {mode === 'canvas' ? 'Canvas' : 'Reading'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

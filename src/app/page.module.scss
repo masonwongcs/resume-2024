@@ -26,6 +26,11 @@
   clip-path: inset(0 round var(--drawer-border-radius));
   overflow: hidden;
 
+  &.readingMode {
+    overflow: hidden;
+    contain: layout paint style;
+  }
+
   &:before {
     content: '';
     position: fixed;

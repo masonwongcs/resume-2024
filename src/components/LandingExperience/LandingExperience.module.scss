@@ -1,0 +1,14 @@
+.canvasView,
+.readingView {
+  min-height: 100%;
+}
+
+.canvasView {
+  position: absolute;
+  inset: 0;
+}
+
+.readingView {
+  position: relative;
+  min-height: 100dvh;
+}

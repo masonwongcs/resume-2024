@@ -1,4 +1,4 @@
-$lightGrey: #818181;
+$lightGrey: rgba(129, 129, 129, 0.4);
 
 .header {
   position: fixed;
@@ -257,5 +257,101 @@ $lightGrey: #818181;
         transform: translateX(4px);
       }
     }
+  }
+
+  .viewSettingContent {
+    padding-top: 24px;
+    padding-bottom: 4px;
+    border-bottom: 0;
+
+    @media screen and (max-width: 480px) {
+      padding-top: 14px;
+    }
+  }
+
+  .viewSettingCard {
+    padding: 14px 16px;
+    margin: 0 -8px;
+    border-radius: 16px;
+    background: rgba(0, 0, 0, 0.025);
+
+    @media screen and (max-width: 480px) {
+      padding: 12px 14px;
+      border-radius: 14px;
+    }
+  }
+
+  .viewSettingRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    width: 100%;
+  }
+
+  .viewSettingLabel {
+    color: $lightGrey;
+    font-family: var(--font-futura), sans-serif;
+    font-size: 16px;
+    letter-spacing: 0;
+    text-transform: lowercase;
+
+    @media screen and (max-width: 480px) {
+      font-size: 14px;
+    }
+  }
+
+  .viewTabPicker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-shrink: 0;
+    gap: 2px;
+    width: min(100%, 160px);
+    margin-left: auto;
+    padding: 2px;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.55);
+
+    @media screen and (max-width: 480px) {
+      width: min(100%, 140px);
+    }
+  }
+
+  .viewTab {
+    min-height: 30px;
+    padding: 6px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.38);
+    cursor: pointer;
+    font-family: var(--font-futura), sans-serif;
+    font-size: 12px;
+    font-weight: 200;
+    letter-spacing: 0;
+    text-transform: none;
+    transition:
+      color 220ms var(--material-cubic-bezier),
+      background-color 220ms var(--material-cubic-bezier);
+
+    &:focus-visible {
+      outline: 2px solid #252521;
+      outline-offset: 2px;
+    }
+
+    @media screen and (max-width: 480px) {
+      min-height: 28px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+  }
+
+  .viewTabActive {
+    background: #fff;
+    color: #000;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    font-family: var(--font-futuraBold), sans-serif;
+    font-weight: 700;
   }
 }
