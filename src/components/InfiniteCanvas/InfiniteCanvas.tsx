@@ -32,8 +32,17 @@ interface GridItem {
   offsetY: number;
 }
 
+export type PeerReturnStagger = 'legacy' | 'focus';
+
 interface InfiniteCanvasProps {
   works: Work[];
+  /**
+   * How surrounding cards stagger back in after focus closes.
+   * Defaults to `focus` on mobile, `legacy` on desktop.
+   * - `legacy` — original intro delays (distance from load-time center)
+   * - `focus` — ripple from the clicked card
+   */
+  peerReturnStagger?: PeerReturnStagger;
 }
 
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
@@ -42,6 +51,35 @@ const INTRO_SPREAD_RIPPLE_S = 0.42;
 const INTRO_SPREAD_SAFETY_MS = 2800;
 const INTRO_CLUSTER_ROTATION_RANGE = 32;
 const FOCUS_EXIT_SCALE = 0.85;
+/** Used when peerReturnStagger="focus" — inside-out ripple (near first) */
+const FOCUS_PEER_RETURN_RIPPLE_S = 0.85;
+const FOCUS_PEER_RETURN_BASE_S = 0.04;
+const FOCUS_PEER_RETURN_JITTER_S = 0.08;
+/** Soft reveal for focus copy — snappy enough to read as settled, still soft */
+const FOCUS_COPY_SPRING = {
+  type: 'spring' as const,
+  stiffness: 78,
+  damping: 20,
+  mass: 0.95
+};
+const FOCUS_COPY_REVEAL_DELAY_S = 0.01;
+const FOCUS_COPY_CONTAINER_VARIANTS = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: FOCUS_COPY_REVEAL_DELAY_S
+    }
+  }
+};
+const FOCUS_COPY_ITEM_VARIANTS = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: FOCUS_COPY_SPRING }
+};
+const FOCUS_COPY_LINK_VARIANTS = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: FOCUS_COPY_SPRING }
+};
 /** Matches .infiniteCanvasFocusDetail width — focused card scales to this */
 const FOCUS_DETAIL_MAX_WIDTH = 600;
 const FOCUS_DETAIL_MAX_WIDTH_XL = 700;
@@ -88,7 +126,7 @@ const FOCUS_MORPH_FALLBACK_MS = 520;
 /** How long after the focus card starts home before peers follow */
 const FOCUS_PEERS_RETURN_DELAY_MS = 50;
 
-const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
+const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagger }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
@@ -131,6 +169,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   );
 
   const isMobile = window.innerWidth <= 480;
+  const staggerMode = peerReturnStagger ?? (isMobile ? 'focus' : 'legacy');
+  // const staggerMode = 'focus';
 
   const gapSize = isMobile ? window.innerWidth / 8 : window.innerWidth / 24; // Size of the gap between grid items
   const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.6;
@@ -260,44 +300,56 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   };
 
   const animateOffset = useCallback(() => {
-    setOffset((prevOffset) => {
-      const newX = lerp(prevOffset.x, targetOffsetRef.current.x, lerpFactor);
-      const newY = lerp(prevOffset.y, targetOffsetRef.current.y, lerpFactor);
+    // Focus locks the camera — skip React state updates so cards aren't re-rendered at 60fps
+    // while morph / peer springs are already busy on the main thread.
+    if (!focusedIdRef.current) {
+      setOffset((prevOffset) => {
+        const newX = lerp(prevOffset.x, targetOffsetRef.current.x, lerpFactor);
+        const newY = lerp(prevOffset.y, targetOffsetRef.current.y, lerpFactor);
 
-      viewRef.current.offsetX = newX;
-      viewRef.current.offsetY = newY;
+        viewRef.current.offsetX = newX;
+        viewRef.current.offsetY = newY;
 
-      if (Math.abs(newX - targetOffsetRef.current.x) > 0.1 || Math.abs(newY - targetOffsetRef.current.y) > 0.1) {
-        isMoving.current = true;
-        if (moveTimeout.current) {
-          clearTimeout(moveTimeout.current);
+        if (Math.abs(newX - targetOffsetRef.current.x) > 0.1 || Math.abs(newY - targetOffsetRef.current.y) > 0.1) {
+          isMoving.current = true;
+          if (moveTimeout.current) {
+            clearTimeout(moveTimeout.current);
+          }
+          moveTimeout.current = setTimeout(() => {
+            isMoving.current = false;
+          }, moveTimeoutDuration);
         }
-        moveTimeout.current = setTimeout(() => {
-          isMoving.current = false;
-        }, moveTimeoutDuration); // Wait for 300ms of no movement before considering it stopped
-      }
 
-      return { x: newX, y: newY };
-    });
-
-    setZoom((prevZoom) => {
-      const newZoom = lerp(prevZoom, targetZoomRef.current, lerpFactor);
-
-      viewRef.current.zoom = newZoom;
-
-      // Also check zoom changes for movement
-      if (Math.abs(newZoom - targetZoomRef.current) > 0.001) {
-        isMoving.current = true;
-        if (moveTimeout.current) {
-          clearTimeout(moveTimeout.current);
+        // Same reference when settled — avoids continuous re-renders of every visible card
+        if (Math.abs(newX - prevOffset.x) < 0.01 && Math.abs(newY - prevOffset.y) < 0.01) {
+          return prevOffset;
         }
-        moveTimeout.current = setTimeout(() => {
-          isMoving.current = false;
-        }, moveTimeoutDuration);
-      }
 
-      return newZoom;
-    });
+        return { x: newX, y: newY };
+      });
+
+      setZoom((prevZoom) => {
+        const newZoom = lerp(prevZoom, targetZoomRef.current, lerpFactor);
+
+        viewRef.current.zoom = newZoom;
+
+        if (Math.abs(newZoom - targetZoomRef.current) > 0.001) {
+          isMoving.current = true;
+          if (moveTimeout.current) {
+            clearTimeout(moveTimeout.current);
+          }
+          moveTimeout.current = setTimeout(() => {
+            isMoving.current = false;
+          }, moveTimeoutDuration);
+        }
+
+        if (Math.abs(newZoom - prevZoom) < 0.0001) {
+          return prevZoom;
+        }
+
+        return newZoom;
+      });
+    }
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
   }, []);
@@ -371,6 +423,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   useEffect(() => {
     isIntroPlayingRef.current = isIntroPlaying;
   }, [isIntroPlaying]);
+
+  // After intro, ignore the parked cursor until the user moves again
+  useEffect(() => {
+    if (isIntroPlaying) return;
+    clearPointer();
+    resetAllProximity(true);
+  }, [isIntroPlaying, clearPointer, resetAllProximity]);
 
   const clearFocus = useCallback(() => {
     if (focusArriveTimeoutRef.current) {
@@ -1022,7 +1081,21 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
           pointerEvents: isFocused ? 'none' : undefined
         }}
       >
-        {visibleItems.map((item) => {
+        {(() => {
+          let peerReturnMaxDist = 1;
+          if (staggerMode === 'focus' && focusedId && focusSnapshot) {
+            for (const item of visibleItems) {
+              if (item.id === focusedId) continue;
+              const pos = getItemPosition(item);
+              const dist = Math.hypot(
+                pos.x + cellWidth / 2 - focusSnapshot.originCenterX,
+                pos.y + cellHeight / 2 - focusSnapshot.originCenterY
+              );
+              if (dist > peerReturnMaxDist) peerReturnMaxDist = dist;
+            }
+          }
+
+          return visibleItems.map((item) => {
           const position = getItemPosition(item);
           const intro = introConfigRef.current?.get(item.id);
 
@@ -1032,6 +1105,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
           let focusScale = 1;
           let focusOpacity = 1;
           let focusImmediate = false;
+          let focusReturnDelay = 0;
 
           if (focusedId && focusSnapshot && focusPhase) {
             if (item.id === focusedId) {
@@ -1059,13 +1133,25 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               // Push away from the clicked card, not the focus destination
               let dx = cx - focusSnapshot.originCenterX;
               let dy = cy - focusSnapshot.originCenterY;
-              const len = Math.hypot(dx, dy) || 1;
-              dx /= len;
-              dy /= len;
+              const distFromOrigin = Math.hypot(dx, dy) || 1;
+              dx /= distFromOrigin;
+              dy /= distFromOrigin;
               focusX = position.x + dx * focusSnapshot.pushDistance;
               focusY = position.y + dy * focusSnapshot.pushDistance;
               focusScale = FOCUS_EXIT_SCALE;
               focusOpacity = 0;
+              if (staggerMode === 'legacy') {
+                // Original: reuse intro spread delays
+                focusReturnDelay = introConfigRef.current?.get(item.id)?.delay ?? 0;
+              } else {
+                // Inside-out: nearest peers first — same stagger for exit + return
+                const t = Math.min(1, distFromOrigin / peerReturnMaxDist);
+                const seed = item.x * 12.9898 + item.y * 78.233 + item.id.length * 3.17;
+                focusReturnDelay =
+                  FOCUS_PEER_RETURN_BASE_S +
+                  t * FOCUS_PEER_RETURN_RIPPLE_S +
+                  seededRandom(seed + 1) * FOCUS_PEER_RETURN_JITTER_S;
+              }
             }
           }
 
@@ -1079,7 +1165,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               y={position.y}
               width={cellWidth}
               height={cellHeight}
-              intro={intro}
+              intro={isIntroPlaying || isClusterHold ? intro : undefined}
               shouldSpread={shouldSpread}
               viewRef={viewRef}
               proximityEnabled={!isIntroPlaying && !focusedId}
@@ -1089,14 +1175,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               focusScale={focusScale}
               focusOpacity={focusOpacity}
               focusImmediate={focusImmediate}
+              focusReturnDelay={focusReturnDelay}
               registerProximity={registerProximity}
               unregisterProximity={unregisterProximity}
-              onIntroComplete={intro ? handleIntroComplete : undefined}
+              onIntroComplete={intro && (isIntroPlaying || isClusterHold) ? handleIntroComplete : undefined}
               onFocusArrive={item.id === focusedId ? handleFocusArrive : undefined}
               onFocusReturnComplete={item.id === focusedId ? handleFocusReturnComplete : undefined}
             />
           );
-        })}
+          });
+        })()}
       </div>
 
       <AnimatePresence>
@@ -1107,10 +1195,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               type="button"
               className={styles.infiniteCanvasFocusClose}
               aria-label="Close"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: isFocusSettled ? 1 : 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0 } }}
-              transition={{ duration: 0.25 }}
+              initial={{ opacity: 0, scale: 0.88 }}
+              animate={{
+                opacity: isFocusSettled ? 1 : 0,
+                scale: isFocusSettled ? 1 : 0.88
+              }}
+              exit={{ opacity: 0, scale: 0.88, transition: { duration: 0 } }}
+              transition={{
+                ...FOCUS_COPY_SPRING,
+                delay: isFocusSettled ? FOCUS_COPY_REVEAL_DELAY_S : 0
+              }}
               onClick={requestClose}
               style={{ pointerEvents: isFocusSettled ? 'auto' : 'none' }}
             >
@@ -1159,18 +1253,29 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
                   {isFocusSettled ? (
                     <motion.div
                       className={styles.infiniteCanvasFocusCopy}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.04 }}
+                      initial="hidden"
+                      animate="show"
+                      variants={FOCUS_COPY_CONTAINER_VARIANTS}
                     >
-                      <h1 className={styles.infiniteCanvasFocusTitle}>{focusedWork.name}</h1>
-                      <p className={styles.infiniteCanvasFocusDescription}>{focusedWork.description}</p>
+                      <motion.h1
+                        className={styles.infiniteCanvasFocusTitle}
+                        variants={FOCUS_COPY_ITEM_VARIANTS}
+                      >
+                        {focusedWork.name}
+                      </motion.h1>
+                      <motion.p
+                        className={styles.infiniteCanvasFocusDescription}
+                        variants={FOCUS_COPY_ITEM_VARIANTS}
+                      >
+                        {focusedWork.description}
+                      </motion.p>
                       {focusedWork.url ? (
-                        <a
+                        <motion.a
                           className={styles.infiniteCanvasFocusLink}
                           href={focusedWork.url}
                           target="_blank"
                           rel="noopener noreferrer"
+                          variants={FOCUS_COPY_LINK_VARIANTS}
                         >
                           {formatUrl(focusedWork.url)}
                           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1179,7 +1284,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
                               fill="#ffffff"
                             />
                           </svg>
-                        </a>
+                        </motion.a>
                       ) : null}
                     </motion.div>
                   ) : null}

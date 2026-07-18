@@ -2,7 +2,7 @@
 
 import styles from './InfiniteCanvasItem.module.scss';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   motion,
@@ -71,6 +71,8 @@ interface InfiniteCanvasItemProps {
   focusOpacity?: number;
   /** Skip spring and jump to focus targets (handoff frames) */
   focusImmediate?: boolean;
+  /** Stagger delay (seconds) when exiting / returning from focus */
+  focusReturnDelay?: number;
   /** Register/unregister with the canvas's single proximity rAF */
   registerProximity?: (id: string, handlers: ProximityRegistration) => void;
   unregisterProximity?: (id: string) => void;
@@ -156,6 +158,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusScale = 1,
   focusOpacity = 1,
   focusImmediate = false,
+  focusReturnDelay = 0,
   registerProximity,
   unregisterProximity,
   onSelect,
@@ -178,6 +181,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const focusReturnedRef = useRef(false);
   const prevFocusModeRef = useRef(focusMode);
   const peerReturnActiveRef = useRef(false);
+  const peerReturnDelayRef = useRef(0);
+  const [peerPaintHidden, setPeerPaintHidden] = useState(false);
   const layoutRef = useRef({ x, y, width, height });
   const baseZIndex = intro?.zIndex ?? 0;
   const baseZIndexRef = useRef(baseZIndex);
@@ -360,6 +365,29 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     }
   }, [isClustered, proximityEnabled, isFocusing, resetProximity]);
 
+  // Kill hover tilt during intro / focus — cards sit under the cursor at load and were tilting early
+  useEffect(() => {
+    if (isClustered || !proximityEnabled || isFocusing) {
+      isPointerOverRef.current = false;
+      rotateX.set(0);
+      rotateY.set(0);
+      angle.set(180);
+      imageX.set(0);
+      imageY.set(0);
+      shineOpacity.set(0);
+    }
+  }, [
+    isClustered,
+    proximityEnabled,
+    isFocusing,
+    rotateX,
+    rotateY,
+    angle,
+    imageX,
+    imageY,
+    shineOpacity
+  ]);
+
   const borderGradientAngle = useTransform([rotateX, rotateY], ([rx, ry]: number[]) => {
     const tiltAngle = (Math.atan2(ry, rx) * 180) / Math.PI;
     let normalized = (tiltAngle + 135) % 360;
@@ -391,7 +419,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (isFocusing) return;
+      if (isFocusing || isClusteredRef.current || !proximityEnabledRef.current) return;
 
       const layout = layoutRef.current;
       const view = viewRef.current;
@@ -433,7 +461,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   );
 
   const handleMouseEnter = useCallback(() => {
-    if (isFocusing) return;
+    if (isFocusing || isClusteredRef.current || !proximityEnabledRef.current) return;
     isPointerOverRef.current = true;
     shineOpacity.set(1);
     zIndex.set(baseZIndexRef.current + 50);
@@ -470,7 +498,17 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     }
   }, [focusMode]);
 
+  useEffect(() => {
+    if (focusMode === 'exiting') {
+      setPeerPaintHidden(false);
+    }
+  }, [focusMode]);
+
   const cardBorderRadius = width * CARD_BORDER_RADIUS_RATIO;
+  // Capture stagger while exited so it survives the clearFocus → idle frame
+  if (focusMode === 'exiting') {
+    peerReturnDelayRef.current = focusReturnDelay;
+  }
   if (prevFocusModeRef.current === 'exiting' && focusMode === 'idle') {
     peerReturnActiveRef.current = true;
   }
@@ -496,7 +534,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   })();
 
   const transition =
-    shouldPlayIntro && intro && shouldSpread && !isFocusing
+    shouldPlayIntro && intro && shouldSpread && !isFocusing && focusMode === 'idle' && !peerReturnActiveRef.current
       ? {
           type: 'spring' as const,
           stiffness: 82,
@@ -509,7 +547,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         : focusMode === 'exiting'
           ? exitSpring
           : peerReturnActiveRef.current
-            ? peerReturnSpring
+            ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
             : focusSpring;
 
   return (
@@ -540,6 +578,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           focusReturnedRef.current = true;
           onFocusReturnComplete?.(id);
         }
+        if (focusMode === 'exiting') {
+          setPeerPaintHidden(true);
+        }
         if (peerReturnActiveRef.current && focusMode === 'idle') {
           peerReturnActiveRef.current = false;
         }
@@ -548,12 +589,18 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         width,
         height,
         zIndex,
-        willChange: 'transform, opacity',
+        // Drop compositor layers when idle — permanent willChange on every card is expensive
+        willChange:
+          focusMode !== 'idle' || peerReturnActiveRef.current ? 'transform, opacity' : undefined,
         pointerEvents:
           focusMode === 'exiting' || focusMode === 'returning' || focusOpacity < 0.01 ? 'none' : 'auto',
         cursor: focusMode === 'focused' ? 'default' : undefined,
-        // Only hide the focused morph during HTML handoff — peers must stay visible to show exit/return
-        visibility: focusMode === 'focused' && focusOpacity < 0.01 ? 'hidden' : 'visible'
+        // Hide focused morph during HTML handoff; drop exited peers from paint once faded
+        visibility:
+          (focusMode === 'focused' && focusOpacity < 0.01) ||
+          (focusMode === 'exiting' && peerPaintHidden)
+            ? 'hidden'
+            : 'visible'
       }}
     >
       <div

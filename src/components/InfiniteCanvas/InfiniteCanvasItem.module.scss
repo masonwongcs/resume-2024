@@ -5,6 +5,7 @@
   align-items: center;
   justify-content: center;
   perspective: 1000px;
+  contain: layout style;
 
   .infiniteCanvasItemBackground {
     position: absolute;
