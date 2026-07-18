@@ -148,6 +148,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const animationFrameRef = useRef<number>(null);
   const workUsageCountRef = useRef<Map<string, number>>(new Map());
   const lastTouchDistance = useRef<number | null>(null);
+  const lastPinchMidRef = useRef<{ x: number; y: number } | null>(null);
+  const isPinching = useRef(false);
+  /** True only for touch drag — mouse drag keeps wheel lerp */
+  const isTouchDrag = useRef(false);
   const isMoving = useRef(false);
   const moveTimeout = useRef<NodeJS.Timeout>(null);
   const prefersReducedMotion = useReducedMotion();
@@ -187,6 +191,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const cellHeight = (cellWidth * 3) / 5;
   const viewportPadding = 2;
   const lerpFactor = 0.15;
+  /** Touch drag + pinch share this; lower = more glide (wheel uses lerpFactor) */
+  const touchLerpFactor = 0.3;
   const seedFactor = Math.random() * 1000;
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
@@ -340,9 +346,14 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     // Focus locks the camera — freeze pose while morph / peer springs run
     if (!focusedIdRef.current) {
       const view = viewRef.current;
-      const newX = lerp(view.offsetX, targetOffsetRef.current.x, lerpFactor);
-      const newY = lerp(view.offsetY, targetOffsetRef.current.y, lerpFactor);
-      const newZoom = lerp(view.zoom, targetZoomRef.current, lerpFactor);
+      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel use lerpFactor
+      const follow =
+        isPinching.current || (isDragging.current && isTouchDrag.current)
+          ? touchLerpFactor
+          : lerpFactor;
+      const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
+      const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
+      const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
 
       const offsetMoved =
         Math.abs(newX - view.offsetX) >= 0.01 || Math.abs(newY - view.offsetY) >= 0.01;
@@ -767,6 +778,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
+      isTouchDrag.current = false;
       handleStart(e.clientX, e.clientY);
     },
     [handleStart]
@@ -863,11 +875,24 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length === 2) {
+        isDragging.current = false;
+        viewRef.current.isDragging = false;
+        isPinching.current = true;
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
-        lastTouchDistance.current = distance;
+        lastTouchDistance.current = Math.hypot(
+          touch1.clientX - touch2.clientX,
+          touch1.clientY - touch2.clientY
+        );
+        lastPinchMidRef.current = {
+          x: (touch1.clientX + touch2.clientX) / 2,
+          y: (touch1.clientY + touch2.clientY) / 2
+        };
       } else if (e.touches.length === 1) {
+        isPinching.current = false;
+        isTouchDrag.current = true;
+        lastTouchDistance.current = null;
+        lastPinchMidRef.current = null;
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     },
@@ -881,26 +906,53 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
       e.preventDefault();
       if (e.touches.length === 2) {
+        isPinching.current = true;
+        isDragging.current = false;
+        viewRef.current.isDragging = false;
+
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        const distance = Math.hypot(
+          touch1.clientX - touch2.clientX,
+          touch1.clientY - touch2.clientY
+        );
+        const midX = (touch1.clientX + touch2.clientX) / 2;
+        const midY = (touch1.clientY + touch2.clientY) / 2;
 
-        if (lastTouchDistance.current !== null) {
-          const delta = distance - lastTouchDistance.current;
-          const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * (1 + delta * 0.01)));
+        // Two-finger pan — move with the pinch midpoint
+        if (lastPinchMidRef.current) {
+          const dx = midX - lastPinchMidRef.current.x;
+          const dy = midY - lastPinchMidRef.current.y;
+          if (dx !== 0 || dy !== 0) {
+            targetOffsetRef.current = {
+              x: targetOffsetRef.current.x + dx,
+              y: targetOffsetRef.current.y + dy
+            };
+          }
+        }
+
+        // Distance-ratio zoom — tracks finger spread 1:1 (old 0.01*delta felt sluggish)
+        if (lastTouchDistance.current !== null && lastTouchDistance.current > 0) {
+          const scale = distance / lastTouchDistance.current;
+          const newZoom = Math.max(
+            minZoom,
+            Math.min(maxZoom, targetZoomRef.current * scale)
+          );
 
           if (newZoom !== targetZoomRef.current) {
             const rect = outerContainerRef.current?.getBoundingClientRect();
             if (rect) {
               const zoomPoint = {
-                x: (touch1.clientX + touch2.clientX) / 2 - rect.left - window.innerWidth / 2,
-                y: (touch1.clientY + touch2.clientY) / 2 - rect.top - window.innerHeight / 2
+                x: midX - rect.left - window.innerWidth / 2,
+                y: midY - rect.top - window.innerHeight / 2
               };
               handleZoom(zoomPoint, newZoom);
             }
           }
         }
+
         lastTouchDistance.current = distance;
+        lastPinchMidRef.current = { x: midX, y: midY };
       } else if (e.touches.length === 1) {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
@@ -908,10 +960,24 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     [handleMove, handleZoom]
   );
 
-  const handleTouchEnd = useCallback(() => {
-    lastTouchDistance.current = null;
-    handleEnd();
-  }, [handleEnd]);
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length < 2) {
+        isPinching.current = false;
+        lastTouchDistance.current = null;
+        lastPinchMidRef.current = null;
+      }
+      if (e.touches.length === 0) {
+        isTouchDrag.current = false;
+        handleEnd();
+      } else if (e.touches.length === 1) {
+        // Hand off to one-finger drag from the remaining touch
+        isTouchDrag.current = true;
+        handleStart(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    },
+    [handleEnd, handleStart]
+  );
 
   useEffect(() => {
     const outerContainer = outerContainerRef.current;
