@@ -141,6 +141,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const lastPosition = useRef({ x: 0, y: 0 });
   const targetOffsetRef = useRef({ x: 0, y: 0 });
   const targetZoomRef = useRef(1);
+  /** Last cell window committed to React — skip setState while this is unchanged */
+  const committedCellWindowRef = useRef<string | null>(null);
+  /** True after camera has synced React cull state at rest */
+  const cullSettledRef = useRef(true);
   const animationFrameRef = useRef<number>(null);
   const workUsageCountRef = useRef<Map<string, number>>(new Map());
   const lastTouchDistance = useRef<number | null>(null);
@@ -262,6 +266,33 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     return selectedWork;
   };
 
+  const getCellWindowKey = useCallback(
+    (ox: number, oy: number, z: number, width: number, height: number) => {
+      const strideX = (cellWidth + gapSize) * z;
+      const strideY = (cellHeight + gapSize) * z;
+      const startX = Math.floor((-ox + initialOffsetX) / strideX) - viewportPadding;
+      const startY = Math.floor(-oy / strideY) - viewportPadding;
+      const endX = Math.ceil((width - ox + initialOffsetX) / strideX) + viewportPadding;
+      const endY = Math.ceil((height - oy) / strideY) + viewportPadding;
+      return `${startX},${startY},${endX},${endY}`;
+    },
+    [cellWidth, cellHeight, gapSize, initialOffsetX, viewportPadding]
+  );
+
+  const applyCameraTransform = useCallback((x: number, y: number, z: number) => {
+    const el = innerContainerRef.current;
+    if (el) {
+      el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${z})`;
+    }
+  }, []);
+
+  const commitCullPose = useCallback((x: number, y: number, z: number, windowKey: string, markSettled = false) => {
+    committedCellWindowRef.current = windowKey;
+    if (markSettled) cullSettledRef.current = true;
+    setOffset({ x, y });
+    setZoom(z);
+  }, []);
+
   const visibleItems = useMemo(() => {
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
@@ -306,59 +337,66 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   };
 
   const animateOffset = useCallback(() => {
-    // Focus locks the camera — skip React state updates so cards aren't re-rendered at 60fps
-    // while morph / peer springs are already busy on the main thread.
+    // Focus locks the camera — freeze pose while morph / peer springs run
     if (!focusedIdRef.current) {
-      setOffset((prevOffset) => {
-        const newX = lerp(prevOffset.x, targetOffsetRef.current.x, lerpFactor);
-        const newY = lerp(prevOffset.y, targetOffsetRef.current.y, lerpFactor);
+      const view = viewRef.current;
+      const newX = lerp(view.offsetX, targetOffsetRef.current.x, lerpFactor);
+      const newY = lerp(view.offsetY, targetOffsetRef.current.y, lerpFactor);
+      const newZoom = lerp(view.zoom, targetZoomRef.current, lerpFactor);
 
-        viewRef.current.offsetX = newX;
-        viewRef.current.offsetY = newY;
+      const offsetMoved =
+        Math.abs(newX - view.offsetX) >= 0.01 || Math.abs(newY - view.offsetY) >= 0.01;
+      const zoomMoved = Math.abs(newZoom - view.zoom) >= 0.0001;
 
-        if (Math.abs(newX - targetOffsetRef.current.x) > 0.1 || Math.abs(newY - targetOffsetRef.current.y) > 0.1) {
+      if (offsetMoved || zoomMoved) {
+        view.offsetX = newX;
+        view.offsetY = newY;
+        view.zoom = newZoom;
+        applyCameraTransform(newX, newY, newZoom);
+
+        const awayFromTarget =
+          Math.abs(newX - targetOffsetRef.current.x) > 0.1 ||
+          Math.abs(newY - targetOffsetRef.current.y) > 0.1 ||
+          Math.abs(newZoom - targetZoomRef.current) > 0.001;
+
+        if (awayFromTarget) {
+          cullSettledRef.current = false;
           isMoving.current = true;
-          if (moveTimeout.current) {
-            clearTimeout(moveTimeout.current);
-          }
+          if (moveTimeout.current) clearTimeout(moveTimeout.current);
           moveTimeout.current = setTimeout(() => {
             isMoving.current = false;
           }, moveTimeoutDuration);
         }
 
-        // Same reference when settled — avoids continuous re-renders of every visible card
-        if (Math.abs(newX - prevOffset.x) < 0.01 && Math.abs(newY - prevOffset.y) < 0.01) {
-          return prevOffset;
-        }
+        const width = view.width || outerContainerRef.current?.clientWidth || 0;
+        const height = view.height || outerContainerRef.current?.clientHeight || 0;
+        if (width > 0 && height > 0) {
+          const windowKey = getCellWindowKey(newX, newY, newZoom, width, height);
+          const settled =
+            Math.abs(newX - targetOffsetRef.current.x) <= 0.01 &&
+            Math.abs(newY - targetOffsetRef.current.y) <= 0.01 &&
+            Math.abs(newZoom - targetZoomRef.current) <= 0.0001;
 
-        return { x: newX, y: newY };
-      });
-
-      setZoom((prevZoom) => {
-        const newZoom = lerp(prevZoom, targetZoomRef.current, lerpFactor);
-
-        viewRef.current.zoom = newZoom;
-
-        if (Math.abs(newZoom - targetZoomRef.current) > 0.001) {
-          isMoving.current = true;
-          if (moveTimeout.current) {
-            clearTimeout(moveTimeout.current);
+          // Cull React state only when the visible cell window changes, or once on settle
+          if (windowKey !== committedCellWindowRef.current || (settled && !cullSettledRef.current)) {
+            commitCullPose(newX, newY, newZoom, windowKey, settled);
           }
-          moveTimeout.current = setTimeout(() => {
-            isMoving.current = false;
-          }, moveTimeoutDuration);
         }
-
-        if (Math.abs(newZoom - prevZoom) < 0.0001) {
-          return prevZoom;
+      } else if (!cullSettledRef.current) {
+        // Snap cull state to final camera pose once motion stops
+        const width = view.width || outerContainerRef.current?.clientWidth || 0;
+        const height = view.height || outerContainerRef.current?.clientHeight || 0;
+        if (width > 0 && height > 0) {
+          const windowKey = getCellWindowKey(view.offsetX, view.offsetY, view.zoom, width, height);
+          commitCullPose(view.offsetX, view.offsetY, view.zoom, windowKey, true);
+        } else {
+          cullSettledRef.current = true;
         }
-
-        return newZoom;
-      });
+      }
     }
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
-  }, []);
+  }, [applyCameraTransform, commitCullPose, getCellWindowKey]);
 
   const syncViewBounds = useCallback(() => {
     const container = outerContainerRef.current;
@@ -373,25 +411,41 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   useEffect(() => {
     // Fallback initial offset — intro snap replaces this when the cluster captures
     if (introOriginRef.current || pendingIntroSnapRef.current) return;
-    const initial = { x: initialOffsetX, y: 0 };
-    setOffset(initial);
-    targetOffsetRef.current = { x: initialOffsetX, y: 0 };
-    viewRef.current.offsetX = initialOffsetX;
-    viewRef.current.offsetY = 0;
-  }, [initialOffsetX]);
+    const x = initialOffsetX;
+    const y = 0;
+    const z = 1;
+    targetOffsetRef.current = { x, y };
+    targetZoomRef.current = z;
+    viewRef.current.offsetX = x;
+    viewRef.current.offsetY = y;
+    viewRef.current.zoom = z;
+    applyCameraTransform(x, y, z);
+    const width = viewRef.current.width || outerContainerRef.current?.clientWidth || 0;
+    const height = viewRef.current.height || outerContainerRef.current?.clientHeight || 0;
+    const windowKey =
+      width > 0 && height > 0 ? getCellWindowKey(x, y, z, width, height) : 'initial';
+    commitCullPose(x, y, z, windowKey, true);
+  }, [initialOffsetX, applyCameraTransform, commitCullPose, getCellWindowKey]);
 
   // Apply intro camera snap once (introFlush bumps only when capture finishes)
   useLayoutEffect(() => {
     const snap = pendingIntroSnapRef.current;
     if (!snap) return;
     pendingIntroSnapRef.current = null;
+    const z = targetZoomRef.current;
     // Separate object from React state so wheel/pan can replace the target safely
     targetOffsetRef.current = { x: snap.x, y: snap.y };
     viewRef.current.offsetX = snap.x;
     viewRef.current.offsetY = snap.y;
-    setOffset({ x: snap.x, y: snap.y });
+    viewRef.current.zoom = z;
+    applyCameraTransform(snap.x, snap.y, z);
+    const width = viewRef.current.width || outerContainerRef.current?.clientWidth || 0;
+    const height = viewRef.current.height || outerContainerRef.current?.clientHeight || 0;
+    const windowKey =
+      width > 0 && height > 0 ? getCellWindowKey(snap.x, snap.y, z, width, height) : 'intro';
+    commitCullPose(snap.x, snap.y, z, windowKey, true);
     setIntroReady(true);
-  }, [introFlush]);
+  }, [introFlush, applyCameraTransform, commitCullPose, getCellWindowKey]);
 
   useEffect(() => {
     syncViewBounds();
@@ -1166,7 +1220,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         ref={innerContainerRef}
         className={styles.infiniteCanvasItemWrapper}
         style={{
-          transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`,
+          // Transform is driven by rAF via applyCameraTransform — keep out of React style
           willChange: 'transform',
           pointerEvents: isFocused ? 'none' : undefined
         }}
