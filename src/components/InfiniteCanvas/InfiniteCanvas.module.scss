@@ -9,8 +9,20 @@
     cursor: grabbing;
   }
 
+  &[data-focused='true'] {
+    cursor: default;
+
+    &:active {
+      cursor: default;
+    }
+  }
+
   @media screen and (max-width: 480px) {
     mask-image: linear-gradient(to bottom, #000 90%, transparent 100%);
+
+    &[data-focused='true'] {
+      mask-image: none;
+    }
   }
 
   .infiniteCanvasItemWrapper {
@@ -18,5 +30,171 @@
     inset: 0;
     touch-action: none;
     perspective: 1000px;
+    z-index: 2;
+  }
+
+  .infiniteCanvasFocusScrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(250, 249, 246, 0.72);
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .infiniteCanvasFocusScroll {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    pointer-events: auto;
+  }
+
+  .infiniteCanvasFocusScrollInner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding-left: 24px;
+    padding-right: 24px;
+    padding-bottom: max(160px, env(safe-area-inset-bottom, 0px) + 120px);
+    box-sizing: border-box;
+
+    @media screen and (min-width: 481px) {
+      padding-left: 0;
+      padding-right: 0;
+      padding-bottom: 80px;
+    }
+  }
+
+  .infiniteCanvasFocusDetail {
+    width: min(92vw, 600px);
+    max-width: 100%;
+    text-align: left;
+    pointer-events: auto;
+    box-sizing: border-box;
+
+    @media screen and (min-width: 1920px) {
+      width: min(92vw, 700px);
+    }
+
+    @media screen and (max-width: 480px) {
+      width: 100%;
+    }
+  }
+
+  .infiniteCanvasFocusCard {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+    overflow: hidden;
+    margin: 0 0 64px;
+    // Match canvas item chrome so the swap doesn't jump
+    box-sizing: border-box;
+    border: 0.125vw solid transparent;
+    background-color: rgba(255, 255, 255, 0.5);
+
+    @media screen and (max-width: 480px) {
+      margin: 0 0 24px;
+    }
+  }
+
+  .infiniteCanvasFocusCardImage {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    // Same crop as InfiniteCanvasItem image
+    transform: scale(1.08);
+    transform-origin: center center;
+    user-select: none;
+    -webkit-user-drag: none;
+    pointer-events: none;
+  }
+
+  .infiniteCanvasFocusCopy {
+    width: 100%;
+  }
+
+  .infiniteCanvasFocusClose {
+    cursor: pointer;
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top, 0px));
+    right: 10px;
+    z-index: 5;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #000;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: none;
+
+    img {
+      width: 24px;
+      height: 24px;
+    }
+
+    @media screen and (min-width: 481px) {
+      top: 30px;
+      right: 30px;
+    }
+  }
+
+  .infiniteCanvasFocusTitle {
+    font-size: clamp(16px, 6vw, 30px);
+    font-family: var(--font-futura), sans-serif;
+    font-weight: normal;
+    margin: 0 0 20px;
+    line-height: 1;
+    color: #000;
+    letter-spacing: 0;
+  }
+
+  .infiniteCanvasFocusDescription {
+    font-size: clamp(14px, 3vw, 16px);
+    font-family: var(--font-futura), sans-serif;
+    color: rgba(0, 0, 0, 0.75);
+    margin: 0 0 20px;
+    line-height: 1.7;
+    max-width: none;
+  }
+
+  .infiniteCanvasFocusLink {
+    font-family: var(--font-futura), sans-serif;
+    font-size: clamp(14px, 3vw, 16px);
+    line-height: 1;
+    padding: 12px 16px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    background-color: #000;
+    color: #fff;
+    text-decoration: none;
+    margin-top: 0;
+
+    @media not all and (hover: none) {
+      &:hover {
+        opacity: 1;
+
+        svg {
+          transform: translateX(4px);
+        }
+      }
+    }
+
+    svg {
+      width: 16px;
+      margin-left: 10px;
+      transition: transform 200ms var(--material-cubic-bezier);
+    }
   }
 }

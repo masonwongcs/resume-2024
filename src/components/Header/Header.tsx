@@ -11,7 +11,7 @@ import { useWebHaptics } from 'web-haptics/react';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
 import GlassSurface from '@/components/GlassSurface/GlassSurface';
-import { usePortfolioViewStore, useWorkStore } from '@/store';
+import { useHomeStore, usePortfolioViewStore, useWorkStore } from '@/store';
 
 const Header = () => {
   const { trigger } = useWebHaptics();
@@ -25,6 +25,7 @@ const Header = () => {
   const setStickerQueue = useWorkStore((state) => state.setStickerQueue);
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
   const setViewMode = usePortfolioViewStore((state) => state.setViewMode);
+  const canvasFocused = useHomeStore((state) => state.canvasFocused);
 
   // Drag progress is kept in a ref (not state) so dragging the drawer doesn't
   // re-render Header / the expensive GlassSurface subtree on every frame.
@@ -197,7 +198,7 @@ const Header = () => {
       >
         <GlassSurface
           className={cx(styles.headerWrapper, {
-            [styles.hidden]: isOpen
+            [styles.hidden]: isOpen || canvasFocused
           })}
           borderRadius={50}
           style={isDragging ? { transition: 'none' } : undefined}

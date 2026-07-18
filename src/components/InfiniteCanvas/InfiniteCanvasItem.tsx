@@ -42,6 +42,8 @@ export interface InfiniteCanvasItemIntro {
   zIndex: number;
 }
 
+export type InfiniteCanvasFocusMode = 'idle' | 'focused' | 'exiting' | 'returning';
+
 export interface ProximityRegistration {
   onFrame: ProximityFrameHandler;
   onReset: ProximityResetHandler;
@@ -61,11 +63,23 @@ interface InfiniteCanvasItemProps {
   viewRef: React.RefObject<InfiniteCanvasViewState>;
   /** Gate effects during intro / reduced-capability contexts */
   proximityEnabled?: boolean;
+  focusMode?: InfiniteCanvasFocusMode;
+  /** Content-space animation target when focusing / exiting */
+  focusX?: number;
+  focusY?: number;
+  focusScale?: number;
+  focusOpacity?: number;
+  /** Skip spring and jump to focus targets (handoff frames) */
+  focusImmediate?: boolean;
   /** Register/unregister with the canvas's single proximity rAF */
   registerProximity?: (id: string, handlers: ProximityRegistration) => void;
   unregisterProximity?: (id: string) => void;
-  onSelect: (work: Work) => void;
+  onSelect: (id: string, work: Work) => void;
   onIntroComplete?: (id: string) => void;
+  /** Fired once when the focus morph spring settles */
+  onFocusArrive?: (id: string) => void;
+  /** Fired once when the focus card has sprung back to its grid home */
+  onFocusReturnComplete?: (id: string) => void;
 }
 
 const springValues: SpringOptions = {
@@ -80,6 +94,28 @@ const proximitySpringValues: SpringOptions = {
   mass: 0.85
 };
 
+const focusSpring = {
+  type: 'spring' as const,
+  stiffness: 150,
+  damping: 22,
+  mass: 0.85
+};
+
+/** Soft spring so peers drift out / back in readably */
+const exitSpring = {
+  type: 'spring' as const,
+  stiffness: 48,
+  damping: 22,
+  mass: 1.15
+};
+
+const peerReturnSpring = {
+  type: 'spring' as const,
+  stiffness: 120,
+  damping: 22,
+  mass: 0.9
+};
+
 const ROTATE_AMPLITUDE = 8;
 const SCALE_ON_PROXIMITY = 1.1;
 const PROXIMITY_RADIUS_FACTOR = 2.1;
@@ -87,7 +123,6 @@ const MAGNET_STRENGTH = 14;
 const IMAGE_PARALLAX = 4;
 const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
 const CARD_SHADOW_SRC = '/images/shadow.webp';
-/** Extra drop below the card bottom edge (local px) */
 const SHADOW_REST_Y = 0;
 const SHADOW_REST_OPACITY = 0;
 const SHADOW_MAX_OPACITY = 0.5;
@@ -115,21 +150,34 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   shouldSpread = true,
   viewRef,
   proximityEnabled = true,
+  focusMode = 'idle',
+  focusX,
+  focusY,
+  focusScale = 1,
+  focusOpacity = 1,
+  focusImmediate = false,
   registerProximity,
   unregisterProximity,
   onSelect,
-  onIntroComplete
+  onIntroComplete,
+  onFocusArrive,
+  onFocusReturnComplete
 }) => {
   const isLoaded = useImageLoad(work.image);
   const itemRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
   const shouldPlayIntro = Boolean(intro) && !prefersReducedMotion;
   const isClustered = shouldPlayIntro && !shouldSpread;
+  const isFocusing = focusMode !== 'idle';
   const canUseProximity = useRef(false);
   const isClusteredRef = useRef(isClustered);
-  const proximityEnabledRef = useRef(proximityEnabled);
+  const proximityEnabledRef = useRef(proximityEnabled && !isFocusing);
   const proximityEngagedRef = useRef(false);
   const isPointerOverRef = useRef(false);
+  const focusArrivedRef = useRef(false);
+  const focusReturnedRef = useRef(false);
+  const prevFocusModeRef = useRef(focusMode);
+  const peerReturnActiveRef = useRef(false);
   const layoutRef = useRef({ x, y, width, height });
   const baseZIndex = intro?.zIndex ?? 0;
   const baseZIndexRef = useRef(baseZIndex);
@@ -152,7 +200,6 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const shadowOpacity = useSpring(SHADOW_REST_OPACITY, proximitySpringValues);
   const shadowScale = useSpring(SHADOW_REST_SCALE, proximitySpringValues);
 
-  // Keep border glow on the compositor-friendly opacity path (no animated box-shadow)
   const borderGlow = useTransform(proximity, (p) => String(p));
 
   useEffect(() => {
@@ -161,12 +208,14 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
 
   useEffect(() => {
     baseZIndexRef.current = baseZIndex;
-    zIndex.set(baseZIndex);
-  }, [baseZIndex, zIndex]);
+    if (!isFocusing) {
+      zIndex.set(baseZIndex);
+    }
+  }, [baseZIndex, zIndex, isFocusing]);
 
   useEffect(() => {
-    proximityEnabledRef.current = proximityEnabled;
-  }, [proximityEnabled]);
+    proximityEnabledRef.current = proximityEnabled && !isFocusing;
+  }, [proximityEnabled, isFocusing]);
 
   useEffect(() => {
     isClusteredRef.current = isClustered;
@@ -193,10 +242,38 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       if (!isPointerOverRef.current) {
         setMotion(shineOpacity, 0, immediate);
       }
-      zIndex.set(baseZIndexRef.current);
+      if (!isFocusing) {
+        zIndex.set(baseZIndexRef.current);
+      }
     },
-    [scale, magnetX, magnetY, proximity, shadowX, shadowY, shadowOpacity, shadowScale, shineOpacity, zIndex]
+    [scale, magnetX, magnetY, proximity, shadowX, shadowY, shadowOpacity, shadowScale, shineOpacity, zIndex, isFocusing]
   );
+
+  useEffect(() => {
+    if (isFocusing) {
+      resetProximity(true);
+      rotateX.set(0);
+      rotateY.set(0);
+      imageX.set(0);
+      imageY.set(0);
+      shineOpacity.set(0);
+      if (focusMode === 'focused' || focusMode === 'returning') {
+        zIndex.set(1000);
+      } else {
+        zIndex.set(0);
+      }
+    }
+  }, [
+    isFocusing,
+    focusMode,
+    resetProximity,
+    rotateX,
+    rotateY,
+    imageX,
+    imageY,
+    shineOpacity,
+    zIndex
+  ]);
 
   const onProximityFrame = useCallback<ProximityFrameHandler>(
     (px, py, view) => {
@@ -235,7 +312,6 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       magnetX.set(nextMagnetX);
       magnetY.set(nextMagnetY);
 
-      // Fake webp shadow: sits under the card, compositor-only transforms
       shadowX.set(nextMagnetX * 0.2);
       shadowY.set(SHADOW_REST_Y + nextProximity * 3);
       shadowOpacity.set(SHADOW_REST_OPACITY + nextProximity * (SHADOW_MAX_OPACITY - SHADOW_REST_OPACITY));
@@ -248,7 +324,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         angle.set((Math.atan2(dx, -dy) * 180) / Math.PI);
       }
 
-      zIndex.set(baseZIndexRef.current + Math.round(nextProximity * 40));
+      // Don't mutate z-index every frame — discrete steps reorder neighbors and look like bouncing
     },
     [
       resetProximity,
@@ -263,8 +339,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       shineOpacity,
       shineX,
       shineY,
-      angle,
-      zIndex
+      angle
     ]
   );
 
@@ -280,10 +355,10 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   }, [id, registerProximity, unregisterProximity, onProximityFrame, resetProximity]);
 
   useEffect(() => {
-    if ((isClustered || !proximityEnabled) && proximityEngagedRef.current) {
+    if ((isClustered || !proximityEnabled || isFocusing) && proximityEngagedRef.current) {
       resetProximity(true);
     }
-  }, [isClustered, proximityEnabled, resetProximity]);
+  }, [isClustered, proximityEnabled, isFocusing, resetProximity]);
 
   const borderGradientAngle = useTransform([rotateX, rotateY], ([rx, ry]: number[]) => {
     const tiltAngle = (Math.atan2(ry, rx) * 180) / Math.PI;
@@ -316,6 +391,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      if (isFocusing) return;
+
       const layout = layoutRef.current;
       const view = viewRef.current;
       let screenW = layout.width;
@@ -352,13 +429,15 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       imageX.set((offsetX / halfW) * -IMAGE_PARALLAX);
       imageY.set((offsetY / halfH) * -IMAGE_PARALLAX);
     },
-    [rotateX, rotateY, angle, shineX, shineY, imageX, imageY, viewRef]
+    [rotateX, rotateY, angle, shineX, shineY, imageX, imageY, viewRef, isFocusing]
   );
 
   const handleMouseEnter = useCallback(() => {
+    if (isFocusing) return;
     isPointerOverRef.current = true;
     shineOpacity.set(1);
-  }, [shineOpacity]);
+    zIndex.set(baseZIndexRef.current + 50);
+  }, [shineOpacity, isFocusing, zIndex]);
 
   const handleMouseLeave = useCallback(() => {
     isPointerOverRef.current = false;
@@ -368,18 +447,76 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     imageX.set(0);
     imageY.set(0);
     shineOpacity.set(proximity.get() * 0.55);
-  }, [rotateX, rotateY, angle, imageX, imageY, shineOpacity, proximity]);
+    if (!isFocusing) {
+      zIndex.set(baseZIndexRef.current);
+    }
+  }, [rotateX, rotateY, angle, imageX, imageY, shineOpacity, proximity, zIndex, isFocusing]);
 
-  const handleClick = useCallback(() => {
-    onSelect(work);
-  }, [onSelect, work]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (focusMode === 'focused' || focusMode === 'exiting' || focusMode === 'returning') return;
+      onSelect(id, work);
+    },
+    [onSelect, id, work, focusMode]
+  );
+
+  useEffect(() => {
+    if (focusMode !== 'focused') {
+      focusArrivedRef.current = false;
+    }
+    if (focusMode !== 'returning') {
+      focusReturnedRef.current = false;
+    }
+  }, [focusMode]);
 
   const cardBorderRadius = width * CARD_BORDER_RADIUS_RATIO;
+  if (prevFocusModeRef.current === 'exiting' && focusMode === 'idle') {
+    peerReturnActiveRef.current = true;
+  }
+  if (focusMode === 'exiting' || focusMode === 'focused' || focusMode === 'returning') {
+    peerReturnActiveRef.current = false;
+  }
+  prevFocusModeRef.current = focusMode;
+
+  const animateState = (() => {
+    if (isClustered && intro) {
+      return { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity };
+    }
+    if (isFocusing) {
+      return {
+        x: focusX ?? x,
+        y: focusY ?? y,
+        rotate: 0,
+        scale: focusScale,
+        opacity: focusOpacity
+      };
+    }
+    return { x, y, rotate: 0, scale: 1, opacity: 1 };
+  })();
+
+  const transition =
+    shouldPlayIntro && intro && shouldSpread && !isFocusing
+      ? {
+          type: 'spring' as const,
+          stiffness: 82,
+          damping: 16,
+          mass: 0.95,
+          delay: intro.delay
+        }
+      : focusImmediate
+        ? { duration: 0 }
+        : focusMode === 'exiting'
+          ? exitSpring
+          : peerReturnActiveRef.current
+            ? peerReturnSpring
+            : focusSpring;
 
   return (
     <motion.div
       ref={itemRef}
       className={styles.infiniteCanvasItem}
+      data-focus={focusMode}
       onClick={handleClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
@@ -389,32 +526,34 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
           : { x, y, rotate: 0, scale: 1, opacity: 1 }
       }
-      animate={
-        isClustered && intro
-          ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
-          : { x, y, rotate: 0, scale: 1, opacity: 1 }
-      }
-      transition={
-        shouldPlayIntro && intro && shouldSpread
-          ? {
-              type: 'spring',
-              stiffness: 82,
-              damping: 16,
-              mass: 0.95,
-              delay: intro.delay
-            }
-          : { duration: 0 }
-      }
+      animate={animateState}
+      transition={transition}
       onAnimationComplete={() => {
-        if (shouldPlayIntro && shouldSpread) {
+        if (shouldPlayIntro && shouldSpread && !isFocusing) {
           onIntroComplete?.(id);
+        }
+        if (focusMode === 'focused' && focusOpacity > 0.99 && !focusArrivedRef.current) {
+          focusArrivedRef.current = true;
+          onFocusArrive?.(id);
+        }
+        if (focusMode === 'returning' && !focusReturnedRef.current) {
+          focusReturnedRef.current = true;
+          onFocusReturnComplete?.(id);
+        }
+        if (peerReturnActiveRef.current && focusMode === 'idle') {
+          peerReturnActiveRef.current = false;
         }
       }}
       style={{
         width,
         height,
         zIndex,
-        willChange: 'transform, opacity'
+        willChange: 'transform, opacity',
+        pointerEvents:
+          focusMode === 'exiting' || focusMode === 'returning' || focusOpacity < 0.01 ? 'none' : 'auto',
+        cursor: focusMode === 'focused' ? 'default' : undefined,
+        // Only hide the focused morph during HTML handoff — peers must stay visible to show exit/return
+        visibility: focusMode === 'focused' && focusOpacity < 0.01 ? 'hidden' : 'visible'
       }}
     >
       <div
@@ -443,7 +582,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           y: magnetY,
           rotateX,
           rotateY,
-          scale,
+          scale: isFocusing ? 1 : scale,
           transformStyle: 'preserve-3d',
           width: '100%',
           height: '100%',
