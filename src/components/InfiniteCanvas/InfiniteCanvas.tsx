@@ -66,8 +66,12 @@ const getFocusDetailWidth = (viewportWidth: number) => {
 };
 
 interface FocusSnapshot {
+  /** Morph destination (focus layout position) in content space */
   contentCenterX: number;
   contentCenterY: number;
+  /** Clicked card center — peers spread from / return toward this point */
+  originCenterX: number;
+  originCenterY: number;
   pushDistance: number;
   /** Scale so on-screen card width matches the detail text column */
   cardScale: number;
@@ -507,6 +511,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       const view = viewRef.current;
       if (view.width <= 0 || view.height <= 0) return;
 
+      const gridMatch = /^item_(-?\d+)_(-?\d+)$/.exec(id);
+      if (!gridMatch) return;
+      const gridX = Number(gridMatch[1]);
+      const gridY = Number(gridMatch[2]);
+      const stored = itemsRef.current.get(id);
+      const originX = gridX * (cellWidth + gapSize) + (stored?.offsetX ?? 0);
+      const originY = gridY * (cellHeight + gapSize) + (stored?.offsetY ?? 0);
+      const originCenterX = originX + cellWidth / 2;
+      const originCenterY = originY + cellHeight / 2;
+
       const detailWidth = getFocusDetailWidth(view.width);
       // screenWidth = cellWidth * zoom * cardScale → match detail column
       const cardScale = detailWidth / (cellWidth * view.zoom);
@@ -525,6 +539,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       setFocusSnapshot({
         contentCenterX,
         contentCenterY,
+        originCenterX,
+        originCenterY,
         pushDistance,
         cardScale,
         detailWidth,
@@ -545,7 +561,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
         handleFocusArrive(id);
       }, FOCUS_MORPH_FALLBACK_MS);
     },
-    [cellWidth, cellHeight, clearPointer, resetAllProximity, setCanvasFocused, handleFocusArrive]
+    [cellWidth, cellHeight, gapSize, clearPointer, resetAllProximity, setCanvasFocused, handleFocusArrive]
   );
 
   useEffect(() => {
@@ -1040,8 +1056,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               focusMode = 'exiting';
               const cx = position.x + cellWidth / 2;
               const cy = position.y + cellHeight / 2;
-              let dx = cx - focusSnapshot.contentCenterX;
-              let dy = cy - focusSnapshot.contentCenterY;
+              // Push away from the clicked card, not the focus destination
+              let dx = cx - focusSnapshot.originCenterX;
+              let dy = cy - focusSnapshot.originCenterY;
               const len = Math.hypot(dx, dy) || 1;
               dx /= len;
               dy /= len;
