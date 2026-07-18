@@ -2,12 +2,26 @@
 
 import styles from './InfiniteCanvasItem.module.scss';
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'motion/react';
-import type { SpringOptions } from 'motion/react';
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useSpring,
+  useTransform,
+  type MotionValue,
+  type SpringOptions
+} from 'motion/react';
 
 import { useImageLoad } from '@/hooks/useImageLoad';
+
+import {
+  contentToClient,
+  type InfiniteCanvasViewState,
+  type ProximityFrameHandler,
+  type ProximityResetHandler
+} from './canvasView';
 
 interface Work {
   name: string;
@@ -28,7 +42,13 @@ export interface InfiniteCanvasItemIntro {
   zIndex: number;
 }
 
+export interface ProximityRegistration {
+  onFrame: ProximityFrameHandler;
+  onReset: ProximityResetHandler;
+}
+
 interface InfiniteCanvasItemProps {
+  id: string;
   work: Work;
   x: number;
   y: number;
@@ -37,8 +57,15 @@ interface InfiniteCanvasItemProps {
   intro?: InfiniteCanvasItemIntro;
   /** When false, intro items stay clustered until the spread is triggered */
   shouldSpread?: boolean;
-  onClick: () => void;
-  onIntroComplete?: () => void;
+  /** Live canvas transform — read from refs, never triggers React renders */
+  viewRef: React.RefObject<InfiniteCanvasViewState>;
+  /** Gate effects during intro / reduced-capability contexts */
+  proximityEnabled?: boolean;
+  /** Register/unregister with the canvas's single proximity rAF */
+  registerProximity?: (id: string, handlers: ProximityRegistration) => void;
+  unregisterProximity?: (id: string) => void;
+  onSelect: (work: Work) => void;
+  onIntroComplete?: (id: string) => void;
 }
 
 const springValues: SpringOptions = {
@@ -47,12 +74,38 @@ const springValues: SpringOptions = {
   mass: 2
 };
 
-const ROTATE_AMPLITUDE = 14; // Maximum tilt angle in degrees
-const SCALE_ON_HOVER = 1.05;
-// Matches desktop reference (20px radius at 1440px viewport / 4.6 cell width)
-const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
+const proximitySpringValues: SpringOptions = {
+  damping: 26,
+  stiffness: 200,
+  mass: 0.85
+};
 
-export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
+const ROTATE_AMPLITUDE = 8;
+const SCALE_ON_PROXIMITY = 1.1;
+const PROXIMITY_RADIUS_FACTOR = 2.1;
+const MAGNET_STRENGTH = 14;
+const IMAGE_PARALLAX = 4;
+const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
+const CARD_SHADOW_SRC = '/images/shadow.webp';
+/** Extra drop below the card bottom edge (local px) */
+const SHADOW_REST_Y = 0;
+const SHADOW_REST_OPACITY = 0;
+const SHADOW_MAX_OPACITY = 0.5;
+const SHADOW_REST_SCALE = 0.96;
+const SHADOW_MAX_SCALE = 1.03;
+
+const smoothstep = (t: number) => t * t * (3 - 2 * t);
+
+const setMotion = (value: MotionValue<number>, next: number, immediate?: boolean) => {
+  if (immediate && typeof (value as MotionValue<number> & { jump?: (v: number) => void }).jump === 'function') {
+    (value as MotionValue<number> & { jump: (v: number) => void }).jump(next);
+    return;
+  }
+  value.set(next);
+};
+
+const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
+  id,
   work,
   x,
   y,
@@ -60,7 +113,11 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
   height,
   intro,
   shouldSpread = true,
-  onClick,
+  viewRef,
+  proximityEnabled = true,
+  registerProximity,
+  unregisterProximity,
+  onSelect,
   onIntroComplete
 }) => {
   const isLoaded = useImageLoad(work.image);
@@ -68,102 +125,254 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
   const prefersReducedMotion = useReducedMotion();
   const shouldPlayIntro = Boolean(intro) && !prefersReducedMotion;
   const isClustered = shouldPlayIntro && !shouldSpread;
+  const canUseProximity = useRef(false);
+  const isClusteredRef = useRef(isClustered);
+  const proximityEnabledRef = useRef(proximityEnabled);
+  const proximityEngagedRef = useRef(false);
+  const isPointerOverRef = useRef(false);
+  const layoutRef = useRef({ x, y, width, height });
+  const baseZIndex = intro?.zIndex ?? 0;
+  const baseZIndexRef = useRef(baseZIndex);
 
   const rotateX = useSpring(useMotionValue(0), springValues);
   const rotateY = useSpring(useMotionValue(0), springValues);
-  const scale = useSpring(1, springValues);
+  const scale = useSpring(1, proximitySpringValues);
+  const magnetX = useSpring(0, proximitySpringValues);
+  const magnetY = useSpring(0, proximitySpringValues);
+  const proximity = useSpring(0, proximitySpringValues);
+  const zIndex = useMotionValue(baseZIndex);
   const shineX = useSpring(50, springValues);
   const shineY = useSpring(50, springValues);
-  const shineOpacity = useSpring(useMotionValue(0), springValues);
-  const angle = useSpring(useMotionValue(180), springValues); // Initial angle for tilt.js style (180deg = default glare position)
+  const shineOpacity = useSpring(0, springValues);
+  const angle = useSpring(useMotionValue(180), springValues);
+  const imageX = useSpring(0, springValues);
+  const imageY = useSpring(0, springValues);
+  const shadowX = useSpring(0, proximitySpringValues);
+  const shadowY = useSpring(SHADOW_REST_Y, proximitySpringValues);
+  const shadowOpacity = useSpring(SHADOW_REST_OPACITY, proximitySpringValues);
+  const shadowScale = useSpring(SHADOW_REST_SCALE, proximitySpringValues);
 
-  // Calculate border gradient angle based on card tilt
-  // The angle follows the direction of the tilt for a more realistic effect
+  // Keep border glow on the compositor-friendly opacity path (no animated box-shadow)
+  const borderGlow = useTransform(proximity, (p) => String(p));
+
+  useEffect(() => {
+    layoutRef.current = { x, y, width, height };
+  }, [x, y, width, height]);
+
+  useEffect(() => {
+    baseZIndexRef.current = baseZIndex;
+    zIndex.set(baseZIndex);
+  }, [baseZIndex, zIndex]);
+
+  useEffect(() => {
+    proximityEnabledRef.current = proximityEnabled;
+  }, [proximityEnabled]);
+
+  useEffect(() => {
+    isClusteredRef.current = isClustered;
+  }, [isClustered]);
+
+  useEffect(() => {
+    canUseProximity.current =
+      !prefersReducedMotion &&
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }, [prefersReducedMotion]);
+
+  const resetProximity = useCallback(
+    (immediate?: boolean) => {
+      proximityEngagedRef.current = false;
+      setMotion(scale, 1, immediate);
+      setMotion(magnetX, 0, immediate);
+      setMotion(magnetY, 0, immediate);
+      setMotion(proximity, 0, immediate);
+      setMotion(shadowX, 0, immediate);
+      setMotion(shadowY, SHADOW_REST_Y, immediate);
+      setMotion(shadowOpacity, SHADOW_REST_OPACITY, immediate);
+      setMotion(shadowScale, SHADOW_REST_SCALE, immediate);
+      if (!isPointerOverRef.current) {
+        setMotion(shineOpacity, 0, immediate);
+      }
+      zIndex.set(baseZIndexRef.current);
+    },
+    [scale, magnetX, magnetY, proximity, shadowX, shadowY, shadowOpacity, shadowScale, shineOpacity, zIndex]
+  );
+
+  const onProximityFrame = useCallback<ProximityFrameHandler>(
+    (px, py, view) => {
+      if (!canUseProximity.current || isClusteredRef.current || !proximityEnabledRef.current) {
+        return;
+      }
+
+      const { x: contentX, y: contentY, width: w, height: h } = layoutRef.current;
+      const center = contentToClient(contentX + w / 2, contentY + h / 2, view);
+      const screenW = w * view.zoom;
+      const screenH = h * view.zoom;
+
+      const dx = px - center.x;
+      const dy = py - center.y;
+      const distance = Math.hypot(dx, dy);
+      const radius = (Math.max(screenW, screenH) / 2) * PROXIMITY_RADIUS_FACTOR;
+      const nextProximity = smoothstep(Math.max(0, 1 - distance / radius));
+
+      if (nextProximity <= 0 && !proximityEngagedRef.current) {
+        return;
+      }
+
+      if (nextProximity <= 0) {
+        resetProximity();
+        return;
+      }
+
+      proximityEngagedRef.current = true;
+      proximity.set(nextProximity);
+      scale.set(1 + nextProximity * (SCALE_ON_PROXIMITY - 1));
+
+      const pull = nextProximity * MAGNET_STRENGTH;
+      const angleToPointer = Math.atan2(dy, dx || 1);
+      const nextMagnetX = Math.cos(angleToPointer) * pull;
+      const nextMagnetY = Math.sin(angleToPointer) * pull;
+      magnetX.set(nextMagnetX);
+      magnetY.set(nextMagnetY);
+
+      // Fake webp shadow: sits under the card, compositor-only transforms
+      shadowX.set(nextMagnetX * 0.2);
+      shadowY.set(SHADOW_REST_Y + nextProximity * 3);
+      shadowOpacity.set(SHADOW_REST_OPACITY + nextProximity * (SHADOW_MAX_OPACITY - SHADOW_REST_OPACITY));
+      shadowScale.set(SHADOW_REST_SCALE + nextProximity * (SHADOW_MAX_SCALE - SHADOW_REST_SCALE));
+
+      if (!isPointerOverRef.current) {
+        shineOpacity.set(nextProximity * 0.55);
+        shineX.set(50 + (dx / (screenW / 2 || 1)) * 28);
+        shineY.set(50 + (dy / (screenH / 2 || 1)) * 28);
+        angle.set((Math.atan2(dx, -dy) * 180) / Math.PI);
+      }
+
+      zIndex.set(baseZIndexRef.current + Math.round(nextProximity * 40));
+    },
+    [
+      resetProximity,
+      proximity,
+      scale,
+      magnetX,
+      magnetY,
+      shadowX,
+      shadowY,
+      shadowOpacity,
+      shadowScale,
+      shineOpacity,
+      shineX,
+      shineY,
+      angle,
+      zIndex
+    ]
+  );
+
+  useEffect(() => {
+    if (!registerProximity || !unregisterProximity) return;
+
+    registerProximity(id, {
+      onFrame: onProximityFrame,
+      onReset: resetProximity
+    });
+
+    return () => unregisterProximity(id);
+  }, [id, registerProximity, unregisterProximity, onProximityFrame, resetProximity]);
+
+  useEffect(() => {
+    if ((isClustered || !proximityEnabled) && proximityEngagedRef.current) {
+      resetProximity(true);
+    }
+  }, [isClustered, proximityEnabled, resetProximity]);
+
   const borderGradientAngle = useTransform([rotateX, rotateY], ([rx, ry]: number[]) => {
-    // Calculate angle from rotation values (in degrees)
-    // atan2 gives us the direction of the tilt
-    const angle = (Math.atan2(ry, rx) * 180) / Math.PI;
-    // Offset by 135deg (the base angle) and normalize to 0-360
-    let normalized = (angle + 135) % 360;
+    const tiltAngle = (Math.atan2(ry, rx) * 180) / Math.PI;
+    let normalized = (tiltAngle + 135) % 360;
     if (normalized < 0) normalized += 360;
     return `${normalized}deg`;
   });
 
-  // Calculate shine position with perspective distortion based on card rotation
-  const shineBackground = useTransform([shineX, shineY, rotateX, rotateY], ([x, y, rx, ry]: number[]) => {
-    // Convert rotation to radians
+  const shineBackground = useTransform([shineX, shineY, rotateX, rotateY], ([sx, sy, rx, ry]: number[]) => {
     const rotXRad = (rx * Math.PI) / 180;
     const rotYRad = (ry * Math.PI) / 180;
 
-    // Adjust shine position based on rotation (perspective effect)
-    // When card tilts, the shine should shift to account for the 3D perspective
-    const adjustedX = x + Math.sin(rotYRad) * 10;
-    const adjustedY = y + Math.sin(rotXRad) * 10;
+    const adjustedX = sx + Math.sin(rotYRad) * 10;
+    const adjustedY = sy + Math.sin(rotXRad) * 10;
 
-    // Calculate tilt intensity based on absolute rotation angles
-    // Use the magnitude of rotation to determine how much the surface faces away from light
     const absRotX = Math.abs(rx);
     const absRotY = Math.abs(ry);
     const maxRotation = Math.max(absRotX, absRotY);
-    // Map rotation (0-14 degrees) to intensity (1.0 to 0.4) for dramatic variation
-    // Normalize to 0-1 range, then invert and scale
     const normalizedTilt = maxRotation / ROTATE_AMPLITUDE;
-    const intensity = 1.0 - normalizedTilt * 0.6; // Range from 1.0 (flat) to 0.4 (max tilt)
+    const intensity = 1.0 - normalizedTilt * 0.6;
 
-    // Make gradient elliptical when tilted (more realistic)
-    // Make the base size larger (150%) so it extends beyond card edges
     const baseSize = 150;
     const scaleX = baseSize * (1 + Math.abs(Math.sin(rotYRad)) * 0.3);
     const scaleY = baseSize * (1 + Math.abs(Math.sin(rotXRad)) * 0.3);
 
-    return `radial-gradient(ellipse ${scaleX}% ${scaleY}% at ${adjustedX}% ${adjustedY}%, rgba(255, 255, 255, ${0.1 * intensity}), transparent 70%)`;
+    return `radial-gradient(ellipse ${scaleX}% ${scaleY}% at ${adjustedX}% ${adjustedY}%, rgba(255, 255, 255, ${0.14 * intensity}), transparent 70%)`;
   });
 
-  // Calculate shine rotation based on tilt.js angle
   const shineRotation = useTransform(angle, (a: number) => `${a}deg`);
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!itemRef.current) return;
+      const layout = layoutRef.current;
+      const view = viewRef.current;
+      let screenW = layout.width;
+      let screenH = layout.height;
+      let centerX: number;
+      let centerY: number;
 
-      const rect = itemRef.current.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left - rect.width / 2;
-      const offsetY = e.clientY - rect.top - rect.height / 2;
+      if (view && view.width > 0) {
+        const center = contentToClient(layout.x + layout.width / 2, layout.y + layout.height / 2, view);
+        centerX = center.x;
+        centerY = center.y;
+        screenW = layout.width * view.zoom;
+        screenH = layout.height * view.zoom;
+      } else if (itemRef.current) {
+        const rect = itemRef.current.getBoundingClientRect();
+        centerX = rect.left + rect.width / 2;
+        centerY = rect.top + rect.height / 2;
+        screenW = rect.width;
+        screenH = rect.height;
+      } else {
+        return;
+      }
 
-      const rotationX = (offsetY / (rect.height / 2)) * -ROTATE_AMPLITUDE;
-      const rotationY = (offsetX / (rect.width / 2)) * ROTATE_AMPLITUDE;
+      const offsetX = e.clientX - centerX;
+      const offsetY = e.clientY - centerY;
+      const halfW = screenW / 2 || 1;
+      const halfH = screenH / 2 || 1;
 
-      // Calculate shine position as percentage (0-100)
-      const shineXPercent = ((e.clientX - rect.left) / rect.width) * 100;
-      const shineYPercent = ((e.clientY - rect.top) / rect.height) * 100;
-
-      // Calculate angle for glare/shine rotation - tilt.js style
-      // angle = atan2(x - centerX, -(y - centerY)) * (180/Math.PI)
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const calculatedAngle = (Math.atan2(e.clientX - centerX, -(e.clientY - centerY)) * 180) / Math.PI;
-
-      rotateX.set(rotationX);
-      rotateY.set(rotationY);
-      angle.set(calculatedAngle);
-      shineX.set(shineXPercent);
-      shineY.set(shineYPercent);
+      rotateX.set((offsetY / halfH) * -ROTATE_AMPLITUDE);
+      rotateY.set((offsetX / halfW) * ROTATE_AMPLITUDE);
+      angle.set((Math.atan2(e.clientX - centerX, -(e.clientY - centerY)) * 180) / Math.PI);
+      shineX.set(((e.clientX - (centerX - halfW)) / screenW) * 100);
+      shineY.set(((e.clientY - (centerY - halfH)) / screenH) * 100);
+      imageX.set((offsetX / halfW) * -IMAGE_PARALLAX);
+      imageY.set((offsetY / halfH) * -IMAGE_PARALLAX);
     },
-    [rotateX, rotateY, angle, shineX, shineY]
+    [rotateX, rotateY, angle, shineX, shineY, imageX, imageY, viewRef]
   );
 
   const handleMouseEnter = useCallback(() => {
-    scale.set(SCALE_ON_HOVER);
+    isPointerOverRef.current = true;
     shineOpacity.set(1);
-  }, [scale, shineOpacity]);
+  }, [shineOpacity]);
 
   const handleMouseLeave = useCallback(() => {
-    scale.set(1);
+    isPointerOverRef.current = false;
     rotateX.set(0);
     rotateY.set(0);
-    angle.set(180); // Reset to default angle (tilt.js style)
-    shineOpacity.set(0);
-  }, [scale, rotateX, rotateY, angle, shineOpacity]);
+    angle.set(180);
+    imageX.set(0);
+    imageY.set(0);
+    shineOpacity.set(proximity.get() * 0.55);
+  }, [rotateX, rotateY, angle, imageX, imageY, shineOpacity, proximity]);
+
+  const handleClick = useCallback(() => {
+    onSelect(work);
+  }, [onSelect, work]);
 
   const cardBorderRadius = width * CARD_BORDER_RADIUS_RATIO;
 
@@ -171,7 +380,7 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
     <motion.div
       ref={itemRef}
       className={styles.infiniteCanvasItem}
-      onClick={onClick}
+      onClick={handleClick}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -198,13 +407,13 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
       }
       onAnimationComplete={() => {
         if (shouldPlayIntro && shouldSpread) {
-          onIntroComplete?.();
+          onIntroComplete?.(id);
         }
       }}
       style={{
         width,
         height,
-        zIndex: intro?.zIndex,
+        zIndex,
         willChange: 'transform, opacity'
       }}
     >
@@ -214,9 +423,24 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
           opacity: isLoaded ? 0 : 1
         }}
       />
+      <motion.img
+        className={styles.infiniteCanvasItemShadow}
+        src={CARD_SHADOW_SRC}
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{
+          x: shadowX,
+          y: shadowY,
+          scale: shadowScale,
+          opacity: shadowOpacity
+        }}
+      />
       <motion.div
         className={styles.infiniteCanvasItemInner}
         style={{
+          x: magnetX,
+          y: magnetY,
           rotateX,
           rotateY,
           scale,
@@ -224,15 +448,19 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
           width: '100%',
           height: '100%',
           ['--card-border-radius' as string]: `${cardBorderRadius}px`,
-          ['--card-border-gradiet-angle' as string]: borderGradientAngle
+          ['--card-border-gradiet-angle' as string]: borderGradientAngle,
+          ['--card-border-glow' as string]: borderGlow
         }}
       >
-        <img
+        <motion.img
           className={styles.infiniteCanvasItemImage}
           src={work?.thumbnail ? work?.thumbnail : work.image}
           alt={work.name}
           style={{
-            opacity: isLoaded ? 1 : 0
+            opacity: isLoaded ? 1 : 0,
+            x: imageX,
+            y: imageY,
+            scale: 1.08
           }}
         />
         <motion.div
@@ -250,3 +478,5 @@ export const InfiniteCanvasItem: React.FC<InfiniteCanvasItemProps> = ({
     </motion.div>
   );
 };
+
+export const InfiniteCanvasItem = React.memo(InfiniteCanvasItemComponent);

@@ -6,16 +6,6 @@
   justify-content: center;
   perspective: 1000px;
 
-  @media (hover: hover) and (pointer: fine) {
-    &:hover {
-      .infiniteCanvasItemInner {
-        &:before {
-          opacity: 1;
-        }
-      }
-    }
-  }
-
   .infiniteCanvasItemBackground {
     position: absolute;
     top: 0;
@@ -27,9 +17,27 @@
     z-index: 1;
   }
 
+  .infiniteCanvasItemShadow {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 92%;
+    height: 22%;
+    margin-left: -46%;
+    // Tuck under the card so it reads as contact shadow, not a detached blob
+    margin-top: -10%;
+    object-fit: fill;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    will-change: transform, opacity;
+    transform-origin: center top;
+  }
+
   .infiniteCanvasItemInner {
     --card-border-width: 0.125vw;
     --card-border-gradiet-angle: 135deg;
+    --card-border-glow: 0;
     position: relative;
     width: 100%;
     height: 100%;
@@ -39,6 +47,7 @@
     border-radius: var(--card-border-radius);
     border: var(--card-border-width) solid transparent;
     will-change: transform, opacity;
+    z-index: 1;
 
     &:before {
       content: '';
@@ -48,7 +57,7 @@
       border-radius: calc(var(--card-border-radius) - var(--card-border-width));
       background: linear-gradient(
           var(--card-border-gradiet-angle),
-          rgba(255, 255, 255, 0.75),
+          rgba(255, 255, 255, 0.85),
           transparent,
           transparent,
           transparent,
@@ -60,8 +69,7 @@
         conic-gradient(#000 0 0);
       pointer-events: none;
       z-index: 3;
-      opacity: 0;
-      transition: opacity 400ms var(--material-cubic-bezier);
+      opacity: var(--card-border-glow);
     }
   }
 
@@ -72,7 +80,6 @@
     height: 100%;
     user-select: none;
     transition: opacity 300ms var(--material-cubic-bezier);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.05);
     display: block;
     will-change: transform;
   }

@@ -4,11 +4,12 @@ import styles from './InfiniteCanvas.module.scss';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useReducedMotion } from 'motion/react';
+import { useMotionValue, useAnimationFrame, useReducedMotion } from 'motion/react';
 
 import { useHomeStore, useWorkStore } from '@/store';
 
-import { InfiniteCanvasItem, type InfiniteCanvasItemIntro } from './InfiniteCanvasItem';
+import { createCanvasViewState, type ProximityFrameHandler, type ProximityResetHandler } from './canvasView';
+import { InfiniteCanvasItem, type InfiniteCanvasItemIntro, type ProximityRegistration } from './InfiniteCanvasItem';
 
 interface Work {
   name: string;
@@ -61,6 +62,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
   const introCompletedIdsRef = useRef<Set<string>>(new Set());
   const [shouldSpread, setShouldSpread] = useState(false);
   const [isIntroPlaying, setIsIntroPlaying] = useState(() => !prefersReducedMotion);
+  const pointerX = useMotionValue(-1);
+  const pointerY = useMotionValue(-1);
+  const viewRef = useRef(createCanvasViewState());
+  const proximityHandlersRef = useRef(
+    new Map<string, { onFrame: ProximityFrameHandler; onReset: ProximityResetHandler }>()
+  );
 
   const isMobile = window.innerWidth <= 480;
 
@@ -196,6 +203,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       const newX = lerp(prevOffset.x, targetOffsetRef.current.x, lerpFactor);
       const newY = lerp(prevOffset.y, targetOffsetRef.current.y, lerpFactor);
 
+      viewRef.current.offsetX = newX;
+      viewRef.current.offsetY = newY;
+
       if (Math.abs(newX - targetOffsetRef.current.x) > 0.1 || Math.abs(newY - targetOffsetRef.current.y) > 0.1) {
         isMoving.current = true;
         if (moveTimeout.current) {
@@ -211,6 +221,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
     setZoom((prevZoom) => {
       const newZoom = lerp(prevZoom, targetZoomRef.current, lerpFactor);
+
+      viewRef.current.zoom = newZoom;
 
       // Also check zoom changes for movement
       if (Math.abs(newZoom - targetZoomRef.current) > 0.001) {
@@ -229,11 +241,42 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     animationFrameRef.current = requestAnimationFrame(animateOffset);
   }, []);
 
+  const syncViewBounds = useCallback(() => {
+    const container = outerContainerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    viewRef.current.left = rect.left;
+    viewRef.current.top = rect.top;
+    viewRef.current.width = rect.width;
+    viewRef.current.height = rect.height;
+  }, []);
+
   useEffect(() => {
     // Set initial offset
     setOffset({ x: initialOffsetX, y: 0 });
     targetOffsetRef.current = { x: initialOffsetX, y: 0 };
+    viewRef.current.offsetX = initialOffsetX;
+    viewRef.current.offsetY = 0;
   }, [initialOffsetX]);
+
+  useEffect(() => {
+    syncViewBounds();
+
+    const container = outerContainerRef.current;
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncViewBounds) : null;
+    if (container && resizeObserver) {
+      resizeObserver.observe(container);
+    }
+
+    window.addEventListener('scroll', syncViewBounds, true);
+    window.addEventListener('resize', syncViewBounds);
+
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener('scroll', syncViewBounds, true);
+      window.removeEventListener('resize', syncViewBounds);
+    };
+  }, [syncViewBounds]);
 
   useEffect(() => {
     animationFrameRef.current = requestAnimationFrame(animateOffset);
@@ -253,10 +296,55 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     [setSelectedWork]
   );
 
-  const handleStart = useCallback((clientX: number, clientY: number) => {
-    isDragging.current = true;
-    lastPosition.current = { x: clientX, y: clientY };
+  const clearPointer = useCallback(() => {
+    pointerX.set(-1);
+    pointerY.set(-1);
+  }, [pointerX, pointerY]);
+
+  const registerProximity = useCallback((id: string, handlers: ProximityRegistration) => {
+    proximityHandlersRef.current.set(id, handlers);
   }, []);
+
+  const unregisterProximity = useCallback((id: string) => {
+    proximityHandlersRef.current.delete(id);
+  }, []);
+
+  const resetAllProximity = useCallback((immediate?: boolean) => {
+    proximityHandlersRef.current.forEach((handlers) => {
+      handlers.onReset(immediate);
+    });
+  }, []);
+
+  const isIntroPlayingRef = useRef(isIntroPlaying);
+  useEffect(() => {
+    isIntroPlayingRef.current = isIntroPlaying;
+  }, [isIntroPlaying]);
+
+  // Single proximity rAF for the whole canvas — idle while panning / intro
+  useAnimationFrame(() => {
+    const view = viewRef.current;
+    if (view.isDragging || isIntroPlayingRef.current) return;
+
+    const px = pointerX.get();
+    const py = pointerY.get();
+    if (px < 0 || py < 0) return;
+
+    proximityHandlersRef.current.forEach((handlers) => {
+      handlers.onFrame(px, py, view);
+    });
+  });
+
+  const handleStart = useCallback(
+    (clientX: number, clientY: number) => {
+      isDragging.current = true;
+      viewRef.current.isDragging = true;
+      clearPointer();
+      // Spring out — hard jump felt abrupt when starting a pan
+      resetAllProximity(false);
+      lastPosition.current = { x: clientX, y: clientY };
+    },
+    [clearPointer, resetAllProximity]
+  );
 
   const handleMove = useCallback((clientX: number, clientY: number) => {
     if (!isDragging.current) return;
@@ -271,6 +359,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
   const handleEnd = useCallback(() => {
     isDragging.current = false;
+    viewRef.current.isDragging = false;
   }, []);
 
   const handleMouseDown = useCallback(
@@ -282,10 +371,39 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      handleMove(e.clientX, e.clientY);
+      if (isDragging.current) {
+        handleMove(e.clientX, e.clientY);
+        return;
+      }
+
+      pointerX.set(e.clientX);
+      pointerY.set(e.clientY);
     },
-    [handleMove]
+    [handleMove, pointerX, pointerY]
   );
+
+  const handleMouseLeave = useCallback(() => {
+    clearPointer();
+    // Spring back — leaving the viewport shouldn't hard-cut the effect
+    resetAllProximity(false);
+    handleEnd();
+  }, [clearPointer, resetAllProximity, handleEnd]);
+
+  // Cursor left the browser window entirely
+  useEffect(() => {
+    const onWindowPointerExit = () => {
+      clearPointer();
+      resetAllProximity(false);
+    };
+
+    document.documentElement.addEventListener('mouseleave', onWindowPointerExit);
+    window.addEventListener('blur', onWindowPointerExit);
+
+    return () => {
+      document.documentElement.removeEventListener('mouseleave', onWindowPointerExit);
+      window.removeEventListener('blur', onWindowPointerExit);
+    };
+  }, [clearPointer, resetAllProximity]);
 
   const handleZoom = useCallback((zoomPoint: { x: number; y: number }, newZoom: number) => {
     const rect = outerContainerRef.current?.getBoundingClientRect();
@@ -403,7 +521,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
     if (outerContainer) {
       outerContainer.addEventListener('mousemove', handleMouseMove as any);
       outerContainer.addEventListener('mouseup', handleEnd);
-      outerContainer.addEventListener('mouseleave', handleEnd);
+      outerContainer.addEventListener('mouseleave', handleMouseLeave);
       outerContainer.addEventListener('touchmove', handleTouchMove as any, { passive: false });
       outerContainer.addEventListener('touchend', handleEnd);
       outerContainer.addEventListener('wheel', handleWheel, { passive: false });
@@ -413,13 +531,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
       if (outerContainer) {
         outerContainer.removeEventListener('mousemove', handleMouseMove as any);
         outerContainer.removeEventListener('mouseup', handleEnd);
-        outerContainer.removeEventListener('mouseleave', handleEnd);
+        outerContainer.removeEventListener('mouseleave', handleMouseLeave);
         outerContainer.removeEventListener('touchmove', handleTouchMove as any);
         outerContainer.removeEventListener('touchend', handleEnd);
         outerContainer.removeEventListener('wheel', handleWheel);
       }
     };
-  }, [handleMouseMove, handleTouchMove, handleEnd, handleWheel]);
+  }, [handleMouseMove, handleMouseLeave, handleTouchMove, handleEnd, handleWheel]);
 
   useEffect(() => {
     setLoadingProgress(100);
@@ -604,7 +722,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
           return (
             <InfiniteCanvasItem
               key={item.id}
-              onClick={() => handleItemClick(item.work)}
+              id={item.id}
+              onSelect={handleItemClick}
               work={item.work}
               x={position.x}
               y={position.y}
@@ -612,9 +731,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works }) => {
               height={cellHeight}
               intro={intro}
               shouldSpread={shouldSpread}
-              onIntroComplete={intro ? () => handleIntroComplete(item.id) : undefined}
-            />
-          );
+              viewRef={viewRef}
+              proximityEnabled={!isIntroPlaying}
+              registerProximity={registerProximity}
+              unregisterProximity={unregisterProximity}
+              onIntroComplete={intro ? handleIntroComplete : undefined}
+            />          );
         })}
       </div>
     </div>
