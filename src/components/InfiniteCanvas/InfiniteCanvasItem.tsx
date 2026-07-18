@@ -388,6 +388,20 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     shineOpacity
   ]);
 
+  // Cards already at their home pose (e.g. center origin) never animate, so
+  // onAnimationComplete never fires — report intro done immediately on spread.
+  useEffect(() => {
+    if (!shouldPlayIntro || !intro || !shouldSpread || isFocusing) return;
+    const atHome =
+      Math.abs(intro.x - x) < 1 &&
+      Math.abs(intro.y - y) < 1 &&
+      Math.abs(intro.rotate) < 0.5 &&
+      Math.abs((intro.scale ?? 1) - 1) < 0.01;
+    if (atHome) {
+      onIntroComplete?.(id);
+    }
+  }, [shouldPlayIntro, intro, shouldSpread, isFocusing, x, y, id, onIntroComplete]);
+
   const borderGradientAngle = useTransform([rotateX, rotateY], ([rx, ry]: number[]) => {
     const tiltAngle = (Math.atan2(ry, rx) * 180) / Math.PI;
     let normalized = (tiltAngle + 135) % 360;

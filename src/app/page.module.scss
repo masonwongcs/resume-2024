@@ -17,11 +17,14 @@
   //filter: blur(100px) grayscale(1);
   will-change: transform;
   contain: layout paint;
+  // Animate typed CSS vars (@property) — smoother than transitioning transform/clip-path
+  // while those vars jump underneath.
   transition:
     opacity 1s var(--material-cubic-bezier),
-    transform var(--drawer-duration) var(--drawer-easing),
-    clip-path var(--drawer-duration) var(--drawer-easing);
-  clip-path: inset(0 round var(--drawer-border-radius));
+    --drawer-scale-x var(--drawer-duration) var(--drawer-easing),
+    --drawer-scale-y var(--drawer-duration) var(--drawer-easing),
+    --drawer-border-radius var(--drawer-duration) var(--drawer-easing);
+  border-radius: var(--drawer-border-radius);
   transform: scale(var(--drawer-scale-x, 1), var(--drawer-scale-y, 1)) translateZ(0);
   transform-origin: center center;
   overflow: hidden;
@@ -55,7 +58,8 @@
     //filter: blur(0) grayscale(0);
   }
 
+  // Drag must track the finger 1:1 — kill var transitions while dragging
   :global(.is-dragging) & {
-    transition: initial;
+    transition: opacity 1s var(--material-cubic-bezier);
   }
 }

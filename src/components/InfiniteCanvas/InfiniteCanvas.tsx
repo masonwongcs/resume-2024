@@ -48,7 +48,8 @@ interface InfiniteCanvasProps {
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
 const INTRO_SPREAD_DELAY_MS = 2000;
 const INTRO_SPREAD_RIPPLE_S = 0.42;
-const INTRO_SPREAD_SAFETY_MS = 2800;
+/** Unlock tilt/proximity after spread starts — was 2800ms and felt like a long dead zone */
+const INTRO_SPREAD_SAFETY_MS = 750;
 const INTRO_CLUSTER_ROTATION_RANGE = 32;
 const FOCUS_EXIT_SCALE = 0.85;
 /** Used when peerReturnStagger="focus" — inside-out ripple (near first) */
@@ -343,8 +344,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   };
 
   const animateOffset = useCallback(() => {
-    // Focus locks the camera — freeze pose while morph / peer springs run
-    if (!focusedIdRef.current) {
+    // Focus locks the camera — freeze pose while morph / peer springs run.
+    // Also idle the camera while the menu drawer animates/scales .main so we
+    // don't compete for compositor bandwidth during the shrink.
+    const drawerBusy =
+      typeof document !== 'undefined' &&
+      (document.body.classList.contains('is-drawer-open') ||
+        document.body.classList.contains('is-dragging') ||
+        document.body.classList.contains('is-animating'));
+
+    if (!focusedIdRef.current && !drawerBusy) {
       const view = viewRef.current;
       // Touch drag/pinch use touchLerpFactor; mouse drag + wheel use lerpFactor
       const follow =
@@ -733,10 +742,17 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [focusedId, requestClose]);
 
-  // Single proximity rAF for the whole canvas — idle while panning / intro / focus
+  // Single proximity rAF for the whole canvas — idle while panning / intro / focus / drawer
   useAnimationFrame(() => {
     const view = viewRef.current;
     if (view.isDragging || isIntroPlayingRef.current || focusedIdRef.current) return;
+    if (
+      document.body.classList.contains('is-drawer-open') ||
+      document.body.classList.contains('is-dragging') ||
+      document.body.classList.contains('is-animating')
+    ) {
+      return;
+    }
 
     const px = pointerX.get();
     const py = pointerY.get();

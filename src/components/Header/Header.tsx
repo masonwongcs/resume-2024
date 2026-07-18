@@ -79,8 +79,10 @@ const Header = () => {
 
       if (open) {
         setShouldMountDrawer(true);
+        setIsAnimating(true);
         beginDrawerOpen();
-      } else if (isMobile) {
+      } else {
+        // Keep canvas camera idle while .main scales back open (mobile + desktop)
         setIsAnimating(true);
       }
 
@@ -88,7 +90,7 @@ const Header = () => {
       setOpen(open);
       trigger();
     },
-    [beginDrawerOpen, isMobile, trigger]
+    [beginDrawerOpen, trigger]
   );
 
   // Check if device is mobile
