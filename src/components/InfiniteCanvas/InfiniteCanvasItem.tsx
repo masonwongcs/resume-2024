@@ -91,9 +91,10 @@ const springValues: SpringOptions = {
 };
 
 const proximitySpringValues: SpringOptions = {
-  damping: 26,
-  stiffness: 200,
-  mass: 0.85
+  // Overdamped — critical is ~2*sqrt(stiffness*mass); underdamping reads as a heartbeat
+  damping: 36,
+  stiffness: 160,
+  mass: 1
 };
 
 const focusSpring = {
@@ -121,7 +122,7 @@ const peerReturnSpring = {
 const ROTATE_AMPLITUDE = 8;
 const SCALE_ON_PROXIMITY = 1.1;
 const PROXIMITY_RADIUS_FACTOR = 2.1;
-const MAGNET_STRENGTH = 14;
+const MAGNET_STRENGTH = 10;
 const IMAGE_PARALLAX = 4;
 const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
 const CARD_SHADOW_SRC = '/images/shadow.webp';
@@ -310,10 +311,11 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       proximity.set(nextProximity);
       scale.set(1 + nextProximity * (SCALE_ON_PROXIMITY - 1));
 
+      // Unit vector from center → pointer (stable when dx≈0, unlike atan2 flips)
+      const dist = Math.max(distance, 1);
       const pull = nextProximity * MAGNET_STRENGTH;
-      const angleToPointer = Math.atan2(dy, dx || 1);
-      const nextMagnetX = Math.cos(angleToPointer) * pull;
-      const nextMagnetY = Math.sin(angleToPointer) * pull;
+      const nextMagnetX = (dx / dist) * pull;
+      const nextMagnetY = (dy / dist) * pull;
       magnetX.set(nextMagnetX);
       magnetY.set(nextMagnetY);
 

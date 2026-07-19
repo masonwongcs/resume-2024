@@ -153,8 +153,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const isPinching = useRef(false);
   /** True only for touch drag — mouse drag keeps wheel lerp */
   const isTouchDrag = useRef(false);
-  const isMoving = useRef(false);
-  const moveTimeout = useRef<NodeJS.Timeout>(null);
+  /** Swallow only the click tied to pointer-up after a pan — not the next intentional click */
+  const suppressClickRef = useRef(false);
+  const dragDistanceRef = useRef(0);
   const prefersReducedMotion = useReducedMotion();
   const introConfigRef = useRef<Map<string, InfiniteCanvasItemIntro> | null>(null);
   const introCompletedIdsRef = useRef<Set<string>>(new Set());
@@ -198,7 +199,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
   const maxZoom = isMobile ? 2 : 3; // Maximum zoom in
-  const moveTimeoutDuration = 100;
+  const clickDragThresholdPx = 6;
   const staggerOffset = (cellHeight + gapSize) * 0.5;
   const initialOffsetX = cellWidth / 2 + gapSize / 2;
 
@@ -381,11 +382,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
         if (awayFromTarget) {
           cullSettledRef.current = false;
-          isMoving.current = true;
-          if (moveTimeout.current) clearTimeout(moveTimeout.current);
-          moveTimeout.current = setTimeout(() => {
-            isMoving.current = false;
-          }, moveTimeoutDuration);
         }
 
         const width = view.width || outerContainerRef.current?.clientWidth || 0;
@@ -660,7 +656,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
   const handleItemClick = useCallback(
     (id: string, work: Work) => {
-      if (isMoving.current || focusedIdRef.current || isIntroPlayingRef.current) return;
+      // Pan release synthesizes a click — ignore that one only
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      if (focusedIdRef.current || isIntroPlayingRef.current) return;
 
       const view = viewRef.current;
       if (view.width <= 0 || view.height <= 0) return;
@@ -765,7 +766,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
   const handleStart = useCallback(
     (clientX: number, clientY: number) => {
-      if (focusedIdRef.current) return;
+      if (focusedIdRef.current || isIntroPlayingRef.current) return;
+      // New gesture — drop any leftover suppress from a pan that ended off-card
+      suppressClickRef.current = false;
+      dragDistanceRef.current = 0;
       isDragging.current = true;
       viewRef.current.isDragging = true;
       clearPointer();
@@ -780,6 +784,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     if (!isDragging.current) return;
     const dx = clientX - lastPosition.current.x;
     const dy = clientY - lastPosition.current.y;
+    dragDistanceRef.current += Math.hypot(dx, dy);
     targetOffsetRef.current = {
       x: targetOffsetRef.current.x + dx,
       y: targetOffsetRef.current.y + dy
@@ -788,6 +793,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   }, []);
 
   const handleEnd = useCallback(() => {
+    if (isDragging.current && dragDistanceRef.current > clickDragThresholdPx) {
+      suppressClickRef.current = true;
+    }
+    dragDistanceRef.current = 0;
     isDragging.current = false;
     viewRef.current.isDragging = false;
   }, []);
@@ -858,6 +867,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     (e: WheelEvent) => {
       // Let the focus scroll layer handle wheel/trackpad while focused
       if (focusedIdRef.current) return;
+      // Block pan/zoom until the intro spread has finished
+      if (isIntroPlayingRef.current) {
+        e.preventDefault();
+        return;
+      }
 
       e.preventDefault();
 
@@ -919,6 +933,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     (e: React.TouchEvent) => {
       // Don't cancel native scrolling while the focus layer is open
       if (focusedIdRef.current) return;
+      if (isIntroPlayingRef.current) {
+        e.preventDefault();
+        return;
+      }
 
       e.preventDefault();
       if (e.touches.length === 2) {
@@ -1257,7 +1275,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   }, [shouldSpread, isIntroPlaying]);
 
   const isFocused = Boolean(focusedId && focusSnapshot && focusedWork && focusPhase);
-  const isInteractionLocked = isClusterHold || isFocused;
+  const isInteractionLocked = isIntroPlaying || isFocused;
   const isFocusSettled = focusPhase === 'settled';
   const isFocusHandingOff = focusPhase === 'out';
   const isFocusReturning = focusPhase === 'returning';
