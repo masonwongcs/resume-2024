@@ -55,8 +55,11 @@ const HEADER_REVEAL_AFTER_SPREAD_MS = 420;
 const INTRO_CLUSTER_ROTATION_RANGE = 32;
 /** Gap between cards joining the load-time stack */
 const STACK_ENTER_GAP_MS = 90;
-/** Let the last card land before flipping to 100% / spread */
-const STACK_SETTLE_BEFORE_LOAD_MS = 320;
+/**
+ * After the last card is released into the pile, wait for its enter spring to
+ * reach center before spread — too short and the last few peel toward home mid-flight.
+ */
+const STACK_SETTLE_BEFORE_LOAD_MS = 900;
 /** Force-complete intro preload / stack formation if an image hangs */
 const INTRO_PRELOAD_SAFETY_MS = 8000;
 /** Absolute fallback so a failed intro capture never blocks the site */
@@ -193,6 +196,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const [isIntroPlaying, setIsIntroPlaying] = useState(() => !prefersReducedMotion);
   /** Ids that have animated into the load-time stack */
   const [stackEnteredIds, setStackEnteredIds] = useState(() => new Set<string>());
+  /** Ids whose enter spring has actually reached the cluster (not just been released) */
+  const stackLandedIdsRef = useRef(new Set<string>());
+  const formationSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedWork, setFocusedWork] = useState<Work | null>(null);
   const [focusSnapshot, setFocusSnapshot] = useState<FocusSnapshot | null>(null);
@@ -1238,15 +1244,34 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     let gapTimer: ReturnType<typeof setTimeout> | null = null;
     // Fixed cadence — image preload runs in parallel, but the pile (and %) only advances on this beat
     const enterGapMs = STACK_ENTER_GAP_MS;
+    stackLandedIdsRef.current = new Set();
+    if (formationSettleTimerRef.current) {
+      clearTimeout(formationSettleTimerRef.current);
+      formationSettleTimerRef.current = null;
+    }
+
+    const finishLoad = () => {
+      if (cancelled || useHomeStore.getState().loaded) return;
+      if (formationSettleTimerRef.current) {
+        clearTimeout(formationSettleTimerRef.current);
+        formationSettleTimerRef.current = null;
+      }
+      setLoadingProgress(100);
+      setIsLoaded();
+    };
 
     const finishFormation = () => {
       if (cancelled) return;
       setLoadingProgress(100);
-      // Brief beat so the last drop can settle before spread
-      gapTimer = setTimeout(() => {
-        if (cancelled) return;
-        setIsLoaded();
+      // Safety: if onAnimationComplete never fires for a card, still spread after the spring window
+      formationSettleTimerRef.current = setTimeout(() => {
+        formationSettleTimerRef.current = null;
+        finishLoad();
       }, STACK_SETTLE_BEFORE_LOAD_MS);
+      // If every card already reported landing (e.g. remounts), proceed now
+      if (stackLandedIdsRef.current.size >= stack.length) {
+        finishLoad();
+      }
     };
 
     const reportProgress = () => {
@@ -1344,10 +1369,31 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     return () => {
       cancelled = true;
       if (gapTimer) clearTimeout(gapTimer);
+      if (formationSettleTimerRef.current) {
+        clearTimeout(formationSettleTimerRef.current);
+        formationSettleTimerRef.current = null;
+      }
       clearTimeout(safety);
       preloadCancels.forEach((c) => c());
     };
   }, [introReady, prefersReducedMotion, setIsLoaded, setLoadingProgress, setIntroComplete]);
+
+  const handleStackEnterComplete = useCallback(
+    (itemId: string) => {
+      stackLandedIdsRef.current.add(itemId);
+      const total = introStackRef.current?.length ?? 0;
+      // Wait until every stack card has actually reached center — not just been released
+      if (total === 0 || stackLandedIdsRef.current.size < total) return;
+      if (useHomeStore.getState().loaded) return;
+      if (formationSettleTimerRef.current) {
+        clearTimeout(formationSettleTimerRef.current);
+        formationSettleTimerRef.current = null;
+      }
+      setLoadingProgress(100);
+      setIsLoaded();
+    },
+    [setIsLoaded, setLoadingProgress]
+  );
 
   const getItemPosition = useCallback(
     (item: GridItem & { x: number; y: number }) => ({
@@ -1763,6 +1809,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
               focusReturnDelay={focusReturnDelay}
               registerProximity={registerProximity}
               unregisterProximity={unregisterProximity}
+              onStackEnterComplete={
+                intro && isClusterHold ? handleStackEnterComplete : undefined
+              }
               onIntroComplete={intro && (isIntroPlaying || isClusterHold) ? handleIntroComplete : undefined}
               onFocusArrive={item.id === focusedId ? handleFocusArrive : undefined}
               onFocusReturnComplete={item.id === focusedId ? handleFocusReturnComplete : undefined}
