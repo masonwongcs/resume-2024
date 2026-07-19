@@ -571,7 +571,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           ? exitSpring
           : peerReturnActiveRef.current
             ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
-            : isFocusing || focusMode === 'focused' || focusMode === 'returning'
+            : isFocusing
               ? focusSpring
               : {
                   // Soft opacity enter when culled cards remount; keep spring for transform
