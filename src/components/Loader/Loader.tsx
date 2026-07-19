@@ -72,6 +72,13 @@ const RoundedRectLoader = () => {
     }
   }, []);
 
+  // Remount when loading is reset (canvas remount / HMR)
+  useEffect(() => {
+    if (!loaded) {
+      setShouldRender(true);
+    }
+  }, [loaded]);
+
   if (!shouldRender) return null;
 
   return (
@@ -79,7 +86,9 @@ const RoundedRectLoader = () => {
       className={cx(styles.loader, styles.roundedRectangle, {
         [styles.loaded]: loaded
       })}
-      onAnimationEnd={() => {
+      onAnimationEnd={(event) => {
+        // Ignore bubbled child animations — only the loader exit should unmount
+        if (event.target !== event.currentTarget) return;
         setShouldRender(false);
         if (!document.body.classList.contains('is-ready')) {
           document.body.classList.add('is-ready');

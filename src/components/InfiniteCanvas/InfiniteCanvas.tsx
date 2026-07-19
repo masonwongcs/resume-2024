@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { AnimatePresence, motion, useMotionValue, useAnimationFrame, useReducedMotion } from 'motion/react';
 
 import { useHomeStore } from '@/store';
-import { markImageLoaded } from '@/hooks/useImageLoad';
+import { isImageCached, markImageLoaded, preloadImage, preloadImages } from '@/hooks/useImageLoad';
 
 import { createCanvasViewState, type ProximityFrameHandler, type ProximityResetHandler } from './canvasView';
 import {
@@ -47,11 +47,20 @@ interface InfiniteCanvasProps {
 }
 
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
-const INTRO_SPREAD_DELAY_MS = 2000;
 const INTRO_SPREAD_RIPPLE_S = 0.42;
-/** Unlock tilt/proximity after spread starts — was 2800ms and felt like a long dead zone */
-const INTRO_SPREAD_SAFETY_MS = 750;
+/** Unlock tilt/proximity after spread starts — keep long enough for the spring to settle */
+const INTRO_SPREAD_SAFETY_MS = 1800;
+/** Pull the header in shortly after spread begins — don't wait for the full settle */
+const HEADER_REVEAL_AFTER_SPREAD_MS = 420;
 const INTRO_CLUSTER_ROTATION_RANGE = 32;
+/** Gap between cards joining the load-time stack */
+const STACK_ENTER_GAP_MS = 90;
+/** Let the last card land before flipping to 100% / spread */
+const STACK_SETTLE_BEFORE_LOAD_MS = 320;
+/** Force-complete intro preload / stack formation if an image hangs */
+const INTRO_PRELOAD_SAFETY_MS = 8000;
+/** Absolute fallback so a failed intro capture never blocks the site */
+const INTRO_LOAD_FALLBACK_MS = 12000;
 const FOCUS_EXIT_SCALE = 0.85;
 /** Used when peerReturnStagger="focus" — inside-out ripple (near first) */
 const FOCUS_PEER_RETURN_RIPPLE_S = 0.85;
@@ -133,6 +142,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const [zoom, setZoom] = useState(1);
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
   const setIsLoaded = useHomeStore((state) => state.setIsLoaded);
+  const resetLoading = useHomeStore((state) => state.resetLoading);
+  const setIntroComplete = useHomeStore((state) => state.setIntroComplete);
   const setCanvasFocused = useHomeStore((state) => state.setCanvasFocused);
   const loaded = useHomeStore((state) => state.loaded);
 
@@ -167,6 +178,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const touchInertiaEligibleRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
   const introConfigRef = useRef<Map<string, InfiniteCanvasItemIntro> | null>(null);
+  /** Intro cards in stackOrder (bottom → top) for sequential formation + forced mount */
+  const introStackRef = useRef<
+    { id: string; src: string; item: GridItem & { x: number; y: number } }[] | null
+  >(null);
   const introCompletedIdsRef = useRef<Set<string>>(new Set());
   /** Content-space center of the card that should sit dead-middle after intro */
   const introOriginRef = useRef<{ x: number; y: number } | null>(null);
@@ -176,6 +191,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const [introReady, setIntroReady] = useState(false);
   const [shouldSpread, setShouldSpread] = useState(false);
   const [isIntroPlaying, setIsIntroPlaying] = useState(() => !prefersReducedMotion);
+  /** Ids that have animated into the load-time stack */
+  const [stackEnteredIds, setStackEnteredIds] = useState(() => new Set<string>());
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedWork, setFocusedWork] = useState<Work | null>(null);
   const [focusSnapshot, setFocusSnapshot] = useState<FocusSnapshot | null>(null);
@@ -1154,9 +1171,183 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   }, [handleMouseMove, handleMouseLeave, handleTouchMove, handleEnd]);
 
   useEffect(() => {
-    setLoadingProgress(100);
-    setIsLoaded();
-  }, []);
+    // Replay loader after HMR / remount when the store was already marked loaded
+    if (useHomeStore.getState().loaded) {
+      resetLoading();
+      document.body.classList.remove('is-ready');
+    }
+
+    // Absolute fallback — never leave the loader stuck if intro capture / preload fails
+    const timeout = setTimeout(() => {
+      if (useHomeStore.getState().loaded) return;
+      setLoadingProgress(100);
+      setIsLoaded();
+      setIntroComplete(true);
+    }, INTRO_LOAD_FALLBACK_MS);
+    return () => clearTimeout(timeout);
+  }, [resetLoading, setIsLoaded, setLoadingProgress, setIntroComplete]);
+
+  // Reduced motion: skip stack formation — preload a small work batch then finish
+  useEffect(() => {
+    if (!prefersReducedMotion) return;
+
+    const srcs = works.slice(0, 8).map((work) => work.thumbnail || work.image);
+    const cancel = preloadImages(srcs, {
+      onProgress: ({ loaded, total }) => {
+        if (total === 0) {
+          setLoadingProgress(100);
+          return;
+        }
+        setLoadingProgress(Math.round((loaded / total) * 100));
+      },
+      onComplete: () => {
+        setLoadingProgress(100);
+        setIsLoaded();
+        setIntroComplete(true);
+      }
+    });
+
+    const safety = setTimeout(() => {
+      setLoadingProgress(100);
+      setIsLoaded();
+      setIntroComplete(true);
+    }, INTRO_PRELOAD_SAFETY_MS);
+
+    return () => {
+      cancel();
+      clearTimeout(safety);
+    };
+  }, [prefersReducedMotion, works, setIsLoaded, setLoadingProgress, setIntroComplete]);
+
+  // Motion path: preload intro images, release cards into the stack one-by-one, then finish load
+  useEffect(() => {
+    if (prefersReducedMotion || !introReady) return;
+
+    const stack = introStackRef.current;
+    if (!stack || stack.length === 0) {
+      setLoadingProgress(100);
+      setIsLoaded();
+      setIntroComplete(true);
+      return;
+    }
+
+    let cancelled = false;
+    let enterIndex = 0;
+    let waitingForGap = false;
+    const imageReady = new Set<string>();
+    let gapTimer: ReturnType<typeof setTimeout> | null = null;
+    // Fixed cadence — image preload runs in parallel, but the pile (and %) only advances on this beat
+    const enterGapMs = STACK_ENTER_GAP_MS;
+
+    const finishFormation = () => {
+      if (cancelled) return;
+      setLoadingProgress(100);
+      // Brief beat so the last drop can settle before spread
+      gapTimer = setTimeout(() => {
+        if (cancelled) return;
+        setIsLoaded();
+      }, STACK_SETTLE_BEFORE_LOAD_MS);
+    };
+
+    const reportProgress = () => {
+      if (cancelled) return;
+      setLoadingProgress(Math.round((enterIndex / stack.length) * 100));
+    };
+
+    const enterNext = () => {
+      if (cancelled || waitingForGap) return;
+      if (enterIndex >= stack.length) {
+        finishFormation();
+        return;
+      }
+
+      const next = stack[enterIndex];
+      if (!imageReady.has(next.id)) return;
+
+      setStackEnteredIds((prev) => {
+        if (prev.has(next.id)) return prev;
+        const nextSet = new Set(prev);
+        nextSet.add(next.id);
+        return nextSet;
+      });
+      enterIndex += 1;
+      reportProgress();
+
+      if (enterIndex >= stack.length) {
+        finishFormation();
+        return;
+      }
+
+      waitingForGap = true;
+      gapTimer = setTimeout(() => {
+        waitingForGap = false;
+        gapTimer = null;
+        enterNext();
+      }, enterGapMs);
+    };
+
+    for (const entry of stack) {
+      if (isImageCached(entry.src)) {
+        imageReady.add(entry.id);
+      }
+    }
+
+    const preloadCancels = stack.map((entry) => {
+      if (imageReady.has(entry.id)) return () => {};
+      let settled = false;
+      preloadImage(entry.src).then(() => {
+        if (cancelled || settled) return;
+        settled = true;
+        imageReady.add(entry.id);
+        enterNext();
+      });
+      return () => {
+        settled = true;
+      };
+    });
+
+    enterNext();
+
+    const safety = setTimeout(() => {
+      if (cancelled) return;
+      for (const entry of stack) {
+        imageReady.add(entry.id);
+      }
+      waitingForGap = false;
+      if (gapTimer) {
+        clearTimeout(gapTimer);
+        gapTimer = null;
+      }
+      const forceEnter = () => {
+        if (cancelled) return;
+        if (enterIndex >= stack.length) {
+          finishFormation();
+          return;
+        }
+        const next = stack[enterIndex];
+        setStackEnteredIds((prev) => {
+          const nextSet = new Set(prev);
+          nextSet.add(next.id);
+          return nextSet;
+        });
+        enterIndex += 1;
+        reportProgress();
+        if (enterIndex >= stack.length) {
+          finishFormation();
+          return;
+        }
+        gapTimer = setTimeout(forceEnter, enterGapMs);
+      };
+      forceEnter();
+    }, INTRO_PRELOAD_SAFETY_MS);
+
+    return () => {
+      cancelled = true;
+      if (gapTimer) clearTimeout(gapTimer);
+      clearTimeout(safety);
+      preloadCancels.forEach((c) => c());
+    };
+  }, [introReady, prefersReducedMotion, setIsLoaded, setLoadingProgress, setIntroComplete]);
 
   const getItemPosition = useCallback(
     (item: GridItem & { x: number; y: number }) => ({
@@ -1291,7 +1482,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       const minY = Math.min(...itemTargets.map((target) => target.targetCenterY));
       const maxY = Math.max(...itemTargets.map((target) => target.targetCenterY));
       const yRange = Math.max(maxY - minY, 1);
-      const minStackOpacity = 0.32;
+      // Keep stacked cards readable under the transparent loader
+      const minStackOpacity = 0.55;
       // Cluster on the origin card's home — it stays put while peers peel outward
       const clusterX = originX - cellWidth / 2;
       const clusterY = originY - cellHeight / 2;
@@ -1339,6 +1531,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       });
 
       introConfigRef.current = configs.size > 0 ? configs : new Map();
+      introStackRef.current = stackEntries.map(({ item }) => ({
+        id: item.id,
+        src: item.work.thumbnail || item.work.image,
+        item
+      }));
       introCompletedIdsRef.current = new Set();
       // Defer setState to layout effect — setState during render aborts the rest of the pass
       pendingIntroSnapRef.current = snapOffset;
@@ -1347,18 +1544,20 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   }
 
   const isClusterHold = Boolean(introConfigRef.current?.size) && !shouldSpread && !prefersReducedMotion;
+  const introStackCount = introConfigRef.current?.size ?? 0;
+  const stackFormationDone =
+    prefersReducedMotion || introStackCount === 0 || stackEnteredIds.size >= introStackCount;
 
-  // Hold the cluster until the interstitial finishes, then spread
+  // Spread as soon as load hits 100% (formation done)
   useEffect(() => {
     if (prefersReducedMotion) {
       setShouldSpread(true);
       setIsIntroPlaying(false);
       return;
     }
-    if (shouldSpread || !loaded || !introReady) return;
-    const timeout = setTimeout(() => setShouldSpread(true), INTRO_SPREAD_DELAY_MS);
-    return () => clearTimeout(timeout);
-  }, [loaded, shouldSpread, introReady, prefersReducedMotion]);
+    if (shouldSpread || !loaded || !introReady || !stackFormationDone) return;
+    setShouldSpread(true);
+  }, [loaded, shouldSpread, introReady, prefersReducedMotion, stackFormationDone]);
 
   const handleIntroComplete = useCallback(
     (itemId: string) => {
@@ -1379,6 +1578,17 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     const timeout = setTimeout(() => setIsIntroPlaying(false), INTRO_SPREAD_SAFETY_MS);
     return () => clearTimeout(timeout);
   }, [shouldSpread, isIntroPlaying]);
+
+  // Reveal header shortly after spread starts (not after the full spring settles)
+  useEffect(() => {
+    if (prefersReducedMotion && loaded) {
+      setIntroComplete(true);
+      return;
+    }
+    if (!shouldSpread) return;
+    const timeout = setTimeout(() => setIntroComplete(true), HEADER_REVEAL_AFTER_SPREAD_MS);
+    return () => clearTimeout(timeout);
+  }, [shouldSpread, prefersReducedMotion, loaded, setIntroComplete]);
 
   const isFocused = Boolean(focusedId && focusSnapshot && focusedWork && focusPhase);
   const isInteractionLocked = isIntroPlaying || isFocused;
@@ -1446,9 +1656,32 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
             }
           }
 
-          return visibleItems.map((item) => {
+          // During cluster hold, force-mount intro stack cards (cull can drop them after snap)
+          const renderItems =
+            isClusterHold && introStackRef.current?.length
+              ? (() => {
+                  const byId = new Map(visibleItems.map((item) => [item.id, item]));
+                  for (const entry of introStackRef.current) {
+                    if (!byId.has(entry.id)) {
+                      byId.set(entry.id, entry.item);
+                    }
+                  }
+                  return [...byId.values()];
+                })()
+              : visibleItems;
+
+          return renderItems.map((item) => {
           const position = getItemPosition(item);
           const intro = introConfigRef.current?.get(item.id);
+
+          // During stack formation, only the intro pile is visible — hide the rest of the grid
+          if (isClusterHold && !intro) {
+            return null;
+          }
+          // Wait for camera snap before painting intro cards (avoids off-screen flash)
+          if (isClusterHold && !introReady) {
+            return null;
+          }
 
           let focusMode: InfiniteCanvasFocusMode = 'idle';
           let focusX = position.x;
@@ -1518,6 +1751,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
               height={cellHeight}
               intro={isIntroPlaying || isClusterHold ? intro : undefined}
               shouldSpread={shouldSpread}
+              stackEntered={!intro || shouldSpread || stackEnteredIds.has(item.id)}
               viewRef={viewRef}
               proximityEnabled={!isIntroPlaying && !focusedId}
               focusMode={focusMode}

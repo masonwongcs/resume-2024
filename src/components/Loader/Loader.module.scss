@@ -21,9 +21,11 @@
 .loader {
   position: fixed;
   z-index: 2025;
-  background: var(--background);
+  // Fully clear overlay — only the pill sits on top so the stack stays sharp
+  background: transparent;
   inset: 0;
   clip-path: inset(0% round 0px);
+  pointer-events: none;
   --animation-inset: inset(20px calc((100% - 500px) / 2) calc(100% - 20px - 80px) calc((100% - 500px) / 2) round 40px);
   @media screen and (max-width: 480px) {
     --animation-inset: inset(20px calc((100% - 90vw) / 2) calc(100% - 20px - 80px) calc((100% - 90vw) / 2) round 40px);
@@ -116,6 +118,10 @@
     bottom: 20px;
     width: 184px;
     height: 64px;
+    border-radius: 40px;
+    background: color-mix(in srgb, var(--background) 88%, transparent);
+    box-shadow: 0 8px 28px color-mix(in srgb, #000 8%, transparent);
+    pointer-events: auto;
     .roundedRectangle {
       inset: 0;
       position: absolute;

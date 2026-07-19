@@ -38,6 +38,20 @@ export const contentToClient = (
   };
 };
 
+/** Inverse of contentToClient — screen/client → content-space layout coords. */
+export const clientToContent = (
+  clientX: number,
+  clientY: number,
+  view: InfiniteCanvasViewState
+): { x: number; y: number } => {
+  const { offsetX, offsetY, zoom, left, top, width, height } = view;
+  const z = zoom || 1;
+  return {
+    x: (clientX - left - offsetX - width / 2) / z + width / 2,
+    y: (clientY - top - offsetY - height / 2) / z + height / 2
+  };
+};
+
 export type ProximityFrameHandler = (
   pointerX: number,
   pointerY: number,

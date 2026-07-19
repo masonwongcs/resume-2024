@@ -9,6 +9,88 @@ const markImageLoaded = (src: string) => {
 
 const isImageCached = (src: string) => Boolean(src) && loadedSrcs.has(src);
 
+/**
+ * Preload a single image into the shared cache.
+ * Resolves on load or error (errors are not cached so remounts can retry).
+ */
+const preloadImage = (src: string): Promise<boolean> => {
+  if (!src) return Promise.resolve(false);
+  if (loadedSrcs.has(src)) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const finish = (ok: boolean) => {
+      if (ok) loadedSrcs.add(src);
+      resolve(ok);
+    };
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) {
+      finish(true);
+    }
+  });
+};
+
+export type PreloadImagesProgress = {
+  loaded: number;
+  total: number;
+};
+
+/**
+ * Preload unique image URLs. Calls onProgress after each settle.
+ * Returns a cancel function (in-flight loads still finish, but callbacks stop).
+ */
+const preloadImages = (
+  srcs: string[],
+  options?: {
+    onProgress?: (progress: PreloadImagesProgress) => void;
+    onComplete?: () => void;
+  }
+): (() => void) => {
+  const unique = [...new Set(srcs.filter(Boolean))];
+  const total = unique.length;
+  let cancelled = false;
+  let settled = 0;
+
+  if (total === 0) {
+    options?.onProgress?.({ loaded: 0, total: 0 });
+    options?.onComplete?.();
+    return () => {
+      cancelled = true;
+    };
+  }
+
+  const report = () => {
+    if (cancelled) return;
+    options?.onProgress?.({ loaded: settled, total });
+    if (settled >= total) {
+      options?.onComplete?.();
+    }
+  };
+
+  // Sync-cached hits
+  for (const src of unique) {
+    if (loadedSrcs.has(src)) {
+      settled += 1;
+    }
+  }
+  report();
+
+  for (const src of unique) {
+    if (loadedSrcs.has(src)) continue;
+    preloadImage(src).then(() => {
+      if (cancelled) return;
+      settled += 1;
+      report();
+    });
+  }
+
+  return () => {
+    cancelled = true;
+  };
+};
+
 const useImageLoad = (src: string) => {
   const [isLoaded, setIsLoaded] = useState(() => isImageCached(src));
 
@@ -52,4 +134,4 @@ const useImageLoad = (src: string) => {
   return isLoaded;
 };
 
-export { useImageLoad, markImageLoaded, isImageCached };
+export { useImageLoad, markImageLoaded, isImageCached, preloadImage, preloadImages };

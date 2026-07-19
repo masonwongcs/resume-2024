@@ -17,6 +17,7 @@ import {
 import { isImageCached, markImageLoaded, useImageLoad } from '@/hooks/useImageLoad';
 
 import {
+  clientToContent,
   contentToClient,
   type InfiniteCanvasViewState,
   type ProximityFrameHandler,
@@ -59,6 +60,11 @@ interface InfiniteCanvasItemProps {
   intro?: InfiniteCanvasItemIntro;
   /** When false, intro items stay clustered until the spread is triggered */
   shouldSpread?: boolean;
+  /**
+   * During cluster hold: false keeps the card in a pre-stack pose until it is
+   * released into the pile one-by-one. Defaults to true (already in stack / no intro).
+   */
+  stackEntered?: boolean;
   /** Live canvas transform — read from refs, never triggers React renders */
   viewRef: React.RefObject<InfiniteCanvasViewState>;
   /** Gate effects during intro / reduced-capability contexts */
@@ -131,6 +137,56 @@ const SHADOW_REST_OPACITY = 0;
 const SHADOW_MAX_OPACITY = 0.5;
 const SHADOW_REST_SCALE = 0.96;
 const SHADOW_MAX_SCALE = 1.03;
+/** Pre-stack pose — emerge from the progress pill (bottom center) and grow into the pile */
+const STACK_ENTER_SCALE = 0.22;
+/** Matches Loader pill: bottom 20px + half of 64px height */
+const LOADER_PILL_CENTER_FROM_BOTTOM = 52;
+const stackEnterSpring = {
+  type: 'spring' as const,
+  stiffness: 70,
+  damping: 20,
+  mass: 1.1
+};
+const stackEnterOpacityTween = {
+  type: 'tween' as const,
+  duration: 0.42,
+  ease: [0.22, 1, 0.36, 1] as const
+};
+
+/** Content-space top-left so the card center sits on the loader pill. */
+const getPillApproachPose = (
+  intro: InfiniteCanvasItemIntro,
+  cardWidth: number,
+  cardHeight: number,
+  view: InfiniteCanvasViewState | null | undefined
+) => {
+  const vh = view?.height || (typeof window !== 'undefined' ? window.innerHeight : 800);
+  const vw = view?.width || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const left = view?.left ?? 0;
+  const top = view?.top ?? 0;
+
+  if (view && view.width > 0 && view.height > 0) {
+    const pillClientX = left + vw / 2;
+    const pillClientY = top + vh - LOADER_PILL_CENTER_FROM_BOTTOM;
+    const pillContent = clientToContent(pillClientX, pillClientY, view);
+    return {
+      x: pillContent.x - cardWidth / 2,
+      y: pillContent.y - cardHeight / 2,
+      rotate: intro.rotate * 0.25,
+      scale: STACK_ENTER_SCALE,
+      opacity: 0
+    };
+  }
+
+  // Fallback before view bounds sync — rise from below center
+  return {
+    x: intro.x,
+    y: intro.y + vh / 2 - LOADER_PILL_CENTER_FROM_BOTTOM,
+    rotate: intro.rotate * 0.25,
+    scale: STACK_ENTER_SCALE,
+    opacity: 0
+  };
+};
 
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
@@ -151,6 +207,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   height,
   intro,
   shouldSpread = true,
+  stackEntered = true,
   viewRef,
   proximityEnabled = true,
   focusMode = 'idle',
@@ -180,10 +237,13 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       !window.matchMedia('(hover: hover) and (pointer: fine)').matches
   );
   const shouldPlayIntro = Boolean(intro) && !prefersReducedMotion;
-  const isClustered = shouldPlayIntro && !shouldSpread;
+  /** Whole cluster-hold phase (awaiting enter + in pile) — blocks pan/proximity */
+  const isClusterHold = shouldPlayIntro && !shouldSpread;
+  const isAwaitingStack = isClusterHold && !stackEntered;
+  const isClustered = isClusterHold && stackEntered;
   const isFocusing = focusMode !== 'idle';
   const canUseProximity = useRef(false);
-  const isClusteredRef = useRef(isClustered);
+  const isClusteredRef = useRef(isClusterHold);
   const proximityEnabledRef = useRef(proximityEnabled && !isFocusing);
   const proximityEngagedRef = useRef(false);
   const isPointerOverRef = useRef(false);
@@ -232,8 +292,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   }, [proximityEnabled, isFocusing]);
 
   useEffect(() => {
-    isClusteredRef.current = isClustered;
-  }, [isClustered]);
+    isClusteredRef.current = isClusterHold;
+  }, [isClusterHold]);
 
   useEffect(() => {
     canUseProximity.current =
@@ -370,14 +430,14 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   }, [id, registerProximity, unregisterProximity, onProximityFrame, resetProximity]);
 
   useEffect(() => {
-    if ((isClustered || !proximityEnabled || isFocusing) && proximityEngagedRef.current) {
+    if ((isClusterHold || !proximityEnabled || isFocusing) && proximityEngagedRef.current) {
       resetProximity(true);
     }
-  }, [isClustered, proximityEnabled, isFocusing, resetProximity]);
+  }, [isClusterHold, proximityEnabled, isFocusing, resetProximity]);
 
   // Kill hover tilt during intro / focus — cards sit under the cursor at load and were tilting early
   useEffect(() => {
-    if (isClustered || !proximityEnabled || isFocusing) {
+    if (isClusterHold || !proximityEnabled || isFocusing) {
       isPointerOverRef.current = false;
       rotateX.set(0);
       rotateY.set(0);
@@ -387,7 +447,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       shineOpacity.set(0);
     }
   }, [
-    isClustered,
+    isClusterHold,
     proximityEnabled,
     isFocusing,
     rotateX,
@@ -536,6 +596,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   prevFocusModeRef.current = focusMode;
 
   const animateState = (() => {
+    if (isAwaitingStack && intro) {
+      return getPillApproachPose(intro, width, height, viewRef.current);
+    }
     if (isClustered && intro) {
       return { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity };
     }
@@ -560,19 +623,26 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           mass: 0.95,
           delay: intro.delay
         }
-      : focusImmediate
+      : isAwaitingStack
         ? { duration: 0 }
-        : focusMode === 'exiting'
-          ? exitSpring
-          : peerReturnActiveRef.current
-            ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
-            : isFocusing
-              ? focusSpring
-              : {
-                  // Soft opacity enter when culled cards remount; keep spring for transform
-                  ...focusSpring,
-                  opacity: { type: 'tween' as const, duration: 0.28, ease: [0.22, 1, 0.36, 1] }
-                };
+        : isClustered && intro
+          ? {
+              ...stackEnterSpring,
+              opacity: stackEnterOpacityTween
+            }
+          : focusImmediate
+            ? { duration: 0 }
+            : focusMode === 'exiting'
+              ? exitSpring
+              : peerReturnActiveRef.current
+                ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
+                : isFocusing
+                  ? focusSpring
+                  : {
+                      // Soft opacity enter when culled cards remount; keep spring for transform
+                      ...focusSpring,
+                      opacity: { type: 'tween' as const, duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+                    };
 
   return (
     <motion.div
@@ -585,7 +655,18 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       onMouseLeave={handleMouseLeave}
       initial={
         shouldPlayIntro && intro
-          ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
+          ? shouldSpread
+            ? // Remount mid/post-spread — appear at home, don't re-play the peel
+              { x, y, rotate: 0, scale: 1, opacity: 1 }
+            : stackEntered
+              ? {
+                  x: intro.x,
+                  y: intro.y,
+                  rotate: intro.rotate,
+                  scale: intro.scale,
+                  opacity: intro.opacity
+                }
+              : getPillApproachPose(intro, width, height, viewRef.current)
           : // Soft fade when culled cards remount; skip if the image was already painted this session
             { x, y, rotate: 0, scale: 1, opacity: isImageCached(imageSrc) ? 1 : 0 }
       }
@@ -622,7 +703,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       <div
         className={styles.infiniteCanvasItemBackground}
         style={{
-          opacity: isLoaded ? 0 : 1
+          // Stack formation only releases cards after preload — keep image visible
+          opacity: isLoaded || isClustered ? 0 : 1
         }}
       />
       {!isTouchUi && (
@@ -661,7 +743,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           src={imageSrc}
           alt={work.name}
           style={{
-            opacity: isLoaded ? 1 : 0,
+            opacity: isLoaded || isClustered ? 1 : 0,
             x: isTouchUi ? 0 : imageX,
             y: isTouchUi ? 0 : imageY,
             scale: 1.08

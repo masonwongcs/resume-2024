@@ -1,26 +1,16 @@
-@keyframes scaleFadeIn {
-  from {
-    //transform: scale(1.1);
-    opacity: 1;
-  }
-  to {
-    //transform: scale(1);
-    opacity: 0;
-  }
-}
-
 .main {
   position: fixed;
   inset: 0;
   background: var(--background);
-  opacity: 0;
+  // Visible during preload so the stack can form under the transparent loader.
+  // (Previously opacity:0 until body.is-ready, which only fired after loader exit.)
+  opacity: 1;
   //filter: blur(100px) grayscale(1);
   will-change: transform;
   contain: layout paint;
   // Animate typed CSS vars (@property) — smoother than transitioning transform/clip-path
   // while those vars jump underneath.
   transition:
-    opacity 1s var(--material-cubic-bezier),
     --drawer-scale-x var(--drawer-duration) var(--drawer-easing),
     --drawer-scale-y var(--drawer-duration) var(--drawer-easing),
     --drawer-border-radius var(--drawer-duration) var(--drawer-easing);
@@ -38,14 +28,6 @@
     transform-origin: center bottom;
   }
 
-  &:before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-color: var(--background);
-    animation: scaleFadeIn 1.2s var(--material-cubic-bezier) forwards;
-  }
-
   &:after {
     content: '';
     position: absolute;
@@ -53,13 +35,8 @@
     z-index: -1;
   }
 
-  :global(.is-ready) & {
-    opacity: 1;
-    //filter: blur(0) grayscale(0);
-  }
-
   // Drag must track the finger 1:1 — kill var transitions while dragging
   :global(.is-dragging) & {
-    transition: opacity 1s var(--material-cubic-bezier);
+    transition: none;
   }
 }

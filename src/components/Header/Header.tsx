@@ -26,6 +26,7 @@ const Header = () => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
   const setViewMode = usePortfolioViewStore((state) => state.setViewMode);
   const canvasFocused = useHomeStore((state) => state.canvasFocused);
+  const introComplete = useHomeStore((state) => state.introComplete);
 
   // Drag progress is kept in a ref (not state) so dragging the drawer doesn't
   // re-render Header / the expensive GlassSurface subtree on every frame.
@@ -200,7 +201,7 @@ const Header = () => {
       >
         <GlassSurface
           className={cx(styles.headerWrapper, {
-            [styles.hidden]: isOpen || canvasFocused
+            [styles.hidden]: isOpen || canvasFocused || !introComplete
           })}
           borderRadius={50}
           style={isDragging ? { transition: 'none' } : undefined}
