@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { AnimatePresence, motion, useMotionValue, useAnimationFrame, useReducedMotion } from 'motion/react';
 
 import { useHomeStore } from '@/store';
+import { markImageLoaded } from '@/hooks/useImageLoad';
 
 import { createCanvasViewState, type ProximityFrameHandler, type ProximityResetHandler } from './canvasView';
 import {
@@ -657,6 +658,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
           : null
       );
       focusPhaseRef.current = 'out';
+      // Reveal morph before HTML unmounts — same render as phase 'out'
+      setMorphCardHidden(false);
       setFocusPhase('out');
       return;
     }
@@ -1383,8 +1386,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const isFocusHandingOff = focusPhase === 'out';
   const isFocusReturning = focusPhase === 'returning';
   const showFocusScrim = focusPhase === 'in' || focusPhase === 'settled';
-  // Pre-mount during morph so the replacement is decoded + sized before the swap
-  const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled';
+  // Keep HTML through 'out' so the morph can paint underneath before the overlay exits
+  const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled' || focusPhase === 'out';
   const focusImageSrc = focusedWork
     ? focusedWork.thumbnail
       ? focusedWork.thumbnail
@@ -1596,6 +1599,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                       draggable={false}
                       decoding="async"
                       fetchPriority="high"
+                      onLoad={() => markImageLoaded(focusImageSrc)}
                     />
                   </div>
                   {isFocusSettled ? (

@@ -14,7 +14,7 @@ import {
   type SpringOptions
 } from 'motion/react';
 
-import { useImageLoad } from '@/hooks/useImageLoad';
+import { isImageCached, markImageLoaded, useImageLoad } from '@/hooks/useImageLoad';
 
 import {
   contentToClient,
@@ -167,7 +167,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   onFocusArrive,
   onFocusReturnComplete
 }) => {
-  const isLoaded = useImageLoad(work.image);
+  // Gate opacity on the same URL we paint — thumbnails are what the grid shows
+  const imageSrc = work.thumbnail || work.image;
+  const isLoaded = useImageLoad(imageSrc);
   const itemRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
   // Gate 3D tilt/shine by pointer capability — NOT viewport width.
@@ -190,7 +192,6 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const prevFocusModeRef = useRef(focusMode);
   const peerReturnActiveRef = useRef(false);
   const peerReturnDelayRef = useRef(0);
-  const [peerPaintHidden, setPeerPaintHidden] = useState(false);
   const layoutRef = useRef({ x, y, width, height });
   const baseZIndex = intro?.zIndex ?? 0;
   const baseZIndexRef = useRef(baseZIndex);
@@ -521,12 +522,6 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     }
   }, [focusMode]);
 
-  useEffect(() => {
-    if (focusMode === 'exiting') {
-      setPeerPaintHidden(false);
-    }
-  }, [focusMode]);
-
   const cardBorderRadius = width * CARD_BORDER_RADIUS_RATIO;
   // Capture stagger while exited so it survives the clearFocus → idle frame
   if (focusMode === 'exiting') {
@@ -591,8 +586,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       initial={
         shouldPlayIntro && intro
           ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
-          : // Soft fade when culled cards remount into view (skip hard pop)
-            { x, y, rotate: 0, scale: 1, opacity: 0 }
+          : // Soft fade when culled cards remount; skip if the image was already painted this session
+            { x, y, rotate: 0, scale: 1, opacity: isImageCached(imageSrc) ? 1 : 0 }
       }
       animate={animateState}
       transition={transition}
@@ -608,9 +603,6 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           focusReturnedRef.current = true;
           onFocusReturnComplete?.(id);
         }
-        if (focusMode === 'exiting') {
-          setPeerPaintHidden(true);
-        }
         if (peerReturnActiveRef.current && focusMode === 'idle') {
           peerReturnActiveRef.current = false;
         }
@@ -624,13 +616,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           focusMode !== 'idle' || peerReturnActiveRef.current ? 'transform, opacity' : undefined,
         pointerEvents:
           focusMode === 'exiting' || focusMode === 'returning' || focusOpacity < 0.01 ? 'none' : 'auto',
-        cursor: focusMode === 'focused' ? 'default' : undefined,
-        // Hide focused morph during HTML handoff; drop exited peers from paint once faded
-        visibility:
-          (focusMode === 'focused' && focusOpacity < 0.01) ||
-          (focusMode === 'exiting' && peerPaintHidden)
-            ? 'hidden'
-            : 'visible'
+        cursor: focusMode === 'focused' ? 'default' : undefined
       }}
     >
       <div
@@ -672,7 +658,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       >
         <motion.img
           className={styles.infiniteCanvasItemImage}
-          src={work?.thumbnail ? work?.thumbnail : work.image}
+          src={imageSrc}
           alt={work.name}
           style={{
             opacity: isLoaded ? 1 : 0,
@@ -681,7 +667,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
             scale: 1.08
           }}
           decoding="async"
-          loading="lazy"
+          // Culling already limits mounted cards — lazy would re-defer offscreen remounts
+          loading="eager"
+          onLoad={() => markImageLoaded(imageSrc)}
         />
         {!isTouchUi && (
           <motion.div
