@@ -43,6 +43,40 @@ export interface GlassSurfaceProps {
   style?: React.CSSProperties;
 }
 
+/** SVG displacement glass is too expensive on mobile GPUs (especially Android). */
+const shouldUseLightweightGlass = () => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return true;
+
+  const coarsePointer = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+  const narrow = window.matchMedia('(max-width: 768px)').matches;
+  const android = /Android/i.test(navigator.userAgent);
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  return coarsePointer || narrow || android || reduceMotion;
+};
+
+const supportsSVGFilters = (filterId: string) => {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return false;
+  }
+
+  if (shouldUseLightweightGlass()) {
+    return false;
+  }
+
+  const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+  const isFirefox = /Firefox/.test(navigator.userAgent);
+
+  if (isWebkit || isFirefox) {
+    return false;
+  }
+
+  const div = document.createElement('div');
+  div.style.backdropFilter = `url(#${filterId})`;
+
+  return div.style.backdropFilter !== '';
+};
+
 const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   width = 500,
@@ -70,7 +104,8 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   const redGradId = `red-grad-${id}`;
   const blueGradId = `blue-grad-${id}`;
 
-  const [svgSupported, setSvgSupported] = useState<boolean>(false);
+  const [svgSupported, setSvgSupported] = useState(false);
+  const [lightweight, setLightweight] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const feImageRef = useRef<SVGFEImageElement>(null);
@@ -108,10 +143,19 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   };
 
   const updateDisplacementMap = () => {
+    if (lightweight || !svgSupported) return;
     feImageRef.current?.setAttribute('href', generateDisplacementMap());
   };
 
   useEffect(() => {
+    const useLight = shouldUseLightweightGlass();
+    setLightweight(useLight);
+    setSvgSupported(!useLight && supportsSVGFilters(filterId));
+  }, [filterId]);
+
+  useEffect(() => {
+    if (lightweight || !svgSupported) return;
+
     updateDisplacementMap();
     [
       { ref: redChannelRef, offset: redOffset },
@@ -127,6 +171,8 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
     gaussianBlurRef.current?.setAttribute('stdDeviation', displace.toString());
   }, [
+    lightweight,
+    svgSupported,
     width,
     height,
     borderRadius,
@@ -145,7 +191,7 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   ]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (lightweight || !svgSupported || !containerRef.current) return;
 
     const resizeObserver = new ResizeObserver(() => {
       setTimeout(updateDisplacementMap, 0);
@@ -156,47 +202,18 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
     return () => {
       resizeObserver.disconnect();
     };
-  }, []);
+  }, [lightweight, svgSupported]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      setTimeout(updateDisplacementMap, 0);
-    });
-
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
+    if (lightweight || !svgSupported) return;
     setTimeout(updateDisplacementMap, 0);
-  }, [width, height]);
+  }, [lightweight, svgSupported, width, height]);
 
-  useEffect(() => {
-    setSvgSupported(supportsSVGFilters());
-  }, []);
-
-  const supportsSVGFilters = () => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return false;
-    }
-
-    const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
-    const isFirefox = /Firefox/.test(navigator.userAgent);
-
-    if (isWebkit || isFirefox) {
-      return false;
-    }
-
-    const div = document.createElement('div');
-    div.style.backdropFilter = `url(#${filterId})`;
-
-    return div.style.backdropFilter !== '';
-  };
+  const modeClass = lightweight
+    ? 'glass-surface--lightweight'
+    : svgSupported
+      ? 'glass-surface--svg'
+      : 'glass-surface--fallback';
 
   const containerStyle: React.CSSProperties = {
     ...style,
@@ -209,61 +226,59 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   } as React.CSSProperties;
 
   return (
-    <div
-      ref={containerRef}
-      className={`glass-surface ${svgSupported ? 'glass-surface--svg' : 'glass-surface--fallback'} ${className}`}
-      style={containerStyle}
-    >
-      <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <filter id={filterId} colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
-            <feImage ref={feImageRef} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
+    <div ref={containerRef} className={`glass-surface ${modeClass} ${className}`} style={containerStyle}>
+      {!lightweight && svgSupported && (
+        <svg className="glass-surface__filter" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id={filterId} colorInterpolationFilters="sRGB" x="0%" y="0%" width="100%" height="100%">
+              <feImage ref={feImageRef} x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" />
 
-            <feDisplacementMap ref={redChannelRef} in="SourceGraphic" in2="map" id="redchannel" result="dispRed" />
-            <feColorMatrix
-              in="dispRed"
-              type="matrix"
-              values="1 0 0 0 0
+              <feDisplacementMap ref={redChannelRef} in="SourceGraphic" in2="map" id="redchannel" result="dispRed" />
+              <feColorMatrix
+                in="dispRed"
+                type="matrix"
+                values="1 0 0 0 0
                       0 0 0 0 0
                       0 0 0 0 0
                       0 0 0 1 0"
-              result="red"
-            />
+                result="red"
+              />
 
-            <feDisplacementMap
-              ref={greenChannelRef}
-              in="SourceGraphic"
-              in2="map"
-              id="greenchannel"
-              result="dispGreen"
-            />
-            <feColorMatrix
-              in="dispGreen"
-              type="matrix"
-              values="0 0 0 0 0
+              <feDisplacementMap
+                ref={greenChannelRef}
+                in="SourceGraphic"
+                in2="map"
+                id="greenchannel"
+                result="dispGreen"
+              />
+              <feColorMatrix
+                in="dispGreen"
+                type="matrix"
+                values="0 0 0 0 0
                       0 1 0 0 0
                       0 0 0 0 0
                       0 0 0 1 0"
-              result="green"
-            />
+                result="green"
+              />
 
-            <feDisplacementMap ref={blueChannelRef} in="SourceGraphic" in2="map" id="bluechannel" result="dispBlue" />
-            <feColorMatrix
-              in="dispBlue"
-              type="matrix"
-              values="0 0 0 0 0
+              <feDisplacementMap ref={blueChannelRef} in="SourceGraphic" in2="map" id="bluechannel" result="dispBlue" />
+              <feColorMatrix
+                in="dispBlue"
+                type="matrix"
+                values="0 0 0 0 0
                       0 0 0 0 0
                       0 0 1 0 0
                       0 0 0 1 0"
-              result="blue"
-            />
+                result="blue"
+              />
 
-            <feBlend in="red" in2="green" mode="screen" result="rg" />
-            <feBlend in="rg" in2="blue" mode="screen" result="output" />
-            <feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0.7" />
-          </filter>
-        </defs>
-      </svg>
+              <feBlend in="red" in2="green" mode="screen" result="rg" />
+              <feBlend in="rg" in2="blue" mode="screen" result="output" />
+              <feGaussianBlur ref={gaussianBlurRef} in="output" stdDeviation="0.7" />
+            </filter>
+          </defs>
+        </svg>
+      )}
 
       <div className="glass-surface__content">{children}</div>
     </div>

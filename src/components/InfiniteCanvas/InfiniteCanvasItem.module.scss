@@ -5,7 +5,12 @@
   align-items: center;
   justify-content: center;
   perspective: 1000px;
+  // paint containment flattens 3D — keep layout/style only so tilt perspective works
   contain: layout style;
+
+  @media (hover: none), (pointer: coarse) {
+    perspective: none;
+  }
 
   .infiniteCanvasItemBackground {
     position: absolute;
@@ -33,6 +38,10 @@
     z-index: 0;
     will-change: transform, opacity;
     transform-origin: center top;
+
+    @media (hover: none), (pointer: coarse) {
+      display: none;
+    }
   }
 
   .infiniteCanvasItemInner {
@@ -47,8 +56,16 @@
     overflow: hidden;
     border-radius: var(--card-border-radius);
     border: var(--card-border-width) solid transparent;
-    will-change: transform, opacity;
     z-index: 1;
+
+    @media (hover: hover) and (pointer: fine) {
+      will-change: transform, opacity;
+    }
+
+    @media (hover: none), (pointer: coarse) {
+      transform-style: flat;
+      border-width: 0;
+    }
 
     &:before {
       content: '';
@@ -71,6 +88,10 @@
       pointer-events: none;
       z-index: 3;
       opacity: var(--card-border-glow);
+
+      @media (hover: none), (pointer: coarse) {
+        display: none;
+      }
     }
   }
 
@@ -82,7 +103,10 @@
     user-select: none;
     transition: opacity 300ms var(--material-cubic-bezier);
     display: block;
-    will-change: transform;
+
+    @media (hover: hover) and (pointer: fine) {
+      will-change: transform;
+    }
   }
 
   .infiniteCanvasItemShine {
@@ -94,5 +118,9 @@
     pointer-events: none;
     z-index: 4;
     border-radius: inherit;
+
+    @media (hover: none), (pointer: coarse) {
+      display: none;
+    }
   }
 }

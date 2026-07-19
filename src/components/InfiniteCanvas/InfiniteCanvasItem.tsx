@@ -170,6 +170,13 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const isLoaded = useImageLoad(work.image);
   const itemRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
+  // Gate 3D tilt/shine by pointer capability — NOT viewport width.
+  // max-width was incorrectly killing desktop tilt in narrow windows / side panels.
+  const [isTouchUi] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
   const shouldPlayIntro = Boolean(intro) && !prefersReducedMotion;
   const isClustered = shouldPlayIntro && !shouldSpread;
   const isFocusing = focusMode !== 'idle';
@@ -564,7 +571,13 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           ? exitSpring
           : peerReturnActiveRef.current
             ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
-            : focusSpring;
+            : isFocusing || focusMode === 'focused' || focusMode === 'returning'
+              ? focusSpring
+              : {
+                  // Soft opacity enter when culled cards remount; keep spring for transform
+                  ...focusSpring,
+                  opacity: { type: 'tween' as const, duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+                };
 
   return (
     <motion.div
@@ -578,7 +591,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       initial={
         shouldPlayIntro && intro
           ? { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity }
-          : { x, y, rotate: 0, scale: 1, opacity: 1 }
+          : // Soft fade when culled cards remount into view (skip hard pop)
+            { x, y, rotate: 0, scale: 1, opacity: 0 }
       }
       animate={animateState}
       transition={transition}
@@ -625,28 +639,30 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           opacity: isLoaded ? 0 : 1
         }}
       />
-      <motion.img
-        className={styles.infiniteCanvasItemShadow}
-        src={CARD_SHADOW_SRC}
-        alt=""
-        aria-hidden
-        draggable={false}
-        style={{
-          x: shadowX,
-          y: shadowY,
-          scale: shadowScale,
-          opacity: shadowOpacity
-        }}
-      />
+      {!isTouchUi && (
+        <motion.img
+          className={styles.infiniteCanvasItemShadow}
+          src={CARD_SHADOW_SRC}
+          alt=""
+          aria-hidden
+          draggable={false}
+          style={{
+            x: shadowX,
+            y: shadowY,
+            scale: shadowScale,
+            opacity: shadowOpacity
+          }}
+        />
+      )}
       <motion.div
         className={styles.infiniteCanvasItemInner}
         style={{
-          x: magnetX,
-          y: magnetY,
-          rotateX,
-          rotateY,
-          scale: isFocusing ? 1 : scale,
-          transformStyle: 'preserve-3d',
+          x: isTouchUi ? 0 : magnetX,
+          y: isTouchUi ? 0 : magnetY,
+          rotateX: isTouchUi ? 0 : rotateX,
+          rotateY: isTouchUi ? 0 : rotateY,
+          scale: isFocusing || isTouchUi ? 1 : scale,
+          transformStyle: isTouchUi ? undefined : 'preserve-3d',
           width: '100%',
           height: '100%',
           ['--card-border-radius' as string]: `${cardBorderRadius}px`,
@@ -660,22 +676,26 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           alt={work.name}
           style={{
             opacity: isLoaded ? 1 : 0,
-            x: imageX,
-            y: imageY,
+            x: isTouchUi ? 0 : imageX,
+            y: isTouchUi ? 0 : imageY,
             scale: 1.08
           }}
+          decoding="async"
+          loading="lazy"
         />
-        <motion.div
-          className={styles.infiniteCanvasItemShine}
-          style={{
-            background: shineBackground,
-            opacity: shineOpacity,
-            pointerEvents: 'none',
-            transformStyle: 'preserve-3d',
-            backfaceVisibility: 'hidden',
-            rotate: shineRotation
-          }}
-        />
+        {!isTouchUi && (
+          <motion.div
+            className={styles.infiniteCanvasItemShine}
+            style={{
+              background: shineBackground,
+              opacity: shineOpacity,
+              pointerEvents: 'none',
+              transformStyle: 'preserve-3d',
+              backfaceVisibility: 'hidden',
+              rotate: shineRotation
+            }}
+          />
+        )}
       </motion.div>
     </motion.div>
   );

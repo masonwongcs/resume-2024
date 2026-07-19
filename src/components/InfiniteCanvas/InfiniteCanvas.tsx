@@ -146,6 +146,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const committedCellWindowRef = useRef<string | null>(null);
   /** True after camera has synced React cull state at rest */
   const cullSettledRef = useRef(true);
+  /** Throttle React cull commits during touch so overscan stays warm without remount storms */
+  const lastCullCommitMsRef = useRef(0);
   const animationFrameRef = useRef<number>(null);
   const workUsageCountRef = useRef<Map<string, number>>(new Map());
   const lastTouchDistance = useRef<number | null>(null);
@@ -191,6 +193,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const gapSize = isMobile ? window.innerWidth / 8 : window.innerWidth / 24; // Size of the gap between grid items
   const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.6;
   const cellHeight = (cellWidth * 3) / 5;
+  // Mobile: tighter overscan — fewer mounted cards while panning
+  // Keep ≥2 so cards mount off-screen and slide in with the camera (padding 1 pops at the edge)
   const viewportPadding = 2;
   const lerpFactor = 0.15;
   /** Touch drag + pinch share this; lower = more glide (wheel uses lerpFactor) */
@@ -393,8 +397,19 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
             Math.abs(newY - targetOffsetRef.current.y) <= 0.01 &&
             Math.abs(newZoom - targetZoomRef.current) <= 0.0001;
 
-          // Cull React state only when the visible cell window changes, or once on settle
-          if (windowKey !== committedCellWindowRef.current || (settled && !cullSettledRef.current)) {
+          // Touch: throttle cull so edges stay filled without remounting every frame.
+          // Mouse/wheel: commit on every cell-window change.
+          const touchGesturing =
+            isPinching.current || (isDragging.current && isTouchDrag.current);
+          const windowChanged = windowKey !== committedCellWindowRef.current;
+          if (touchGesturing) {
+            const now = performance.now();
+            const due = now - lastCullCommitMsRef.current >= 120;
+            if ((windowChanged && due) || (settled && !cullSettledRef.current)) {
+              commitCullPose(newX, newY, newZoom, windowKey, settled);
+              lastCullCommitMsRef.current = now;
+            }
+          } else if (windowChanged || (settled && !cullSettledRef.current)) {
             commitCullPose(newX, newY, newZoom, windowKey, settled);
           }
         }

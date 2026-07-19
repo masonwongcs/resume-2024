@@ -5,18 +5,6 @@
   justify-content: center;
   overflow: hidden;
   transition: opacity 0.26s ease-out;
-
-  &:before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    height: 300%;
-    background: linear-gradient(to bottom, hsl(0deg 0% 100%) 0%, transparent 50%);
-    backdrop-filter: blur(64px);
-    mask-image: linear-gradient(to bottom, black 0% 50%, transparent 50% 100%);
-    pointer-events: none;
-    z-index: -1;
-  }
 }
 
 .glass-surface__filter {
@@ -55,18 +43,12 @@
     0px 4px 16px rgba(17, 17, 26, 0.05) inset,
     0px 8px 24px rgba(17, 17, 26, 0.05) inset,
     0px 16px 56px rgba(17, 17, 26, 0.05) inset;
-}
 
-.glass-surface--fallback {
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(177, 177, 177, 0.2);
-  box-shadow: 0 2px 60px rgba(0, 0, 0, 0.1);
   &:before {
     content: '';
     position: absolute;
     inset: 0;
-    height: 200%;
+    height: 300%;
     background: linear-gradient(to bottom, hsl(0deg 0% 100%) 0%, transparent 50%);
     backdrop-filter: blur(64px);
     mask-image: linear-gradient(to bottom, black 0% 50%, transparent 50% 100%);
@@ -75,33 +57,32 @@
   }
 }
 
-@supports not (backdrop-filter: blur(10px)) {
-  .glass-surface--fallback {
-    background: rgba(255, 255, 255, 0.4);
-    box-shadow:
-      inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-      inset 0 -1px 0 0 rgba(255, 255, 255, 0.3);
-  }
+.glass-surface--fallback {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(177, 177, 177, 0.2);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.08);
+}
 
-  .glass-surface--fallback::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: inherit;
-    z-index: -1;
+/* Mobile / Android: opaque frosted chip — no live backdrop sampling over the canvas */
+.glass-surface--lightweight {
+  background: rgba(255, 254, 240, 0.88);
+  border: 1px solid rgba(177, 177, 177, 0.22);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
+
+  @supports (backdrop-filter: blur(8px)) {
+    background: rgba(255, 254, 240, 0.72);
+    backdrop-filter: blur(8px);
   }
 }
 
 @supports not (backdrop-filter: blur(10px)) {
-  @media (prefers-color-scheme: dark) {
-    .glass-surface--fallback {
-      background: rgba(0, 0, 0, 0.4);
-    }
-
-    .glass-surface--fallback::before {
-      background: rgba(255, 255, 255, 0.05);
-    }
+  .glass-surface--fallback,
+  .glass-surface--lightweight {
+    background: rgba(255, 254, 240, 0.92);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.3);
   }
 }
 

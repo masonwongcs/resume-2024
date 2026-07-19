@@ -243,65 +243,46 @@ const Blob = () => {
     // We'll use CSS filter for blur as it's more performant
   });
 
-  // Animation loop
+  // Animation loop — skip continuous rAF on mobile (full-screen blur(100px) canvas
+  // competing with the infinite canvas is a major Android jank source).
   useEffect(() => {
+    if (isMobile) {
+      drawBlobs.current();
+      return;
+    }
+
     let lastTime = performance.now();
 
     const updateBlobs = () => {
       const currentTime = performance.now();
       const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
       lastTime = currentTime;
-      
+
       timeRef.current += deltaTime;
 
       // Update positions for each blob
       blobConfigs.forEach((config, index) => {
         const currentPos = blobPositionsRef.current[index];
-        
-        if (isMobileRef.current) {
-          // On mobile, use time-based animation for positions
-          const centerX = window.innerWidth / 2;
-          const centerY = window.innerHeight / 2;
-          const radius = Math.min(window.innerWidth, window.innerHeight) * 0.3;
-          const timeOffset = index * 0.5;
-          
-          // Animate in a circular pattern
-          const targetX = centerX + Math.cos(timeRef.current * 0.3 + timeOffset) * radius;
-          const targetY = centerY + Math.sin(timeRef.current * 0.3 + timeOffset) * radius;
-          
-          // Use touch position if available, otherwise use animated position
-          const finalTargetX = mousePos.x !== 0 ? mousePos.x : targetX;
-          const finalTargetY = mousePos.y !== 0 ? mousePos.y : targetY;
-          
-          const newX = lerp(currentPos.x, finalTargetX, config.lerpFactor);
-          const newY = lerp(currentPos.y, finalTargetY, config.lerpFactor);
-          blobPositionsRef.current[index] = { x: newX, y: newY };
-        } else {
-          // Desktop: follow mouse
-          const newX = lerp(currentPos.x, mousePos.x, config.lerpFactor);
-          const newY = lerp(currentPos.y, mousePos.y, config.lerpFactor);
-          blobPositionsRef.current[index] = { x: newX, y: newY };
-        }
 
-        // Lerp colors based on time and mouse/touch position
-        // Create a smooth color transition based on time and position
-        const timeOffset = index * 0.5; // Offset each blob's animation
-        const posInfluence = isMobileRef.current 
-          ? Math.sin(timeRef.current * 0.4 + timeOffset) * 0.5 + 0.5
-          : Math.sin((mousePos.x + mousePos.y) * 0.001) * 0.5 + 0.5;
+        // Desktop: follow mouse
+        const newX = lerp(currentPos.x, mousePos.x, config.lerpFactor);
+        const newY = lerp(currentPos.y, mousePos.y, config.lerpFactor);
+        blobPositionsRef.current[index] = { x: newX, y: newY };
+
+        // Lerp colors based on time and mouse position
+        const timeOffset = index * 0.5;
+        const posInfluence = Math.sin((mousePos.x + mousePos.y) * 0.001) * 0.5 + 0.5;
         const timeInfluence = Math.sin(timeRef.current * 0.5 + timeOffset) * 0.5 + 0.5;
-        const lerpValue = (posInfluence * 0.3 + timeInfluence * 0.7);
-        
+        const lerpValue = posInfluence * 0.3 + timeInfluence * 0.7;
+
         const currentColor = blobColorsRef.current[index];
         const baseColor = baseColors[index];
         const targetColor = targetColors[index];
         const newColor = lerpColor(baseColor, targetColor, lerpValue);
-        
-        // Smoothly transition to new color
+
         blobColorsRef.current[index] = lerpColor(currentColor, newColor, 0.1);
       });
 
-      // Draw all blobs
       drawBlobs.current();
 
       animationRef.current = requestAnimationFrame(updateBlobs);
@@ -332,8 +313,9 @@ const Blob = () => {
         height: '100%',
         pointerEvents: 'none',
         zIndex: -1,
-        filter: 'blur(100px)',
-        opacity: 0.15
+        // Softer blur on mobile — 100px over a moving canvas is extremely expensive
+        filter: isMobile ? 'blur(40px)' : 'blur(100px)',
+        opacity: isMobile ? 0.12 : 0.15
       }}
     />
   );
