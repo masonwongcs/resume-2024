@@ -158,6 +158,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   /** Swallow only the click tied to pointer-up after a pan — not the next intentional click */
   const suppressClickRef = useRef(false);
   const dragDistanceRef = useRef(0);
+  /** Touch pan velocity in px/frame (normalized to ~60fps) — drives post-release inertia */
+  const panVelocityRef = useRef({ x: 0, y: 0 });
+  const lastMoveTsRef = useRef(0);
+  const isCoastingRef = useRef(false);
+  /** True after a touch drag sample — survives handleTouchEnd clearing isTouchDrag */
+  const touchInertiaEligibleRef = useRef(false);
   const prefersReducedMotion = useReducedMotion();
   const introConfigRef = useRef<Map<string, InfiniteCanvasItemIntro> | null>(null);
   const introCompletedIdsRef = useRef<Set<string>>(new Set());
@@ -199,6 +205,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const lerpFactor = 0.15;
   /** Touch drag + pinch share this; lower = more glide (wheel uses lerpFactor) */
   const touchLerpFactor = 0.3;
+  /** Per-frame decay while coasting — lower = shorter glide */
+  const touchInertiaFriction = 0.88;
+  /** Scale release velocity (< 1 softens the fling) */
+  const touchInertiaBoost = 0.75;
+  const touchInertiaMinSpeed = 0.6;
+  const touchVelocitySmoothing = 0.35;
   const seedFactor = Math.random() * 1000;
   const zoomSpeed = 0.001;
   const minZoom = 0.75; // Maximum zoom out
@@ -360,7 +372,29 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
     if (!focusedIdRef.current && !drawerBusy) {
       const view = viewRef.current;
-      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel use lerpFactor
+
+      // Coast: keep pushing the camera target after touch release
+      if (
+        isCoastingRef.current &&
+        !isDragging.current &&
+        !isPinching.current &&
+        !prefersReducedMotion
+      ) {
+        const v = panVelocityRef.current;
+        targetOffsetRef.current = {
+          x: targetOffsetRef.current.x + v.x,
+          y: targetOffsetRef.current.y + v.y
+        };
+        v.x *= touchInertiaFriction;
+        v.y *= touchInertiaFriction;
+        if (Math.hypot(v.x, v.y) < touchInertiaMinSpeed) {
+          v.x = 0;
+          v.y = 0;
+          isCoastingRef.current = false;
+        }
+      }
+
+      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast use lerpFactor
       const follow =
         isPinching.current || (isDragging.current && isTouchDrag.current)
           ? touchLerpFactor
@@ -427,7 +461,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     }
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
-  }, [applyCameraTransform, commitCullPose, getCellWindowKey]);
+  }, [applyCameraTransform, commitCullPose, getCellWindowKey, prefersReducedMotion]);
 
   const syncViewBounds = useCallback(() => {
     const container = outerContainerRef.current;
@@ -678,6 +712,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       }
       if (focusedIdRef.current || isIntroPlayingRef.current) return;
 
+      // Stop any fling before locking the camera for focus
+      isCoastingRef.current = false;
+      panVelocityRef.current = { x: 0, y: 0 };
+      touchInertiaEligibleRef.current = false;
+
       const view = viewRef.current;
       if (view.width <= 0 || view.height <= 0) return;
 
@@ -785,6 +824,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       // New gesture — drop any leftover suppress from a pan that ended off-card
       suppressClickRef.current = false;
       dragDistanceRef.current = 0;
+      // Kill leftover fling so a new grab takes over immediately
+      isCoastingRef.current = false;
+      panVelocityRef.current = { x: 0, y: 0 };
+      lastMoveTsRef.current = performance.now();
       isDragging.current = true;
       viewRef.current.isDragging = true;
       clearPointer();
@@ -795,26 +838,68 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     [clearPointer, resetAllProximity]
   );
 
-  const handleMove = useCallback((clientX: number, clientY: number) => {
-    if (!isDragging.current) return;
-    const dx = clientX - lastPosition.current.x;
-    const dy = clientY - lastPosition.current.y;
-    dragDistanceRef.current += Math.hypot(dx, dy);
-    targetOffsetRef.current = {
-      x: targetOffsetRef.current.x + dx,
-      y: targetOffsetRef.current.y + dy
-    };
-    lastPosition.current = { x: clientX, y: clientY };
-  }, []);
+  const handleMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!isDragging.current) return;
+      const dx = clientX - lastPosition.current.x;
+      const dy = clientY - lastPosition.current.y;
+      dragDistanceRef.current += Math.hypot(dx, dy);
+      targetOffsetRef.current = {
+        x: targetOffsetRef.current.x + dx,
+        y: targetOffsetRef.current.y + dy
+      };
+
+      // Sample touch velocity for post-release inertia (mouse pans stay snappy)
+      if (isTouchDrag.current) {
+        const now = performance.now();
+        const dt = now - lastMoveTsRef.current;
+        lastMoveTsRef.current = now;
+        if (dt > 0 && dt < 100) {
+          // Normalize to ~60fps frame units so fling distance is frame-rate stable
+          const scale = 16.67 / dt;
+          const instX = dx * scale;
+          const instY = dy * scale;
+          const s = touchVelocitySmoothing;
+          const prev = panVelocityRef.current;
+          panVelocityRef.current = {
+            x: prev.x * (1 - s) + instX * s,
+            y: prev.y * (1 - s) + instY * s
+          };
+          touchInertiaEligibleRef.current = true;
+        }
+      }
+
+      lastPosition.current = { x: clientX, y: clientY };
+    },
+    [touchVelocitySmoothing]
+  );
 
   const handleEnd = useCallback(() => {
     if (isDragging.current && dragDistanceRef.current > clickDragThresholdPx) {
       suppressClickRef.current = true;
     }
+
+    // Touch fling: keep coasting if the finger was still moving at release
+    if (touchInertiaEligibleRef.current) {
+      touchInertiaEligibleRef.current = false;
+      const age = performance.now() - lastMoveTsRef.current;
+      const speed = Math.hypot(panVelocityRef.current.x, panVelocityRef.current.y);
+      if (!prefersReducedMotion && age < 80 && speed > touchInertiaMinSpeed) {
+        panVelocityRef.current = {
+          x: panVelocityRef.current.x * touchInertiaBoost,
+          y: panVelocityRef.current.y * touchInertiaBoost
+        };
+        isCoastingRef.current = true;
+      } else {
+        panVelocityRef.current = { x: 0, y: 0 };
+        isCoastingRef.current = false;
+      }
+    }
+
     dragDistanceRef.current = 0;
     isDragging.current = false;
     viewRef.current.isDragging = false;
-  }, []);
+  }, [prefersReducedMotion, touchInertiaBoost, touchInertiaMinSpeed]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -923,6 +1008,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         isDragging.current = false;
         viewRef.current.isDragging = false;
         isPinching.current = true;
+        isCoastingRef.current = false;
+        panVelocityRef.current = { x: 0, y: 0 };
+        touchInertiaEligibleRef.current = false;
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         lastTouchDistance.current = Math.hypot(
@@ -1017,8 +1105,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         lastPinchMidRef.current = null;
       }
       if (e.touches.length === 0) {
-        isTouchDrag.current = false;
+        // handleEnd reads isTouchDrag / inertia eligibility — clear after
         handleEnd();
+        isTouchDrag.current = false;
       } else if (e.touches.length === 1) {
         // Hand off to one-finger drag from the remaining touch
         isTouchDrag.current = true;
@@ -1048,7 +1137,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       outerContainer.addEventListener('mouseup', handleEnd);
       outerContainer.addEventListener('mouseleave', handleMouseLeave);
       outerContainer.addEventListener('touchmove', handleTouchMove as any, { passive: false });
-      outerContainer.addEventListener('touchend', handleEnd);
+      // touchend/cancel go through React handleTouchEnd so inertia isn't applied twice
     }
 
     return () => {
@@ -1057,7 +1146,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         outerContainer.removeEventListener('mouseup', handleEnd);
         outerContainer.removeEventListener('mouseleave', handleMouseLeave);
         outerContainer.removeEventListener('touchmove', handleTouchMove as any);
-        outerContainer.removeEventListener('touchend', handleEnd);
       }
     };
   }, [handleMouseMove, handleMouseLeave, handleTouchMove, handleEnd]);
@@ -1313,6 +1401,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       onTouchStart={isInteractionLocked ? undefined : handleTouchStart}
       onTouchMove={isInteractionLocked ? undefined : handleTouchMove}
       onTouchEnd={isInteractionLocked ? undefined : handleTouchEnd}
+      onTouchCancel={isInteractionLocked ? undefined : handleTouchEnd}
       style={{ pointerEvents: isClusterHold ? 'none' : undefined }}
     >
       <AnimatePresence>
