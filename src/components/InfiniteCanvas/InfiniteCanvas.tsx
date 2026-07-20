@@ -2,28 +2,30 @@
 
 import styles from './InfiniteCanvas.module.scss';
 
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-import { AnimatePresence, motion, useMotionValue, useAnimationFrame, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useAnimationFrame, useMotionValue, useReducedMotion } from 'motion/react';
 
-import { useHomeStore } from '@/store';
 import { isImageCached, markImageLoaded, preloadImage, preloadImages } from '@/hooks/useImageLoad';
+import type { MarqueePersistedState } from '@/components/CurvedLoop';
+import { useHomeStore } from '@/store';
 
-import { createCanvasViewState, type ProximityFrameHandler, type ProximityResetHandler } from './canvasView';
 import {
-  InfiniteCanvasItem,
   type InfiniteCanvasFocusMode,
+  InfiniteCanvasItem,
   type InfiniteCanvasItemIntro,
   type ProximityRegistration
 } from './InfiniteCanvasItem';
+import { type ProximityFrameHandler, type ProximityResetHandler, createCanvasViewState } from './canvasView';
 
-interface Work {
+export interface Work {
   name: string;
   url?: string;
   image: string;
   video?: string;
   thumbnail?: string;
-  description: string;
+  description: ReactNode;
 }
 
 interface GridItem {
@@ -31,9 +33,37 @@ interface GridItem {
   work: Work;
   offsetX: number;
   offsetY: number;
+  /** True for the one-shot custom center card */
+  isOriginCard?: boolean;
 }
 
 export type PeerReturnStagger = 'legacy' | 'focus';
+
+export type OriginCardRenderProps = {
+  width: number;
+  height: number;
+  /**
+   * False while the origin card is still in the pre-stack pill pose.
+   * Used to hold the marquee on "Hi" until the card is actually visible.
+   */
+  active?: boolean;
+  /** Open focus mode — wired by InfiniteCanvas (portaled content does not bubble clicks) */
+  onActivate?: () => void;
+  /** Shared marquee offset — survives grid ↔ focus portal handoff */
+  marqueeState?: React.MutableRefObject<MarqueePersistedState>;
+};
+
+/**
+ * One-shot custom card pinned to the intro origin (viewport center / top of stack).
+ * Never tiled elsewhere in the infinite grid.
+ */
+export interface OriginCardConfig {
+  /** Focus overlay metadata; optional poster via image/thumbnail for stack silhouette */
+  work: Work;
+  render: (props: OriginCardRenderProps) => React.ReactNode;
+  /** Open the focus overlay on click. Defaults to true. */
+  focusable?: boolean;
+}
 
 interface InfiniteCanvasProps {
   works: Work[];
@@ -44,6 +74,8 @@ interface InfiniteCanvasProps {
    * - `focus` — ripple from the clicked card
    */
   peerReturnStagger?: PeerReturnStagger;
+  /** Custom React face for the middle / top-of-stack card (appears once) */
+  originCard?: OriginCardConfig;
 }
 
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
@@ -145,7 +177,7 @@ const FOCUS_MORPH_FALLBACK_MS = 520;
 /** How long after the focus card starts home before peers follow */
 const FOCUS_PEERS_RETURN_DELAY_MS = 50;
 
-const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagger }) => {
+const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagger, originCard }) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
@@ -187,12 +219,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const prefersReducedMotion = useReducedMotion();
   const introConfigRef = useRef<Map<string, InfiniteCanvasItemIntro> | null>(null);
   /** Intro cards in stackOrder (bottom → top) for sequential formation + forced mount */
-  const introStackRef = useRef<
-    { id: string; src: string; item: GridItem & { x: number; y: number } }[] | null
-  >(null);
+  const introStackRef = useRef<{ id: string; src: string; item: GridItem & { x: number; y: number } }[] | null>(null);
   const introCompletedIdsRef = useRef<Set<string>>(new Set());
   /** Content-space center of the card that should sit dead-middle after intro */
   const introOriginRef = useRef<{ x: number; y: number } | null>(null);
+  /** Grid id of the one-shot custom origin card */
+  const originCardIdRef = useRef<string | null>(null);
   /** Pending camera snap from intro capture — applied once in layout effect */
   const pendingIntroSnapRef = useRef<{ x: number; y: number } | null>(null);
   const [introFlush, setIntroFlush] = useState(0);
@@ -214,6 +246,14 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const focusCardRef = useRef<HTMLDivElement>(null);
   const focusImageRef = useRef<HTMLImageElement>(null);
   const focusArriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [originCanvasHost, setOriginCanvasHost] = useState<HTMLDivElement | null>(null);
+  const [originFocusHost, setOriginFocusHost] = useState<HTMLDivElement | null>(null);
+  const originMarqueeStateRef = useRef<MarqueePersistedState>({
+    offset: 0,
+    direction: 'left',
+    spacing: 0,
+    initialized: false
+  });
   const pointerX = useMotionValue(-1);
   const pointerY = useMotionValue(-1);
   const viewRef = useRef(createCanvasViewState());
@@ -252,6 +292,64 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
   const getWorkKey = (work: Work) => work.url ?? work.name;
 
+  const originCardKey = originCard ? getWorkKey(originCard.work) : null;
+
+  const pinOriginCardAt = useCallback(
+    (gx: number, gy: number) => {
+      if (!originCard) return null;
+      const id = generateItemId(gx, gy);
+      const prevId = originCardIdRef.current;
+      // If the center seat moved (intro snap), drop the old custom so it never tiles twice
+      if (prevId && prevId !== id) {
+        itemsRef.current.delete(prevId);
+      }
+      const item: GridItem = {
+        id,
+        work: originCard.work,
+        offsetX: 0,
+        offsetY: gx % 2 === 0 ? 0 : staggerOffset,
+        isOriginCard: true
+      };
+      itemsRef.current.set(id, item);
+      originCardIdRef.current = id;
+      return item;
+    },
+    [originCard, staggerOffset]
+  );
+
+  const findCenterGridSeat = useCallback(
+    (width: number, height: number) => {
+      const strideX = cellWidth + gapSize;
+      const strideY = cellHeight + gapSize;
+      const idealCX = width / 2;
+      const idealCY = height / 2;
+      let originX = idealCX;
+      let originY = idealCY;
+      let originGX = 0;
+      let originGY = 0;
+      let bestDist = Infinity;
+      const searchGX = Math.round(idealCX / strideX);
+      const searchGY = Math.round(idealCY / strideY);
+      for (let gx = searchGX - 3; gx <= searchGX + 3; gx++) {
+        for (let gy = searchGY - 3; gy <= searchGY + 3; gy++) {
+          const itemOffsetY = gx % 2 === 0 ? 0 : staggerOffset;
+          const tx = gx * strideX + cellWidth / 2;
+          const ty = gy * strideY + itemOffsetY + cellHeight / 2;
+          const d = Math.hypot(tx - idealCX, ty - idealCY);
+          if (d < bestDist) {
+            bestDist = d;
+            originX = tx;
+            originY = ty;
+            originGX = gx;
+            originGY = gy;
+          }
+        }
+      }
+      return { originX, originY, originGX, originGY };
+    },
+    [cellWidth, cellHeight, gapSize, staggerOffset]
+  );
+
   const seededRandom = (seed: number) => {
     // Improved random function with better distribution
     const x = Math.sin(seed) * seedFactor;
@@ -286,17 +384,25 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     // Create a set of adjacent work URLs for faster lookup
     const adjacentKeys = new Set(adjacentWorks.map(getWorkKey));
 
-    // Filter out adjacent works first
-    const availableWorks = works.filter((work) => !adjacentKeys.has(getWorkKey(work)));
+    // Filter out adjacent works + the one-shot origin card (never tile it)
+    const availableWorks = works.filter((work) => {
+      const key = getWorkKey(work);
+      if (originCardKey && key === originCardKey) return false;
+      return !adjacentKeys.has(key);
+    });
 
-    // If no works are available (edge case), use all works
-    const candidateWorks = availableWorks.length > 0 ? availableWorks : works;
+    // If no works are available (edge case), use all works except the origin card
+    const fallbackWorks = originCardKey ? works.filter((work) => getWorkKey(work) !== originCardKey) : works;
+    const candidateWorks =
+      availableWorks.length > 0 ? availableWorks : fallbackWorks.length > 0 ? fallbackWorks : works;
 
     // Create a weighted selection based on usage count and randomness
     const weightedWorks = candidateWorks.map((work) => {
       const usageCount = workUsageCountRef.current.get(getWorkKey(work)) || 0;
       // Lower usage = higher weight, add randomness
-      const randomWeight = seededRandom(seed + work.description.length);
+      const descriptionSeed =
+        typeof work.description === 'string' ? work.description.length : work.name.length;
+      const randomWeight = seededRandom(seed + descriptionSeed);
       const weight = (1 / (usageCount + 1)) * (0.7 + randomWeight * 0.3);
       return { work, weight };
     });
@@ -311,10 +417,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
     // Update usage count
     const selectedWorkKey = getWorkKey(selectedWork);
-    workUsageCountRef.current.set(
-      selectedWorkKey,
-      (workUsageCountRef.current.get(selectedWorkKey) || 0) + 1
-    );
+    workUsageCountRef.current.set(selectedWorkKey, (workUsageCountRef.current.get(selectedWorkKey) || 0) + 1);
 
     return selectedWork;
   };
@@ -350,6 +453,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
 
+    // Pin the custom center card as soon as we have a viewport (avoids a wrong-work flash)
+    if (originCard && !originCardIdRef.current && width > 0 && height > 0) {
+      const { originGX, originGY } = findCenterGridSeat(width, height);
+      pinOriginCardAt(originGX, originGY);
+    }
+
     const startX = Math.floor((-offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) - viewportPadding;
     const startY = Math.floor(-offset.y / ((cellHeight + gapSize) * zoom)) - viewportPadding;
     const endX = Math.ceil((width - offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) + viewportPadding;
@@ -361,17 +470,22 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         const id = generateItemId(x, y);
         let item = itemsRef.current.get(id);
         if (!item) {
-          const adjacentWorks = getAdjacentWorks(x, y, 3); // Increased radius to 2
-          const selectedWork = selectUniqueWork(x, y, adjacentWorks);
-          const offsetX = 0;
-          const offsetY = x % 2 === 0 ? 0 : staggerOffset;
-          item = {
-            id,
-            work: selectedWork,
-            offsetX,
-            offsetY
-          };
-          itemsRef.current.set(id, item);
+          // If this seat is the pinned origin, always use the custom card
+          if (originCard && originCardIdRef.current === id) {
+            item = pinOriginCardAt(x, y)!;
+          } else {
+            const adjacentWorks = getAdjacentWorks(x, y, 3); // Increased radius to 2
+            const selectedWork = selectUniqueWork(x, y, adjacentWorks);
+            const offsetX = 0;
+            const offsetY = x % 2 === 0 ? 0 : staggerOffset;
+            item = {
+              id,
+              work: selectedWork,
+              offsetX,
+              offsetY
+            };
+            itemsRef.current.set(id, item);
+          }
         }
         items.push({ ...item, x, y });
       }
@@ -383,7 +497,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     }
 
     return items;
-  }, [offset, zoom, works, initialOffsetX]);
+  }, [offset, zoom, works, initialOffsetX, originCard, findCenterGridSeat, pinOriginCardAt]);
 
   const lerp = (start: number, end: number, factor: number) => {
     return start + (end - start) * factor;
@@ -403,12 +517,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       const view = viewRef.current;
 
       // Coast: keep pushing the camera target after touch release
-      if (
-        isCoastingRef.current &&
-        !isDragging.current &&
-        !isPinching.current &&
-        !prefersReducedMotion
-      ) {
+      if (isCoastingRef.current && !isDragging.current && !isPinching.current && !prefersReducedMotion) {
         const v = panVelocityRef.current;
         targetOffsetRef.current = {
           x: targetOffsetRef.current.x + v.x,
@@ -424,16 +533,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       }
 
       // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast use lerpFactor
-      const follow =
-        isPinching.current || (isDragging.current && isTouchDrag.current)
-          ? touchLerpFactor
-          : lerpFactor;
+      const follow = isPinching.current || (isDragging.current && isTouchDrag.current) ? touchLerpFactor : lerpFactor;
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
       const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
       const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
 
-      const offsetMoved =
-        Math.abs(newX - view.offsetX) >= 0.01 || Math.abs(newY - view.offsetY) >= 0.01;
+      const offsetMoved = Math.abs(newX - view.offsetX) >= 0.01 || Math.abs(newY - view.offsetY) >= 0.01;
       const zoomMoved = Math.abs(newZoom - view.zoom) >= 0.0001;
 
       if (offsetMoved || zoomMoved) {
@@ -462,8 +567,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
           // Touch: throttle cull so edges stay filled without remounting every frame.
           // Mouse/wheel: commit on every cell-window change.
-          const touchGesturing =
-            isPinching.current || (isDragging.current && isTouchDrag.current);
+          const touchGesturing = isPinching.current || (isDragging.current && isTouchDrag.current);
           const windowChanged = windowKey !== committedCellWindowRef.current;
           if (touchGesturing) {
             const now = performance.now();
@@ -516,8 +620,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     applyCameraTransform(x, y, z);
     const width = viewRef.current.width || outerContainerRef.current?.clientWidth || 0;
     const height = viewRef.current.height || outerContainerRef.current?.clientHeight || 0;
-    const windowKey =
-      width > 0 && height > 0 ? getCellWindowKey(x, y, z, width, height) : 'initial';
+    const windowKey = width > 0 && height > 0 ? getCellWindowKey(x, y, z, width, height) : 'initial';
     commitCullPose(x, y, z, windowKey, true);
   }, [initialOffsetX, applyCameraTransform, commitCullPose, getCellWindowKey]);
 
@@ -535,8 +638,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     applyCameraTransform(snap.x, snap.y, z);
     const width = viewRef.current.width || outerContainerRef.current?.clientWidth || 0;
     const height = viewRef.current.height || outerContainerRef.current?.clientHeight || 0;
-    const windowKey =
-      width > 0 && height > 0 ? getCellWindowKey(snap.x, snap.y, z, width, height) : 'intro';
+    const windowKey = width > 0 && height > 0 ? getCellWindowKey(snap.x, snap.y, z, width, height) : 'intro';
     commitCullPose(snap.x, snap.y, z, windowKey, true);
     setIntroReady(true);
   }, [introFlush, applyCameraTransform, commitCullPose, getCellWindowKey]);
@@ -647,7 +749,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     void prepare();
   }, []);
 
-  // Hide the canvas morph only after the HTML card is on screen (avoids a blank frame)
+  // Hide the canvas morph once the HTML card is on screen (avoids a blank frame).
   useLayoutEffect(() => {
     if (focusPhase === 'settled') {
       const frame = requestAnimationFrame(() => setMorphCardHidden(true));
@@ -743,6 +845,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       }
       if (focusedIdRef.current || isIntroPlayingRef.current) return;
 
+      const stored = itemsRef.current.get(id);
+      if (stored?.isOriginCard && originCard?.focusable === false) return;
+
       // Stop any fling before locking the camera for focus
       isCoastingRef.current = false;
       panVelocityRef.current = { x: 0, y: 0 };
@@ -755,7 +860,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       if (!gridMatch) return;
       const gridX = Number(gridMatch[1]);
       const gridY = Number(gridMatch[2]);
-      const stored = itemsRef.current.get(id);
       const originX = gridX * (cellWidth + gapSize) + (stored?.offsetX ?? 0);
       const originY = gridY * (cellHeight + gapSize) + (stored?.offsetY ?? 0);
       const originCenterX = originX + cellWidth / 2;
@@ -770,8 +874,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       const cardTopScreenY = view.width <= 480 ? 100 : view.height * 0.15;
       const cardCenterScreenY = cardTopScreenY + scaledScreenHeight / 2;
       const contentCenterX = view.width / 2 - view.offsetX / view.zoom;
-      const contentCenterY =
-        view.height / 2 + (cardCenterScreenY - view.height / 2 - view.offsetY) / view.zoom;
+      const contentCenterY = view.height / 2 + (cardCenterScreenY - view.height / 2 - view.offsetY) / view.zoom;
       const pushDistance = (Math.hypot(view.width, view.height) / view.zoom) * 1.2;
 
       focusedIdRef.current = id;
@@ -801,8 +904,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         handleFocusArrive(id);
       }, FOCUS_MORPH_FALLBACK_MS);
     },
-    [cellWidth, cellHeight, gapSize, clearPointer, resetAllProximity, setCanvasFocused, handleFocusArrive]
+    [cellWidth, cellHeight, gapSize, clearPointer, resetAllProximity, setCanvasFocused, handleFocusArrive, originCard]
   );
+
+  const handleOriginActivate = useCallback(() => {
+    const id = originCardIdRef.current;
+    if (!id) return;
+    const item = itemsRef.current.get(id);
+    if (!item) return;
+    handleItemClick(id, item.work);
+  }, [handleItemClick]);
 
   useEffect(() => {
     return () => {
@@ -1044,10 +1155,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         touchInertiaEligibleRef.current = false;
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        lastTouchDistance.current = Math.hypot(
-          touch1.clientX - touch2.clientX,
-          touch1.clientY - touch2.clientY
-        );
+        lastTouchDistance.current = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
         lastPinchMidRef.current = {
           x: (touch1.clientX + touch2.clientX) / 2,
           y: (touch1.clientY + touch2.clientY) / 2
@@ -1080,10 +1188,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        const distance = Math.hypot(
-          touch1.clientX - touch2.clientX,
-          touch1.clientY - touch2.clientY
-        );
+        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
         const midX = (touch1.clientX + touch2.clientX) / 2;
         const midY = (touch1.clientY + touch2.clientY) / 2;
 
@@ -1102,10 +1207,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         // Distance-ratio zoom — tracks finger spread 1:1 (old 0.01*delta felt sluggish)
         if (lastTouchDistance.current !== null && lastTouchDistance.current > 0) {
           const scale = distance / lastTouchDistance.current;
-          const newZoom = Math.max(
-            minZoom,
-            Math.min(maxZoom, targetZoomRef.current * scale)
-          );
+          const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * scale));
 
           if (newZoom !== targetZoomRef.current) {
             const rect = outerContainerRef.current?.getBoundingClientRect();
@@ -1317,7 +1419,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     };
 
     for (const entry of stack) {
-      if (isImageCached(entry.src)) {
+      if (!entry.src || isImageCached(entry.src)) {
         imageReady.add(entry.id);
       }
     }
@@ -1453,34 +1555,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
     if (width > 0 && height > 0) {
       const viewportZoom = targetZoomRef.current;
-      const strideX = cellWidth + gapSize;
-      const strideY = cellHeight + gapSize;
 
       // Pick the grid seat nearest the viewport middle, then pan so it lands dead-center
-      const idealCX = width / 2;
-      const idealCY = height / 2;
-      let originX = idealCX;
-      let originY = idealCY;
-      let originGX = 0;
-      let originGY = 0;
-      let bestDist = Infinity;
-      const searchGX = Math.round(idealCX / strideX);
-      const searchGY = Math.round(idealCY / strideY);
-      for (let gx = searchGX - 3; gx <= searchGX + 3; gx++) {
-        for (let gy = searchGY - 3; gy <= searchGY + 3; gy++) {
-          const itemOffsetY = gx % 2 === 0 ? 0 : staggerOffset;
-          const tx = gx * strideX + cellWidth / 2;
-          const ty = gy * strideY + itemOffsetY + cellHeight / 2;
-          const d = Math.hypot(tx - idealCX, ty - idealCY);
-          if (d < bestDist) {
-            bestDist = d;
-            originX = tx;
-            originY = ty;
-            originGX = gx;
-            originGY = gy;
-          }
-        }
-      }
+      const { originX, originY, originGX, originGY } = findCenterGridSeat(width, height);
 
       const snapOffset = {
         x: (width / 2 - originX) * viewportZoom,
@@ -1488,20 +1565,23 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       };
       introOriginRef.current = { x: originX, y: originY };
 
-      const viewportBounds = getViewportContentBounds(
-        width,
-        height,
-        snapOffset.x,
-        snapOffset.y,
-        viewportZoom
-      );
+      const viewportBounds = getViewportContentBounds(width, height, snapOffset.x, snapOffset.y, viewportZoom);
       const viewportItems = visibleItems.filter((item) =>
         isItemInViewport(item, viewportBounds, cellWidth, cellHeight)
       );
 
-      // Guarantee the dead-center seat exists in the intro set
+      // Guarantee the dead-center seat exists in the intro set (and pin custom origin card)
       const originId = generateItemId(originGX, originGY);
-      if (!viewportItems.some((item) => item.id === originId)) {
+      const pinnedOrigin = originCard ? pinOriginCardAt(originGX, originGY) : null;
+      const existingOriginIdx = viewportItems.findIndex((item) => item.id === originId);
+      if (pinnedOrigin) {
+        const originEntry = { ...pinnedOrigin, x: originGX, y: originGY };
+        if (existingOriginIdx >= 0) {
+          viewportItems[existingOriginIdx] = originEntry;
+        } else {
+          viewportItems.push(originEntry);
+        }
+      } else if (existingOriginIdx < 0) {
         let originItem = itemsRef.current.get(originId);
         if (!originItem) {
           const adjacentWorks = getAdjacentWorks(originGX, originGY, 3);
@@ -1557,9 +1637,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
           y: clusterY,
           rotate: isOrigin ? 0 : (rotationMix - 0.5) * INTRO_CLUSTER_ROTATION_RANGE,
           scale: 1,
-          delay: isOrigin
-            ? 0
-            : 0.03 + distT * INTRO_SPREAD_RIPPLE_S + distT * fromBottom * 0.12 + randB * 0.04
+          delay: isOrigin ? 0 : 0.03 + distT * INTRO_SPREAD_RIPPLE_S + distT * fromBottom * 0.12 + randB * 0.04
         };
       });
 
@@ -1584,7 +1662,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       introConfigRef.current = configs.size > 0 ? configs : new Map();
       introStackRef.current = stackEntries.map(({ item }) => ({
         id: item.id,
-        src: item.work.thumbnail || item.work.image,
+        // Custom origin may have no poster — empty src is treated as ready in stack enter
+        src: item.work.thumbnail || item.work.image || '',
         item
       }));
       introCompletedIdsRef.current = new Set();
@@ -1594,10 +1673,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     }
   }
 
+  // Origin card is pinned in visibleItems (including reduced-motion).
+
   const isClusterHold = Boolean(introConfigRef.current?.size) && !shouldSpread && !prefersReducedMotion;
   const introStackCount = introConfigRef.current?.size ?? 0;
-  const stackFormationDone =
-    prefersReducedMotion || introStackCount === 0 || stackEnteredIds.size >= introStackCount;
+  const stackFormationDone = prefersReducedMotion || introStackCount === 0 || stackEnteredIds.size >= introStackCount;
 
   // Spread as soon as load hits 100% (formation done)
   useEffect(() => {
@@ -1649,11 +1729,30 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const showFocusScrim = focusPhase === 'in' || focusPhase === 'settled';
   // Keep HTML through 'out' so the morph can paint underneath before the overlay exits
   const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled' || focusPhase === 'out';
-  const focusImageSrc = focusedWork
-    ? focusedWork.thumbnail
-      ? focusedWork.thumbnail
-      : focusedWork.image
-    : '';
+  const focusImageSrc = focusedWork ? (focusedWork.thumbnail ? focusedWork.thumbnail : focusedWork.image) : '';
+  const focusedIsOriginCard = Boolean(focusedId && itemsRef.current.get(focusedId)?.isOriginCard && originCard);
+
+  // Start the marquee as soon as the origin card joins the stack (not when load/intro fully finishes)
+  const originCardId = originCardIdRef.current;
+  const originMarqueeActive =
+    !isClusterHold || shouldSpread || (originCardId ? stackEnteredIds.has(originCardId) : false);
+
+  const originCustomContent = useMemo(
+    () =>
+      originCard
+        ? originCard.render({
+            width: cellWidth,
+            height: cellHeight,
+            active: originMarqueeActive,
+            onActivate: handleOriginActivate,
+            marqueeState: originMarqueeStateRef
+          })
+        : null,
+    [originCard, cellWidth, cellHeight, originMarqueeActive, handleOriginActivate]
+  );
+
+  const originPortalInFocusScroll = focusedIsOriginCard && isFocusSettled;
+  const originPortalHost = originPortalInFocusScroll ? originFocusHost : originCanvasHost;
 
   return (
     <div
@@ -1722,108 +1821,109 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
               : visibleItems;
 
           return renderItems.map((item) => {
-          const position = getItemPosition(item);
-          const intro = introConfigRef.current?.get(item.id);
+            const position = getItemPosition(item);
+            const intro = introConfigRef.current?.get(item.id);
 
-          // During stack formation, only the intro pile is visible — hide the rest of the grid
-          if (isClusterHold && !intro) {
-            return null;
-          }
-          // Wait for camera snap before painting intro cards (avoids off-screen flash)
-          if (isClusterHold && !introReady) {
-            return null;
-          }
+            // During stack formation, only the intro pile is visible — hide the rest of the grid
+            if (isClusterHold && !intro) {
+              return null;
+            }
+            // Wait for camera snap before painting intro cards (avoids off-screen flash)
+            if (isClusterHold && !introReady) {
+              return null;
+            }
 
-          let focusMode: InfiniteCanvasFocusMode = 'idle';
-          let focusX = position.x;
-          let focusY = position.y;
-          let focusScale = 1;
-          let focusOpacity = 1;
-          let focusImmediate = false;
-          let focusReturnDelay = 0;
+            let focusMode: InfiniteCanvasFocusMode = 'idle';
+            let focusX = position.x;
+            let focusY = position.y;
+            let focusScale = 1;
+            let focusOpacity = 1;
+            let focusImmediate = false;
+            let focusReturnDelay = 0;
 
-          if (focusedId && focusSnapshot && focusPhase) {
-            if (item.id === focusedId) {
-              if (isFocusReturning) {
-                // Card springs home first; peers stay exited until this completes
-                focusMode = 'returning';
-                focusX = position.x;
-                focusY = position.y;
-                focusScale = 1;
-                focusOpacity = 1;
-                focusImmediate = false;
+            if (focusedId && focusSnapshot && focusPhase) {
+              if (item.id === focusedId) {
+                if (isFocusReturning) {
+                  // Card springs home first; peers stay exited until this completes
+                  focusMode = 'returning';
+                  focusX = position.x;
+                  focusY = position.y;
+                  focusScale = 1;
+                  focusOpacity = 1;
+                  focusImmediate = false;
+                } else {
+                  focusMode = 'focused';
+                  focusX = focusSnapshot.contentCenterX - cellWidth / 2;
+                  focusY = focusSnapshot.contentCenterY - cellHeight / 2;
+                  focusScale = focusSnapshot.cardScale;
+                  // Origin content portals into the scroll layer when settled — hide empty canvas shell
+                  const originSettled = Boolean(item.isOriginCard && isFocusSettled);
+                  focusOpacity = originSettled ? 0 : morphCardHidden ? 0 : 1;
+                  focusImmediate = morphCardHidden || isFocusHandingOff;
+                }
               } else {
-                focusMode = 'focused';
-                focusX = focusSnapshot.contentCenterX - cellWidth / 2;
-                focusY = focusSnapshot.contentCenterY - cellHeight / 2;
-                focusScale = focusSnapshot.cardScale;
-                // Keep morph visible until HTML has painted over it
-                focusOpacity = morphCardHidden ? 0 : 1;
-                focusImmediate = morphCardHidden || isFocusHandingOff;
-              }
-            } else {
-              focusMode = 'exiting';
-              const cx = position.x + cellWidth / 2;
-              const cy = position.y + cellHeight / 2;
-              // Push away from the clicked card, not the focus destination
-              let dx = cx - focusSnapshot.originCenterX;
-              let dy = cy - focusSnapshot.originCenterY;
-              const distFromOrigin = Math.hypot(dx, dy) || 1;
-              dx /= distFromOrigin;
-              dy /= distFromOrigin;
-              focusX = position.x + dx * focusSnapshot.pushDistance;
-              focusY = position.y + dy * focusSnapshot.pushDistance;
-              focusScale = FOCUS_EXIT_SCALE;
-              focusOpacity = 0;
-              if (staggerMode === 'legacy') {
-                // Original: reuse intro spread delays
-                focusReturnDelay = introConfigRef.current?.get(item.id)?.delay ?? 0;
-              } else {
-                // Inside-out: nearest peers first — same stagger for exit + return
-                const t = Math.min(1, distFromOrigin / peerReturnMaxDist);
-                const seed = item.x * 12.9898 + item.y * 78.233 + item.id.length * 3.17;
-                focusReturnDelay =
-                  FOCUS_PEER_RETURN_BASE_S +
-                  t * FOCUS_PEER_RETURN_RIPPLE_S +
-                  seededRandom(seed + 1) * FOCUS_PEER_RETURN_JITTER_S;
+                focusMode = 'exiting';
+                const cx = position.x + cellWidth / 2;
+                const cy = position.y + cellHeight / 2;
+                // Push away from the clicked card, not the focus destination
+                let dx = cx - focusSnapshot.originCenterX;
+                let dy = cy - focusSnapshot.originCenterY;
+                const distFromOrigin = Math.hypot(dx, dy) || 1;
+                dx /= distFromOrigin;
+                dy /= distFromOrigin;
+                focusX = position.x + dx * focusSnapshot.pushDistance;
+                focusY = position.y + dy * focusSnapshot.pushDistance;
+                focusScale = FOCUS_EXIT_SCALE;
+                focusOpacity = 0;
+                if (staggerMode === 'legacy') {
+                  // Original: reuse intro spread delays
+                  focusReturnDelay = introConfigRef.current?.get(item.id)?.delay ?? 0;
+                } else {
+                  // Inside-out: nearest peers first — same stagger for exit + return
+                  const t = Math.min(1, distFromOrigin / peerReturnMaxDist);
+                  const seed = item.x * 12.9898 + item.y * 78.233 + item.id.length * 3.17;
+                  focusReturnDelay =
+                    FOCUS_PEER_RETURN_BASE_S +
+                    t * FOCUS_PEER_RETURN_RIPPLE_S +
+                    seededRandom(seed + 1) * FOCUS_PEER_RETURN_JITTER_S;
+                }
               }
             }
-          }
 
-          return (
-            <InfiniteCanvasItem
-              key={item.id}
-              id={item.id}
-              onSelect={handleItemClick}
-              work={item.work}
-              x={position.x}
-              y={position.y}
-              width={cellWidth}
-              height={cellHeight}
-              intro={isIntroPlaying || isClusterHold ? intro : undefined}
-              shouldSpread={shouldSpread}
-              stackEntered={!intro || shouldSpread || stackEnteredIds.has(item.id)}
-              viewRef={viewRef}
-              proximityEnabled={!isIntroPlaying && !focusedId}
-              focusMode={focusMode}
-              focusX={focusX}
-              focusY={focusY}
-              focusScale={focusScale}
-              focusOpacity={focusOpacity}
-              focusImmediate={focusImmediate}
-              focusReturnDelay={focusReturnDelay}
-              registerProximity={registerProximity}
-              unregisterProximity={unregisterProximity}
-              onStackEnterComplete={
-                intro && isClusterHold ? handleStackEnterComplete : undefined
-              }
-              onIntroComplete={intro && (isIntroPlaying || isClusterHold) ? handleIntroComplete : undefined}
-              onFocusArrive={item.id === focusedId ? handleFocusArrive : undefined}
-              onFocusReturnComplete={item.id === focusedId ? handleFocusReturnComplete : undefined}
-            />
-          );
+            return (
+              <InfiniteCanvasItem
+                key={item.id}
+                id={item.id}
+                onSelect={handleItemClick}
+                work={item.work}
+                x={position.x}
+                y={position.y}
+                width={cellWidth}
+                height={cellHeight}
+                intro={isIntroPlaying || isClusterHold ? intro : undefined}
+                shouldSpread={shouldSpread}
+                stackEntered={!intro || shouldSpread || stackEnteredIds.has(item.id)}
+                customContentHostRef={item.isOriginCard ? setOriginCanvasHost : undefined}
+                viewRef={viewRef}
+                proximityEnabled={!isIntroPlaying && !focusedId}
+                focusMode={focusMode}
+                focusX={focusX}
+                focusY={focusY}
+                focusScale={focusScale}
+                focusOpacity={focusOpacity}
+                focusImmediate={focusImmediate}
+                focusReturnDelay={focusReturnDelay}
+                registerProximity={registerProximity}
+                unregisterProximity={unregisterProximity}
+                onStackEnterComplete={intro && isClusterHold ? handleStackEnterComplete : undefined}
+                onIntroComplete={intro && (isIntroPlaying || isClusterHold) ? handleIntroComplete : undefined}
+                onFocusArrive={item.id === focusedId ? handleFocusArrive : undefined}
+                onFocusReturnComplete={item.id === focusedId ? handleFocusReturnComplete : undefined}
+              />
+            );
           });
         })()}
+        {originPortalHost && originCustomContent ? createPortal(originCustomContent, originPortalHost) : null}
       </div>
 
       <AnimatePresence>
@@ -1862,10 +1962,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                 style={{ paddingTop: focusSnapshot.cardTopScreenY }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div
-                  className={styles.infiniteCanvasFocusDetail}
-                  style={{ width: focusSnapshot.detailWidth }}
-                >
+                <div className={styles.infiniteCanvasFocusDetail} style={{ width: focusSnapshot.detailWidth }}>
                   {/* Exact morph target size + same 1.08 crop as InfiniteCanvasItem */}
                   <div
                     ref={focusCardRef}
@@ -1876,16 +1973,24 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                       borderRadius: focusSnapshot.detailWidth * CARD_BORDER_RADIUS_RATIO
                     }}
                   >
-                    <img
-                      ref={focusImageRef}
-                      className={styles.infiniteCanvasFocusCardImage}
-                      src={focusImageSrc}
-                      alt={focusedWork.name}
-                      draggable={false}
-                      decoding="async"
-                      fetchPriority="high"
-                      onLoad={() => markImageLoaded(focusImageSrc)}
-                    />
+                    {focusedIsOriginCard ? (
+                      <div
+                        ref={setOriginFocusHost}
+                        className={styles.infiniteCanvasFocusCardCustom}
+                        aria-hidden={!isFocusSettled}
+                      />
+                    ) : (
+                      <img
+                        ref={focusImageRef}
+                        className={styles.infiniteCanvasFocusCardImage}
+                        src={focusImageSrc}
+                        alt={focusedWork.name}
+                        draggable={false}
+                        decoding="async"
+                        fetchPriority="high"
+                        onLoad={() => markImageLoaded(focusImageSrc)}
+                      />
+                    )}
                   </div>
                   {isFocusSettled ? (
                     <motion.div
@@ -1894,18 +1999,15 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                       animate="show"
                       variants={FOCUS_COPY_CONTAINER_VARIANTS}
                     >
-                      <motion.h1
-                        className={styles.infiniteCanvasFocusTitle}
-                        variants={FOCUS_COPY_ITEM_VARIANTS}
-                      >
+                      <motion.h1 className={styles.infiniteCanvasFocusTitle} variants={FOCUS_COPY_ITEM_VARIANTS}>
                         {focusedWork.name}
                       </motion.h1>
-                      <motion.p
+                      <motion.div
                         className={styles.infiniteCanvasFocusDescription}
                         variants={FOCUS_COPY_ITEM_VARIANTS}
                       >
                         {focusedWork.description}
-                      </motion.p>
+                      </motion.div>
                       {focusedWork.url ? (
                         <motion.a
                           className={styles.infiniteCanvasFocusLink}
@@ -1915,7 +2017,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                           variants={FOCUS_COPY_LINK_VARIANTS}
                         >
                           {formatUrl(focusedWork.url)}
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <svg
+                            width="24"
+                            height="24"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
                             <path
                               d="M20.7806 12.5306L14.0306 19.2806C13.8899 19.4213 13.699 19.5004 13.5 19.5004C13.301 19.5004 13.1101 19.4213 12.9694 19.2806C12.8286 19.1399 12.7496 18.949 12.7496 18.75C12.7496 18.551 12.8286 18.3601 12.9694 18.2194L18.4397 12.75H3.75C3.55109 12.75 3.36032 12.671 3.21967 12.5303C3.07902 12.3897 3 12.1989 3 12C3 11.8011 3.07902 11.6103 3.21967 11.4697C3.36032 11.329 3.55109 11.25 3.75 11.25H18.4397L12.9694 5.78061C12.8286 5.63988 12.7496 5.44901 12.7496 5.24999C12.7496 5.05097 12.8286 4.8601 12.9694 4.71936C13.1101 4.57863 13.301 4.49957 13.5 4.49957C13.699 4.49957 13.8899 4.57863 14.0306 4.71936L20.7806 11.4694C20.8504 11.539 20.9057 11.6217 20.9434 11.7128C20.9812 11.8038 21.0006 11.9014 21.0006 12C21.0006 12.0986 20.9812 12.1961 20.9434 12.2872C20.9057 12.3782 20.8504 12.461 20.7806 12.5306Z"
                               fill="#ffffff"

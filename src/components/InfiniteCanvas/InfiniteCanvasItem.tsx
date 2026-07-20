@@ -29,7 +29,7 @@ interface Work {
   image: string;
   video?: string;
   thumbnail?: string;
-  description: string;
+  description: React.ReactNode;
 }
 
 export interface InfiniteCanvasItemIntro {
@@ -64,6 +64,13 @@ interface InfiniteCanvasItemProps {
    * released into the pile one-by-one. Defaults to true (already in stack / no intro).
    */
   stackEntered?: boolean;
+  /**
+   * Optional custom face (e.g. canvas animation). Replaces the work image.
+   * Still participates in tilt / stack / focus chrome.
+   */
+  customContent?: React.ReactNode;
+  /** Portal target for custom face — content is portaled in from the canvas parent */
+  customContentHostRef?: React.Ref<HTMLDivElement>;
   /** Live canvas transform — read from refs, never triggers React renders */
   viewRef: React.RefObject<InfiniteCanvasViewState>;
   /** Gate effects during intro / reduced-capability contexts */
@@ -194,6 +201,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   intro,
   shouldSpread = true,
   stackEntered = true,
+  customContent,
+  customContentHostRef,
   viewRef,
   proximityEnabled = true,
   focusMode = 'idle',
@@ -211,9 +220,12 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   onFocusArrive,
   onFocusReturnComplete
 }) => {
+  const hasCustomContent = customContent != null || customContentHostRef != null;
   // Gate opacity on the same URL we paint — thumbnails are what the grid shows
   const imageSrc = work.thumbnail || work.image;
-  const isLoaded = useImageLoad(imageSrc);
+  const imageLoaded = useImageLoad(imageSrc);
+  // Custom faces are ready immediately (optional poster is decorative only)
+  const isLoaded = hasCustomContent || imageLoaded;
   const itemRef = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
   // Gate 3D tilt/shine by pointer capability — NOT viewport width.
@@ -656,7 +668,13 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
                 }
               : getPillApproachPose(intro, viewRef.current)
           : // Soft fade when culled cards remount; skip if the image was already painted this session
-            { x, y, rotate: 0, scale: 1, opacity: isImageCached(imageSrc) ? 1 : 0 }
+            {
+              x,
+              y,
+              rotate: 0,
+              scale: 1,
+              opacity: hasCustomContent || isImageCached(imageSrc) ? 1 : 0
+            }
       }
       animate={animateState}
       transition={transition}
@@ -731,21 +749,29 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           ['--card-border-glow' as string]: borderGlow
         }}
       >
-        <motion.img
-          className={styles.infiniteCanvasItemImage}
-          src={imageSrc}
-          alt={work.name}
-          style={{
-            opacity: isLoaded || isClustered ? 1 : 0,
-            x: isTouchUi ? 0 : imageX,
-            y: isTouchUi ? 0 : imageY,
-            scale: 1.08
-          }}
-          decoding="async"
-          // Culling already limits mounted cards — lazy would re-defer offscreen remounts
-          loading="eager"
-          onLoad={() => markImageLoaded(imageSrc)}
-        />
+        {customContentHostRef ? (
+          <div ref={customContentHostRef} className={styles.infiniteCanvasItemCustom} aria-label={work.name} />
+        ) : hasCustomContent ? (
+          <div className={styles.infiniteCanvasItemCustom} aria-label={work.name}>
+            {customContent}
+          </div>
+        ) : (
+          <motion.img
+            className={styles.infiniteCanvasItemImage}
+            src={imageSrc}
+            alt={work.name}
+            style={{
+              opacity: isLoaded || isClustered ? 1 : 0,
+              x: isTouchUi ? 0 : imageX,
+              y: isTouchUi ? 0 : imageY,
+              scale: 1.08
+            }}
+            decoding="async"
+            // Culling already limits mounted cards — lazy would re-defer offscreen remounts
+            loading="eager"
+            onLoad={() => markImageLoaded(imageSrc)}
+          />
+        )}
         {!isTouchUi && (
           <motion.div
             className={styles.infiniteCanvasItemShine}

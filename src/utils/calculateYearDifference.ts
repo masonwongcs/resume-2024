@@ -1,3 +1,5 @@
+const CODING_START_DATE = '2015-01-01';
+
 function calculateYearDifference(date: string) {
   const startDate = new Date(date);
   const endDate = new Date();
@@ -15,4 +17,4 @@ function calculateYearDifference(date: string) {
   return yearsDiff;
 }
 
-export { calculateYearDifference };
+export { calculateYearDifference, CODING_START_DATE };

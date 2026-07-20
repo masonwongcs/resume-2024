@@ -11,6 +11,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Background, Blob } from '@/components/Background';
 import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponent';
 import { Header } from '@/components/Header';
+import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { usePortfolioViewStore } from '@/store';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
@@ -31,6 +32,12 @@ interface LandingExperienceProps {
 }
 
 const years = calculateYearDifference('2017-01-01');
+
+const originCard: OriginCardConfig = {
+  work: ORIGIN_HERO_WORK,
+  render: (props) => <OriginHeroCard {...props} />,
+  focusable: true
+};
 
 const LandingExperience = ({ works }: LandingExperienceProps) => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
@@ -66,7 +73,7 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
                   interfaces for web and mobile.
                 </p>
               </section>
-              <InfiniteCanvasCSR works={works} />
+              <InfiniteCanvasCSR works={works} originCard={originCard} />
               <FlyoutCSR />
               <Blob />
             </motion.div>
