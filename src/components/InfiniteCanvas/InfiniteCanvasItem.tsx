@@ -85,6 +85,11 @@ interface InfiniteCanvasItemProps {
   focusImmediate?: boolean;
   /** Stagger delay (seconds) when exiting / returning from focus */
   focusReturnDelay?: number;
+  /**
+   * Extra content-space Y nudge (e.g. sync origin morph with focus scroll).
+   * Applied outside the focus spring so scrolling stays 1:1.
+   */
+  focusScrollNudgeY?: MotionValue<number>;
   /** Register/unregister with the canvas's single proximity rAF */
   registerProximity?: (id: string, handlers: ProximityRegistration) => void;
   unregisterProximity?: (id: string) => void;
@@ -212,6 +217,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusOpacity = 1,
   focusImmediate = false,
   focusReturnDelay = 0,
+  focusScrollNudgeY,
   registerProximity,
   unregisterProximity,
   onSelect,
@@ -711,6 +717,14 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         cursor: focusMode === 'focused' ? 'default' : undefined
       }}
     >
+      <motion.div
+        style={{
+          y: focusScrollNudgeY,
+          width: '100%',
+          height: '100%',
+          position: 'relative'
+        }}
+      >
       <div
         className={styles.infiniteCanvasItemBackground}
         style={{
@@ -785,6 +799,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
             }}
           />
         )}
+      </motion.div>
       </motion.div>
     </motion.div>
   );

@@ -54,25 +54,12 @@
     touch-action: pan-y;
     pointer-events: auto;
 
-    // Let marquee/portrait pointer events reach the canvas morph under the spacer
+    // Origin: keep the live morph visible through a transparent card spacer.
+    // Scroll stays on this shell; only the spacer ignores hits so the copy/scroll still work.
+    // Morph Y tracks scrollTop via focusScrollNudgeY so card + copy move as one.
     &[data-origin='true'] {
-      pointer-events: none;
-
-      .infiniteCanvasFocusDetail {
+      .infiniteCanvasFocusCard {
         pointer-events: none;
-      }
-
-      .infiniteCanvasFocusCopy {
-        pointer-events: auto;
-        // Cover the sticky morph when scrolling copy up
-        background: linear-gradient(
-          to bottom,
-          rgba(250, 249, 246, 0.92) 0%,
-          rgba(250, 249, 246, 0.97) 12px,
-          rgba(250, 249, 246, 0.97) 100%
-        );
-        margin-top: -8px;
-        padding-top: 8px;
       }
     }
   }

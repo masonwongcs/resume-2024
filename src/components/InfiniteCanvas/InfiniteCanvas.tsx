@@ -160,6 +160,43 @@ const getFocusDetailWidth = (viewportWidth: number) => {
   return Math.min(viewportWidth * 0.92, maxWidth);
 };
 
+/** Cell size from the live viewport — matches InfiniteCanvas render formulas */
+const getLiveCellMetrics = () => {
+  const isMobile = window.innerWidth <= 480;
+  const cellWidth = isMobile ? window.innerWidth / 2.3 : window.innerWidth / 4.6;
+  return {
+    cellWidth,
+    cellHeight: (cellWidth * 3) / 5,
+    gapSize: isMobile ? window.innerWidth / 8 : window.innerWidth / 24
+  };
+};
+
+const computeFocusLayout = (
+  view: { width: number; height: number; offsetX: number; offsetY: number; zoom: number },
+  cellWidth: number,
+  cellHeight: number
+) => {
+  const detailWidth = getFocusDetailWidth(view.width);
+  // screenWidth = cellWidth * zoom * cardScale → match detail column
+  const cardScale = detailWidth / (cellWidth * view.zoom);
+  const scaledScreenHeight = cellHeight * view.zoom * cardScale;
+  // Mobile: fixed inset for scroll room. Desktop: % of viewport height.
+  const cardTopScreenY = view.width <= 480 ? 100 : view.height * 0.15;
+  const cardCenterScreenY = cardTopScreenY + scaledScreenHeight / 2;
+  const contentCenterX = view.width / 2 - view.offsetX / view.zoom;
+  const contentCenterY = view.height / 2 + (cardCenterScreenY - view.height / 2 - view.offsetY) / view.zoom;
+  const pushDistance = (Math.hypot(view.width, view.height) / view.zoom) * 1.2;
+  return {
+    contentCenterX,
+    contentCenterY,
+    cardScale,
+    detailWidth,
+    scaledScreenHeight,
+    cardTopScreenY,
+    pushDistance
+  };
+};
+
 interface FocusSnapshot {
   /** Morph destination (focus layout position) in content space */
   contentCenterX: number;
@@ -282,6 +319,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const onRecenterAvailabilityChangeRef = useRef(onRecenterAvailabilityChange);
   const pointerX = useMotionValue(-1);
   const pointerY = useMotionValue(-1);
+  /** Origin morph Y sync with focus scroll (content-local; ÷ zoom×cardScale → screen 1:1) */
+  const focusScrollNudgeY = useMotionValue(0);
+  const focusScrollRef = useRef<HTMLDivElement>(null);
+  const focusSnapshotRef = useRef(focusSnapshot);
+  focusSnapshotRef.current = focusSnapshot;
+  /** Snap morph x/y/scale on viewport resize (avoid spring desync with HTML overlay) */
+  const snapFocusLayoutRef = useRef(false);
   const viewRef = useRef(createCanvasViewState());
   const proximityHandlersRef = useRef(
     new Map<string, { onFrame: ProximityFrameHandler; onReset: ProximityResetHandler }>()
@@ -807,6 +851,30 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     viewRef.current.top = rect.top;
     viewRef.current.width = rect.width;
     viewRef.current.height = rect.height;
+
+    // Keep the focused card centered/sized when the viewport changes
+    const phase = focusPhaseRef.current;
+    if (!phase || phase === 'out' || phase === 'returning') return;
+    if (!focusSnapshotRef.current || viewRef.current.width <= 0 || viewRef.current.height <= 0) return;
+
+    const { cellWidth: liveCellWidth, cellHeight: liveCellHeight } = getLiveCellMetrics();
+    const layout = computeFocusLayout(viewRef.current, liveCellWidth, liveCellHeight);
+    const prev = focusSnapshotRef.current;
+    if (
+      Math.abs(prev.contentCenterX - layout.contentCenterX) < 0.5 &&
+      Math.abs(prev.contentCenterY - layout.contentCenterY) < 0.5 &&
+      Math.abs(prev.cardScale - layout.cardScale) < 0.001 &&
+      Math.abs(prev.detailWidth - layout.detailWidth) < 0.5 &&
+      Math.abs(prev.cardTopScreenY - layout.cardTopScreenY) < 0.5
+    ) {
+      return;
+    }
+
+    setFocusSnapshot({
+      ...prev,
+      ...layout
+    });
+    snapFocusLayoutRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -916,6 +984,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     }
     focusedIdRef.current = null;
     focusPhaseRef.current = null;
+    focusScrollNudgeY.set(0);
+    if (focusScrollRef.current) focusScrollRef.current.scrollTop = 0;
     setFocusedId(null);
     setFocusedWork(null);
     setFocusSnapshot(null);
@@ -924,7 +994,26 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     setReleaseFocusPeers(false);
     setOriginPortraitUp(false);
     setCanvasFocused(false);
-  }, [setCanvasFocused]);
+  }, [focusScrollNudgeY, setCanvasFocused]);
+
+  const syncOriginFocusScrollNudge = useCallback(
+    (scrollTop: number) => {
+      const scale = focusSnapshotRef.current?.cardScale ?? 1;
+      const zoomValue = viewRef.current.zoom || 1;
+      // Nudge sits inside the scaled card — divide so screen delta matches scrollTop
+      focusScrollNudgeY.set(-scrollTop / (zoomValue * scale));
+    },
+    [focusScrollNudgeY]
+  );
+
+  const handleFocusScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      const id = focusedIdRef.current;
+      if (!id || !itemsRef.current.get(id)?.isOriginCard) return;
+      syncOriginFocusScrollNudge(event.currentTarget.scrollTop);
+    },
+    [syncOriginFocusScrollNudge]
+  );
 
   const handleFocusArrive = useCallback((id: string) => {
     if (focusPhaseRef.current !== 'in') return;
@@ -1027,6 +1116,30 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     }
   }, [cellWidth, setCanvasFocused]);
 
+  // After snapshot absorbs the scrolled position, drop the nudge before paint (avoids a jump)
+  useLayoutEffect(() => {
+    if (focusPhase === 'out' || focusPhase === 'returning' || focusPhase == null) {
+      focusScrollNudgeY.set(0);
+    }
+  }, [focusPhase, focusScrollNudgeY]);
+
+  // Keep origin morph ↔ scroll alignment after layout refreshes (e.g. window resize)
+  useLayoutEffect(() => {
+    if (snapFocusLayoutRef.current) {
+      snapFocusLayoutRef.current = false;
+    }
+    if (focusPhase !== 'settled') return;
+    const id = focusedIdRef.current;
+    if (!id || !itemsRef.current.get(id)?.isOriginCard) return;
+    syncOriginFocusScrollNudge(focusScrollRef.current?.scrollTop ?? 0);
+  }, [
+    focusPhase,
+    focusSnapshot?.cardScale,
+    focusSnapshot?.contentCenterX,
+    focusSnapshot?.contentCenterY,
+    syncOriginFocusScrollNudge
+  ]);
+
   // After handoff snap, start returning the focus card (peers stay exited)
   useLayoutEffect(() => {
     if (focusPhase !== 'out') return;
@@ -1103,17 +1216,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       const originCenterX = originX + cellWidth / 2;
       const originCenterY = originY + cellHeight / 2;
 
-      const detailWidth = getFocusDetailWidth(view.width);
-      // screenWidth = cellWidth * zoom * cardScale → match detail column
-      const cardScale = detailWidth / (cellWidth * view.zoom);
-      const scaledScreenHeight = cellHeight * view.zoom * cardScale;
-
-      // Mobile: fixed inset for scroll room. Desktop: % of viewport height.
-      const cardTopScreenY = view.width <= 480 ? 100 : view.height * 0.15;
-      const cardCenterScreenY = cardTopScreenY + scaledScreenHeight / 2;
-      const contentCenterX = view.width / 2 - view.offsetX / view.zoom;
-      const contentCenterY = view.height / 2 + (cardCenterScreenY - view.height / 2 - view.offsetY) / view.zoom;
-      const pushDistance = (Math.hypot(view.width, view.height) / view.zoom) * 1.2;
+      const layout = computeFocusLayout(view, cellWidth, cellHeight);
 
       focusedIdRef.current = id;
       focusPhaseRef.current = 'in';
@@ -1122,15 +1225,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       setReleaseFocusPeers(false);
       setOriginPortraitUp(false);
       setFocusSnapshot({
-        contentCenterX,
-        contentCenterY,
+        ...layout,
         originCenterX,
-        originCenterY,
-        pushDistance,
-        cardScale,
-        detailWidth,
-        scaledScreenHeight,
-        cardTopScreenY
+        originCenterY
       });
       setFocusedId(id);
       setFocusedWork(work);
@@ -2126,8 +2223,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                   // Origin: keep the morph visible — face never leaves this card
                   focusOpacity = item.isOriginCard ? 1 : morphCardHidden ? 0 : 1;
                   // Instant opacity only for handoff hide/show — never on morph-in (skips enter)
+                  // Also snap on viewport resize so morph tracks the HTML overlay
                   focusImmediate =
-                    isFocusHandingOff || (morphCardHidden && isFocusSettled && !item.isOriginCard);
+                    snapFocusLayoutRef.current ||
+                    isFocusHandingOff ||
+                    (morphCardHidden && isFocusSettled && !item.isOriginCard);
                 }
               } else if (releaseFocusPeers && isFocusReturning) {
                 // Peers released early — fall through to idle so peer-return springs run
@@ -2184,6 +2284,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 focusOpacity={focusOpacity}
                 focusImmediate={focusImmediate}
                 focusReturnDelay={focusReturnDelay}
+                focusScrollNudgeY={item.isOriginCard && item.id === focusedId ? focusScrollNudgeY : undefined}
                 registerProximity={registerProximity}
                 unregisterProximity={unregisterProximity}
                 onStackEnterComplete={intro && isClusterHold ? handleStackEnterComplete : undefined}
@@ -2219,15 +2320,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
             </AnimatePresence>
             <div
               key="focus-scroll"
+              ref={focusScrollRef}
               className={styles.infiniteCanvasFocusScroll}
               data-ready={isFocusSettled ? 'true' : undefined}
               data-origin={focusedIsOriginCard ? 'true' : undefined}
+              onScroll={focusedIsOriginCard ? handleFocusScroll : undefined}
               onTouchMove={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
               style={{
                 opacity: isFocusSettled ? 1 : 0,
-                // Origin: none on the scroll shell so marquee hits the morph; copy re-enables in CSS
-                pointerEvents: isFocusSettled ? (focusedIsOriginCard ? 'none' : 'auto') : 'none'
+                pointerEvents: isFocusSettled ? 'auto' : 'none'
               }}
             >
               <div
