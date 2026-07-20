@@ -76,6 +76,11 @@ const FOCUS_COPY_SPRING = {
   damping: 20,
   mass: 0.95
 };
+/** Match Flyout closeBtn — scale + fade over material ease */
+const FOCUS_CLOSE_TRANSITION = {
+  duration: 0.6,
+  ease: [0.4, 0, 0.2, 1] as const
+};
 const FOCUS_COPY_REVEAL_DELAY_S = 0.01;
 const FOCUS_COPY_CONTAINER_VARIANTS = {
   hidden: {},
@@ -1824,26 +1829,23 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       <AnimatePresence>
         {showFocusHtml && focusedWork && focusSnapshot && (
           <>
-            <motion.button
-              key="focus-close"
-              type="button"
-              className={styles.infiniteCanvasFocusClose}
-              aria-label="Close"
-              initial={{ opacity: 0, scale: 0.88 }}
-              animate={{
-                opacity: isFocusSettled ? 1 : 0,
-                scale: isFocusSettled ? 1 : 0.88
-              }}
-              exit={{ opacity: 0, scale: 0.88, transition: { duration: 0 } }}
-              transition={{
-                ...FOCUS_COPY_SPRING,
-                delay: isFocusSettled ? FOCUS_COPY_REVEAL_DELAY_S : 0
-              }}
-              onClick={requestClose}
-              style={{ pointerEvents: isFocusSettled ? 'auto' : 'none' }}
-            >
-              <img src="/images/icon/close.svg" alt="" />
-            </motion.button>
+            <AnimatePresence>
+              {isFocusSettled ? (
+                <motion.button
+                  key="focus-close"
+                  type="button"
+                  className={styles.infiniteCanvasFocusClose}
+                  aria-label="Close"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  transition={FOCUS_CLOSE_TRANSITION}
+                  onClick={requestClose}
+                >
+                  <img src="/images/icon/close.svg" alt="" />
+                </motion.button>
+              ) : null}
+            </AnimatePresence>
             <div
               key="focus-scroll"
               className={styles.infiniteCanvasFocusScroll}
