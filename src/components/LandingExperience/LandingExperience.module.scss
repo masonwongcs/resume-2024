@@ -12,3 +12,39 @@
   position: relative;
   min-height: 100dvh;
 }
+
+.recenterWrap {
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.recenterButton {
+  cursor: pointer;
+  pointer-events: auto;
+  margin: 0;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  font-family: var(--font-futura), sans-serif;
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) and (pointer: fine) {
+    transition: background-color 180ms var(--material-cubic-bezier);
+
+    &:hover {
+      background: #000;
+    }
+  }
+}

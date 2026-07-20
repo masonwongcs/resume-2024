@@ -3,7 +3,7 @@
 import styles from './LandingExperience.module.scss';
 import pageStyles from '@/app/page.module.scss';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -44,10 +44,22 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
   const hasHydrated = usePortfolioViewStore((state) => state.hasHydrated);
   const hydrate = usePortfolioViewStore((state) => state.hydrate);
   const reduceMotion = useReducedMotion();
+  const [showRecenter, setShowRecenter] = useState(false);
+  const recenterActionRef = useRef<(() => void) | null>(null);
+
+  const handleRecenterAvailabilityChange = useCallback((visible: boolean) => {
+    setShowRecenter(visible);
+  }, []);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (hasHydrated && viewMode !== 'canvas') {
+      setShowRecenter(false);
+    }
+  }, [hasHydrated, viewMode]);
 
   return (
     <>
@@ -73,7 +85,34 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
                   interfaces for web and mobile.
                 </p>
               </section>
-              <InfiniteCanvasCSR works={works} originCard={originCard} />
+              <InfiniteCanvasCSR
+                works={works}
+                originCard={originCard}
+                onRecenterAvailabilityChange={handleRecenterAvailabilityChange}
+                recenterActionRef={recenterActionRef}
+              />
+              {/* Outside InfiniteCanvas so the mobile edge mask doesn't fade it */}
+              <AnimatePresence>
+                {showRecenter ? (
+                  <motion.div
+                    key="recenter"
+                    className={styles.recenterWrap}
+                    initial={{ opacity: 0, y: 12, x: '-50%' }}
+                    animate={{ opacity: 1, y: 0, x: '-50%' }}
+                    exit={{ opacity: 0, y: 8, x: '-50%' }}
+                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <button
+                      type="button"
+                      className={styles.recenterButton}
+                      aria-label="Back to start"
+                      onClick={() => recenterActionRef.current?.()}
+                    >
+                      Back to start
+                    </button>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
               <FlyoutCSR />
               <Blob />
             </motion.div>

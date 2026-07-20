@@ -78,6 +78,10 @@ interface InfiniteCanvasProps {
   peerReturnStagger?: PeerReturnStagger;
   /** Custom React face for the middle / top-of-stack card (appears once) */
   originCard?: OriginCardConfig;
+  /** Fired when the "Back to start" control should show/hide (render outside the masked canvas) */
+  onRecenterAvailabilityChange?: (visible: boolean) => void;
+  /** Parent assigns click handler for the external recenter control */
+  recenterActionRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
@@ -178,8 +182,20 @@ const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
 const FOCUS_MORPH_FALLBACK_MS = 520;
 /** How long after the focus card starts home before peers follow */
 const FOCUS_PEERS_RETURN_DELAY_MS = 50;
+/** Content-space distance (× viewport diagonal) before "Back to start" can appear */
+const RECENTER_SHOW_DIST = 0.95;
+/** Hide again once this close to home (hysteresis) */
+const RECENTER_HIDE_DIST = 0.4;
+/** Wait until pan/coast settles before showing the control */
+const RECENTER_IDLE_MS = 480;
 
-const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagger, originCard }) => {
+const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
+  works,
+  peerReturnStagger,
+  originCard,
+  onRecenterAvailabilityChange,
+  recenterActionRef
+}) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
@@ -188,6 +204,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const setIntroComplete = useHomeStore((state) => state.setIntroComplete);
   const setCanvasFocused = useHomeStore((state) => state.setCanvasFocused);
   const loaded = useHomeStore((state) => state.loaded);
+  const introComplete = useHomeStore((state) => state.introComplete);
 
   const outerContainerRef = useRef<HTMLDivElement>(null);
   const innerContainerRef = useRef<HTMLDivElement>(null);
@@ -259,6 +276,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     spacing: 0,
     initialized: false
   });
+  const showRecenterRef = useRef(false);
+  const isRecenteringRef = useRef(false);
+  const recenterIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onRecenterAvailabilityChangeRef = useRef(onRecenterAvailabilityChange);
   const pointerX = useMotionValue(-1);
   const pointerY = useMotionValue(-1);
   const viewRef = useRef(createCanvasViewState());
@@ -454,6 +475,175 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     setZoom(z);
   }, []);
 
+  /** Content-space center of the intro / origin seat — camera home */
+  const ensureHomeContent = useCallback(() => {
+    if (introOriginRef.current) return introOriginRef.current;
+
+    const id = originCardIdRef.current;
+    if (id) {
+      const match = /^item_(-?\d+)_(-?\d+)$/.exec(id);
+      if (match) {
+        const gx = Number(match[1]);
+        const gy = Number(match[2]);
+        const item = itemsRef.current.get(id);
+        const x = gx * (cellWidth + gapSize) + (item?.offsetX ?? 0) + cellWidth / 2;
+        const y =
+          gy * (cellHeight + gapSize) +
+          (item?.offsetY ?? (gx % 2 === 0 ? 0 : staggerOffset)) +
+          cellHeight / 2;
+        introOriginRef.current = { x, y };
+        return introOriginRef.current;
+      }
+    }
+
+    const view = viewRef.current;
+    if (view.width > 0 && view.height > 0) {
+      const { originX, originY } = findCenterGridSeat(view.width, view.height);
+      introOriginRef.current = { x: originX, y: originY };
+      return introOriginRef.current;
+    }
+
+    return null;
+  }, [cellWidth, cellHeight, gapSize, staggerOffset, findCenterGridSeat]);
+
+  const setRecenterVisible = useCallback((next: boolean) => {
+    if (showRecenterRef.current === next) return;
+    showRecenterRef.current = next;
+    onRecenterAvailabilityChangeRef.current?.(next);
+  }, []);
+
+  useEffect(() => {
+    onRecenterAvailabilityChangeRef.current = onRecenterAvailabilityChange;
+  }, [onRecenterAvailabilityChange]);
+
+  const updateRecenterVisibility = useCallback(() => {
+    const home = ensureHomeContent();
+    const view = viewRef.current;
+    const busy =
+      Boolean(focusedIdRef.current) ||
+      isIntroPlayingRef.current ||
+      !loaded ||
+      !introComplete ||
+      view.width <= 0 ||
+      !home;
+
+    if (busy) {
+      if (recenterIdleTimerRef.current) {
+        clearTimeout(recenterIdleTimerRef.current);
+        recenterIdleTimerRef.current = null;
+      }
+      isRecenteringRef.current = false;
+      setRecenterVisible(false);
+      return;
+    }
+
+    const z = Math.max(view.zoom, 0.001);
+    const viewCX = view.width / 2 - view.offsetX / z;
+    const viewCY = view.height / 2 - view.offsetY / z;
+    const dist = Math.hypot(viewCX - home.x, viewCY - home.y);
+    const diagonal = Math.hypot(view.width, view.height) / z;
+    const showAt = diagonal * RECENTER_SHOW_DIST;
+    const hideAt = diagonal * RECENTER_HIDE_DIST;
+
+    if (isRecenteringRef.current) {
+      const atTarget =
+        Math.abs(view.offsetX - targetOffsetRef.current.x) <= 0.5 &&
+        Math.abs(view.offsetY - targetOffsetRef.current.y) <= 0.5 &&
+        Math.abs(view.zoom - targetZoomRef.current) <= 0.002;
+      if (atTarget || dist <= hideAt) {
+        isRecenteringRef.current = false;
+        setRecenterVisible(false);
+      }
+      return;
+    }
+
+    const far = dist > showAt;
+    const near = dist <= hideAt;
+    const idle = !isDragging.current && !isPinching.current && !isCoastingRef.current;
+
+    if (near || !far) {
+      if (recenterIdleTimerRef.current) {
+        clearTimeout(recenterIdleTimerRef.current);
+        recenterIdleTimerRef.current = null;
+      }
+      if (near) setRecenterVisible(false);
+      return;
+    }
+
+    // Far from home — only surface the control once pan/coast has settled
+    if (!idle) {
+      if (recenterIdleTimerRef.current) {
+        clearTimeout(recenterIdleTimerRef.current);
+        recenterIdleTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (showRecenterRef.current || recenterIdleTimerRef.current) return;
+    recenterIdleTimerRef.current = setTimeout(() => {
+      recenterIdleTimerRef.current = null;
+      if (
+        !focusedIdRef.current &&
+        !isIntroPlayingRef.current &&
+        !isDragging.current &&
+        !isPinching.current &&
+        !isCoastingRef.current
+      ) {
+        setRecenterVisible(true);
+      }
+    }, RECENTER_IDLE_MS);
+  }, [ensureHomeContent, introComplete, loaded, setRecenterVisible]);
+
+  const handleRecenter = useCallback(() => {
+    const home = ensureHomeContent();
+    const view = viewRef.current;
+    if (!home || view.width <= 0 || view.height <= 0) return;
+
+    isCoastingRef.current = false;
+    panVelocityRef.current = { x: 0, y: 0 };
+    isRecenteringRef.current = true;
+
+    const z = prefersReducedMotion ? Math.max(view.zoom, 0.001) : 1;
+    const next = {
+      x: (view.width / 2 - home.x) * z,
+      y: (view.height / 2 - home.y) * z
+    };
+    targetZoomRef.current = z;
+    targetOffsetRef.current = next;
+
+    if (prefersReducedMotion) {
+      view.offsetX = next.x;
+      view.offsetY = next.y;
+      view.zoom = z;
+      applyCameraTransform(next.x, next.y, z);
+      const windowKey = getCellWindowKey(next.x, next.y, z, view.width, view.height);
+      commitCullPose(next.x, next.y, z, windowKey, true);
+      isRecenteringRef.current = false;
+      setRecenterVisible(false);
+    }
+  }, [
+    applyCameraTransform,
+    commitCullPose,
+    ensureHomeContent,
+    getCellWindowKey,
+    prefersReducedMotion,
+    setRecenterVisible
+  ]);
+
+  useEffect(() => {
+    if (!recenterActionRef) return;
+    recenterActionRef.current = handleRecenter;
+    return () => {
+      recenterActionRef.current = null;
+    };
+  }, [handleRecenter, recenterActionRef]);
+
+  useEffect(() => {
+    return () => {
+      onRecenterAvailabilityChangeRef.current?.(false);
+    };
+  }, []);
+
   const visibleItems = useMemo(() => {
     if (!outerContainerRef.current) return [];
     const { width, height } = outerContainerRef.current.getBoundingClientRect();
@@ -598,8 +788,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
       }
     }
 
+    updateRecenterVisibility();
+
     animationFrameRef.current = requestAnimationFrame(animateOffset);
-  }, [applyCameraTransform, commitCullPose, getCellWindowKey, prefersReducedMotion]);
+  }, [
+    applyCameraTransform,
+    commitCullPose,
+    getCellWindowKey,
+    prefersReducedMotion,
+    updateRecenterVisibility
+  ]);
 
   const syncViewBounds = useCallback(() => {
     const container = outerContainerRef.current;
@@ -672,6 +870,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (recenterIdleTimerRef.current) {
+        clearTimeout(recenterIdleTimerRef.current);
+        recenterIdleTimerRef.current = null;
       }
     };
   }, [animateOffset]);
