@@ -1,0 +1,134 @@
+.content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 88px 24px 40px;
+  text-align: center;
+  perspective: 900px;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.code {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(-1.75rem, -3.6vw, -0.9rem);
+  margin: 0;
+  line-height: 0;
+  user-select: none;
+  touch-action: none;
+}
+
+.digitFloat {
+  display: inline-block;
+}
+
+.digit {
+  display: inline-block;
+  cursor: grab;
+  line-height: 0;
+  will-change: transform;
+  filter: drop-shadow(0 10px 16px rgba(51, 51, 51, 0.12));
+
+  &:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 6px;
+    border-radius: 8px;
+  }
+}
+
+.glare {
+  pointer-events: none;
+  position: absolute;
+  inset: -18% -8%;
+  z-index: 0;
+  opacity: 0.55;
+  mix-blend-mode: soft-light;
+  border-radius: 40%;
+  filter: blur(2px);
+}
+
+.message {
+  margin: 22px 0 0;
+  max-width: 24em;
+  font-family: var(--font-futura), sans-serif;
+  font-size: clamp(0.95rem, 2.4vw, 1.125rem);
+  font-weight: normal;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: #74746e;
+}
+
+.hint {
+  display: block;
+  color: color-mix(in srgb, #74746e 72%, #333333);
+}
+
+.homeLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 28px;
+  padding: 12px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  font-family: var(--font-futura), sans-serif;
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) and (pointer: fine) {
+    transition: background-color 180ms var(--material-cubic-bezier);
+
+    &:hover {
+      background: #000;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 3px;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .digit {
+    cursor: default;
+  }
+
+  .hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .digit {
+    cursor: default;
+  }
+
+  .glare {
+    display: none;
+  }
+}

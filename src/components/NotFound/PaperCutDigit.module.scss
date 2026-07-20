@@ -1,0 +1,12 @@
+.svg {
+  display: block;
+  width: clamp(6rem, 23vw, 12rem);
+  height: auto;
+  overflow: visible;
+  cursor: inherit;
+}
+
+.ink {
+  user-select: none;
+  paint-order: stroke fill;
+}
