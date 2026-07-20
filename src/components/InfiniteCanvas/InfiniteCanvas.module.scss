@@ -58,6 +58,10 @@
     &[data-origin='true'] {
       pointer-events: none;
 
+      .infiniteCanvasFocusDetail {
+        pointer-events: none;
+      }
+
       .infiniteCanvasFocusCopy {
         pointer-events: auto;
         // Cover the sticky morph when scrolling copy up

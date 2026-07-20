@@ -243,6 +243,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const [focusSnapshot, setFocusSnapshot] = useState<FocusSnapshot | null>(null);
   const [focusPhase, setFocusPhase] = useState<FocusPhase | null>(null);
   const [morphCardHidden, setMorphCardHidden] = useState(false);
+  /** Let peers spring home while the focused card is still returning (don't clearFocus early) */
+  const [releaseFocusPeers, setReleaseFocusPeers] = useState(false);
   const focusedIdRef = useRef<string | null>(null);
   const focusPhaseRef = useRef<FocusPhase | null>(null);
   const focusCardRef = useRef<HTMLDivElement>(null);
@@ -717,6 +719,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     setFocusSnapshot(null);
     setFocusPhase(null);
     setMorphCardHidden(false);
+    setReleaseFocusPeers(false);
     setOriginPortraitUp(false);
     setCanvasFocused(false);
   }, [setCanvasFocused]);
@@ -800,17 +803,26 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
           : null
       );
       focusPhaseRef.current = 'out';
+      setReleaseFocusPeers(false);
       // Reveal morph before HTML unmounts — same render as phase 'out'
       setMorphCardHidden(false);
       setFocusPhase('out');
       return;
     }
 
-    // Mid morph-in — send the focus card home first; peers stay out until it lands
-    focusPhaseRef.current = 'returning';
-    setMorphCardHidden(false);
-    setFocusPhase('returning');
-    setCanvasFocused(false);
+    // Mid morph-in — cancel in the air and spring home (peers stay out until release)
+    if (focusPhaseRef.current === 'in') {
+      if (focusArriveTimeoutRef.current) {
+        clearTimeout(focusArriveTimeoutRef.current);
+        focusArriveTimeoutRef.current = null;
+      }
+      focusPhaseRef.current = 'returning';
+      setReleaseFocusPeers(false);
+      setMorphCardHidden(false);
+      setOriginPortraitUp(false);
+      setFocusPhase('returning');
+      setCanvasFocused(false);
+    }
   }, [cellWidth, setCanvasFocused]);
 
   // After handoff snap, start returning the focus card (peers stay exited)
@@ -820,6 +832,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => {
         focusPhaseRef.current = 'returning';
+        setReleaseFocusPeers(false);
         setFocusPhase('returning');
         setCanvasFocused(false);
       });
@@ -839,12 +852,22 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     [clearFocus]
   );
 
-  // Release peers shortly after the focus card begins returning (overlap, not wait-for-settle)
+  // Release peers shortly after the focus card begins returning (overlap, not wait-for-settle).
+  // Keep focusedId until the focused card finishes returning so rapid re-clicks can't skip the morph.
+  useEffect(() => {
+    if (focusPhase !== 'returning') return;
+    const timeout = setTimeout(() => {
+      if (focusPhaseRef.current === 'returning') setReleaseFocusPeers(true);
+    }, FOCUS_PEERS_RETURN_DELAY_MS);
+    return () => clearTimeout(timeout);
+  }, [focusPhase]);
+
+  // Safety: if return animation never reports complete, unlock after a beat
   useEffect(() => {
     if (focusPhase !== 'returning') return;
     const timeout = setTimeout(() => {
       if (focusPhaseRef.current === 'returning') clearFocus();
-    }, FOCUS_PEERS_RETURN_DELAY_MS);
+    }, 1200);
     return () => clearTimeout(timeout);
   }, [focusPhase, clearFocus]);
 
@@ -855,7 +878,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
         suppressClickRef.current = false;
         return;
       }
-      if (focusedIdRef.current || isIntroPlayingRef.current) return;
+      // Block while any focus phase is active (including return) — prevents jump-to-overlay
+      if (focusedIdRef.current || focusPhaseRef.current || isIntroPlayingRef.current) return;
 
       const stored = itemsRef.current.get(id);
       if (stored?.isOriginCard && originCard?.focusable === false) return;
@@ -891,6 +915,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
       focusedIdRef.current = id;
       focusPhaseRef.current = 'in';
+      // Never inherit a leftover hidden morph — that forces duration:0 and skips the enter
+      setMorphCardHidden(false);
+      setReleaseFocusPeers(false);
       setOriginPortraitUp(false);
       setFocusSnapshot({
         contentCenterX,
@@ -1896,8 +1923,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                   focusScale = focusSnapshot.cardScale;
                   // Origin: keep the morph visible — face never leaves this card
                   focusOpacity = item.isOriginCard ? 1 : morphCardHidden ? 0 : 1;
-                  focusImmediate = morphCardHidden || isFocusHandingOff;
+                  // Instant opacity only for handoff hide/show — never on morph-in (skips enter)
+                  focusImmediate =
+                    isFocusHandingOff || (morphCardHidden && isFocusSettled && !item.isOriginCard);
                 }
+              } else if (releaseFocusPeers && isFocusReturning) {
+                // Peers released early — fall through to idle so peer-return springs run
+                focusMode = 'idle';
               } else {
                 focusMode = 'exiting';
                 const cx = position.x + cellWidth / 2;
