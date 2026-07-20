@@ -151,7 +151,7 @@ const SHADOW_MAX_OPACITY = 0.5;
 const SHADOW_REST_SCALE = 0.96;
 const SHADOW_MAX_SCALE = 1.03;
 /** Pre-stack pose — emerge from the progress pill and grow into the pile */
-const STACK_ENTER_SCALE = 0.14;
+const STACK_ENTER_SCALE = 0;
 /** Matches Loader pill: bottom 20px + half of 64px height */
 const LOADER_PILL_CENTER_FROM_BOTTOM = 52;
 const stackEnterSpring = {
@@ -159,11 +159,6 @@ const stackEnterSpring = {
   stiffness: 68,
   damping: 19,
   mass: 1.12
-};
-const stackEnterOpacityTween = {
-  type: 'tween' as const,
-  duration: 0.42,
-  ease: [0.22, 1, 0.36, 1] as const
 };
 
 /**
@@ -182,7 +177,8 @@ const getPillApproachPose = (
     y: intro.y + dy,
     rotate: intro.rotate,
     scale: STACK_ENTER_SCALE,
-    opacity: 0
+    // Full opacity for the whole stack enter — only scale / travel from the pill
+    opacity: 1
   };
 };
 
@@ -606,7 +602,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       return getPillApproachPose(intro, viewRef.current);
     }
     if (isClustered && intro) {
-      return { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: intro.opacity };
+      return { x: intro.x, y: intro.y, rotate: intro.rotate, scale: intro.scale, opacity: 1 };
     }
     if (isFocusing) {
       return {
@@ -632,10 +628,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       : isAwaitingStack
         ? { duration: 0 }
         : isClustered && intro
-          ? {
-              ...stackEnterSpring,
-              opacity: stackEnterOpacityTween
-            }
+          ? stackEnterSpring
           : focusImmediate
             ? { duration: 0 }
             : focusMode === 'exiting'
@@ -670,7 +663,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
                   y: intro.y,
                   rotate: intro.rotate,
                   scale: intro.scale,
-                  opacity: intro.opacity
+                  opacity: 1
                 }
               : getPillApproachPose(intro, viewRef.current)
           : // Soft fade when culled cards remount; skip if the image was already painted this session
@@ -729,7 +722,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         className={styles.infiniteCanvasItemBackground}
         style={{
           // Stack formation only releases cards after preload — keep image visible
-          opacity: isLoaded || isClustered ? 0 : 1
+          opacity: isLoaded || isClusterHold ? 0 : 1
         }}
       />
       {!isTouchUi && (
@@ -775,7 +768,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
             src={imageSrc}
             alt={work.name}
             style={{
-              opacity: isLoaded || isClustered ? 1 : 0,
+              opacity: isLoaded || isClusterHold ? 1 : 0,
               x: isTouchUi ? 0 : imageX,
               y: isTouchUi ? 0 : imageY,
               scale: 1.08

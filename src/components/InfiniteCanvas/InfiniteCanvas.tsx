@@ -1952,8 +1952,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       const minY = Math.min(...itemTargets.map((target) => target.targetCenterY));
       const maxY = Math.max(...itemTargets.map((target) => target.targetCenterY));
       const yRange = Math.max(maxY - minY, 1);
-      // Keep stacked cards readable under the transparent loader
-      const minStackOpacity = 0.55;
+      // Stack cards stay fully opaque during formation (no depth fade)
+      const minStackOpacity = 1;
       // Cluster on the origin card's home — it stays put while peers peel outward
       const clusterX = originX - cellWidth / 2;
       const clusterY = originY - cellHeight / 2;
