@@ -15,9 +15,9 @@ const yearsCoding = calculateYearDifference(CODING_START_DATE);
 /**
  * One-shot center card face — curved multilingual hello marquee.
  */
-export const OriginHeroCard = ({ active = true, onActivate, marqueeState }: OriginCardRenderProps) => {
+export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocus = false }: OriginCardRenderProps) => {
   return (
-    <div key="origin-marquee" className={styles.originHeroCard} onPointerDown={(e) => e.stopPropagation()}>
+    <div className={styles.originHeroCard} onPointerDown={(e) => e.stopPropagation()}>
       <CurvedLoop
         marqueeText={MARQUEE_TEXT}
         speed={2}
@@ -27,8 +27,13 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState }: Orig
         paused={!active}
         onTap={onActivate}
         persistedState={marqueeState}
+        // SVG user units (viewBox 1440×120) — scales with the card, same in grid + focus
+        fontSize={220}
         className={`custom-text-style ${styles.marqueeText}`}
       />
+      <div className={styles.portraitWrap} data-in-focus={inFocus ? 'true' : undefined} aria-hidden>
+        <img className={styles.portrait} src="/images/work/me-cartoon.png" alt="" draggable={false} />
+      </div>
     </div>
   );
 };
@@ -36,7 +41,7 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState }: Orig
 /** Metadata for the origin card focus overlay */
 export const ORIGIN_HERO_WORK: Work = {
   name: 'Hello',
-  image: '',
+  image: '/images/work/me-cartoon.png',
   description: (
     <>
       <p>

@@ -12,7 +12,7 @@
   aspect-ratio: 100 / 12;
   overflow: visible;
   display: block;
-  font-size: 6rem;
+  // font-size comes from the SVG fontSize attribute (user units) so it scales with the viewBox
   fill: #ffffff;
   user-select: none;
   -moz-user-select: none;

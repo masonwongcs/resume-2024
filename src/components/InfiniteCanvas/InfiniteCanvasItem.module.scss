@@ -119,6 +119,8 @@
     user-select: none;
     overflow: hidden;
     z-index: 1;
+    // Match origin face — empty host shouldn't flash the white card placeholder
+    background-color: #0a0a0a;
   }
 
   .infiniteCanvasItemShine {

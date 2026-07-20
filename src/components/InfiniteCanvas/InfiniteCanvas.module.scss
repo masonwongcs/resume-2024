@@ -53,6 +53,24 @@
     overscroll-behavior: contain;
     touch-action: pan-y;
     pointer-events: auto;
+
+    // Let marquee/portrait pointer events reach the canvas morph under the spacer
+    &[data-origin='true'] {
+      pointer-events: none;
+
+      .infiniteCanvasFocusCopy {
+        pointer-events: auto;
+        // Cover the sticky morph when scrolling copy up
+        background: linear-gradient(
+          to bottom,
+          rgba(250, 249, 246, 0.92) 0%,
+          rgba(250, 249, 246, 0.97) 12px,
+          rgba(250, 249, 246, 0.97) 100%
+        );
+        margin-top: -8px;
+        padding-top: 8px;
+      }
+    }
   }
 
   .infiniteCanvasFocusScrollInner {
@@ -99,9 +117,41 @@
     border: 0.125vw solid transparent;
     background-color: rgba(255, 255, 255, 0.5);
 
+    // Origin: transparent window onto the live canvas morph underneath (no portal)
+    &[data-origin='true'] {
+      background-color: transparent;
+      border-color: transparent;
+
+      .infiniteCanvasFocusCardCustom {
+        background-color: transparent;
+        pointer-events: none;
+      }
+    }
+
     @media screen and (max-width: 480px) {
       margin: 0 0 24px;
     }
+  }
+
+  // Origin face stays at cell layout size, then CSS-scaled to the detail card —
+  // same box as the canvas morph so SVG text doesn't reflow on portal (mobile jump).
+  .infiniteCanvasFocusCardFaceScale {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+    pointer-events: none;
+  }
+
+  .infiniteCanvasFocusCardCustom {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: auto;
+    user-select: none;
+    background-color: #0a0a0a;
   }
 
   .infiniteCanvasFocusCardImage {
@@ -115,16 +165,6 @@
     user-select: none;
     -webkit-user-drag: none;
     pointer-events: none;
-  }
-
-  .infiniteCanvasFocusCardCustom {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    pointer-events: auto;
-    user-select: none;
   }
 
   .infiniteCanvasFocusCopy {

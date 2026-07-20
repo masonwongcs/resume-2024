@@ -51,6 +51,8 @@ export type OriginCardRenderProps = {
   onActivate?: () => void;
   /** Shared marquee offset — survives grid ↔ focus portal handoff */
   marqueeState?: React.MutableRefObject<MarqueePersistedState>;
+  /** True while the origin card is open in focus mode */
+  inFocus?: boolean;
 };
 
 /**
@@ -247,7 +249,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const focusImageRef = useRef<HTMLImageElement>(null);
   const focusArriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [originCanvasHost, setOriginCanvasHost] = useState<HTMLDivElement | null>(null);
-  const [originFocusHost, setOriginFocusHost] = useState<HTMLDivElement | null>(null);
+  /** Portrait raised while focus is settled — face stays on the canvas morph (no portal) */
+  const [originPortraitUp, setOriginPortraitUp] = useState(false);
   const originMarqueeStateRef = useRef<MarqueePersistedState>({
     offset: 0,
     direction: 'left',
@@ -714,6 +717,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
     setFocusSnapshot(null);
     setFocusPhase(null);
     setMorphCardHidden(false);
+    setOriginPortraitUp(false);
     setCanvasFocused(false);
   }, [setCanvasFocused]);
 
@@ -750,8 +754,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   }, []);
 
   // Hide the canvas morph once the HTML card is on screen (avoids a blank frame).
+  // Origin keeps the live face on the morph — never hide it (portal handoffs blink on mobile).
   useLayoutEffect(() => {
     if (focusPhase === 'settled') {
+      const isOrigin =
+        Boolean(focusedIdRef.current) &&
+        Boolean(itemsRef.current.get(focusedIdRef.current!)?.isOriginCard);
+      if (isOrigin) {
+        setMorphCardHidden(false);
+        return;
+      }
       const frame = requestAnimationFrame(() => setMorphCardHidden(true));
       return () => cancelAnimationFrame(frame);
     }
@@ -879,6 +891,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
 
       focusedIdRef.current = id;
       focusPhaseRef.current = 'in';
+      setOriginPortraitUp(false);
       setFocusSnapshot({
         contentCenterX,
         contentCenterY,
@@ -1726,16 +1739,18 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
   const isFocusSettled = focusPhase === 'settled';
   const isFocusHandingOff = focusPhase === 'out';
   const isFocusReturning = focusPhase === 'returning';
+  const focusImageSrc = focusedWork ? (focusedWork.thumbnail ? focusedWork.thumbnail : focusedWork.image) : '';
+  const focusedIsOriginCard = Boolean(focusedId && itemsRef.current.get(focusedId)?.isOriginCard && originCard);
   const showFocusScrim = focusPhase === 'in' || focusPhase === 'settled';
   // Keep HTML through 'out' so the morph can paint underneath before the overlay exits
   const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled' || focusPhase === 'out';
-  const focusImageSrc = focusedWork ? (focusedWork.thumbnail ? focusedWork.thumbnail : focusedWork.image) : '';
-  const focusedIsOriginCard = Boolean(focusedId && itemsRef.current.get(focusedId)?.isOriginCard && originCard);
 
   // Start the marquee as soon as the origin card joins the stack (not when load/intro fully finishes)
   const originCardId = originCardIdRef.current;
   const originMarqueeActive =
     !isClusterHold || shouldSpread || (originCardId ? stackEnteredIds.has(originCardId) : false);
+
+  const originInFocus = originPortraitUp;
 
   const originCustomContent = useMemo(
     () =>
@@ -1745,14 +1760,37 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
             height: cellHeight,
             active: originMarqueeActive,
             onActivate: handleOriginActivate,
-            marqueeState: originMarqueeStateRef
+            marqueeState: originMarqueeStateRef,
+            inFocus: originInFocus
           })
         : null,
-    [originCard, cellWidth, cellHeight, originMarqueeActive, handleOriginActivate]
+    [originCard, cellWidth, cellHeight, originMarqueeActive, handleOriginActivate, originInFocus]
   );
 
-  const originPortalInFocusScroll = focusedIsOriginCard && isFocusSettled;
-  const originPortalHost = originPortalInFocusScroll ? originFocusHost : originCanvasHost;
+  // Origin face always lives on the canvas morph — never portal into the focus overlay
+  // (mobile browsers flash on portal host swaps).
+  const showOriginFace = Boolean(originCanvasHost && originCustomContent);
+
+  // Portrait slides up once focus has settled; slides down on close while still on the morph.
+  useLayoutEffect(() => {
+    if (focusedIsOriginCard && isFocusSettled) {
+      const frame = requestAnimationFrame(() => setOriginPortraitUp(true));
+      return () => cancelAnimationFrame(frame);
+    }
+
+    if (focusedIsOriginCard && (focusPhase === 'out' || focusPhase === 'returning')) {
+      let inner = 0;
+      const outer = requestAnimationFrame(() => {
+        inner = requestAnimationFrame(() => setOriginPortraitUp(false));
+      });
+      return () => {
+        cancelAnimationFrame(outer);
+        cancelAnimationFrame(inner);
+      };
+    }
+
+    setOriginPortraitUp(false);
+  }, [focusedIsOriginCard, isFocusSettled, focusPhase]);
 
   return (
     <div
@@ -1856,9 +1894,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                   focusX = focusSnapshot.contentCenterX - cellWidth / 2;
                   focusY = focusSnapshot.contentCenterY - cellHeight / 2;
                   focusScale = focusSnapshot.cardScale;
-                  // Origin content portals into the scroll layer when settled — hide empty canvas shell
-                  const originSettled = Boolean(item.isOriginCard && isFocusSettled);
-                  focusOpacity = originSettled ? 0 : morphCardHidden ? 0 : 1;
+                  // Origin: keep the morph visible — face never leaves this card
+                  focusOpacity = item.isOriginCard ? 1 : morphCardHidden ? 0 : 1;
                   focusImmediate = morphCardHidden || isFocusHandingOff;
                 }
               } else {
@@ -1923,7 +1960,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
             );
           });
         })()}
-        {originPortalHost && originCustomContent ? createPortal(originCustomContent, originPortalHost) : null}
+        {showOriginFace ? createPortal(originCustomContent, originCanvasHost!) : null}
       </div>
 
       <AnimatePresence>
@@ -1950,11 +1987,13 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
               key="focus-scroll"
               className={styles.infiniteCanvasFocusScroll}
               data-ready={isFocusSettled ? 'true' : undefined}
+              data-origin={focusedIsOriginCard ? 'true' : undefined}
               onTouchMove={(e) => e.stopPropagation()}
               onWheel={(e) => e.stopPropagation()}
               style={{
                 opacity: isFocusSettled ? 1 : 0,
-                pointerEvents: isFocusSettled ? 'auto' : 'none'
+                // Origin: none on the scroll shell so marquee hits the morph; copy re-enables in CSS
+                pointerEvents: isFocusSettled ? (focusedIsOriginCard ? 'none' : 'auto') : 'none'
               }}
             >
               <div
@@ -1967,6 +2006,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                   <div
                     ref={focusCardRef}
                     className={styles.infiniteCanvasFocusCard}
+                    data-origin={focusedIsOriginCard ? 'true' : undefined}
                     style={{
                       width: focusSnapshot.detailWidth,
                       height: focusSnapshot.scaledScreenHeight,
@@ -1974,11 +2014,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({ works, peerReturnStagge
                     }}
                   >
                     {focusedIsOriginCard ? (
-                      <div
-                        ref={setOriginFocusHost}
-                        className={styles.infiniteCanvasFocusCardCustom}
-                        aria-hidden={!isFocusSettled}
-                      />
+                      // Transparent spacer — live face stays on the canvas morph underneath
+                      <div className={styles.infiniteCanvasFocusCardCustom} aria-hidden />
                     ) : (
                       <img
                         ref={focusImageRef}

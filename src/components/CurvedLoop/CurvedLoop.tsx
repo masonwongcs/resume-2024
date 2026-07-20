@@ -17,6 +17,11 @@ interface CurvedLoopProps {
   onTap?: () => void;
   /** Persists offset/spacing across remounts (e.g. grid ↔ focus portal handoff) */
   persistedState?: MutableRefObject<MarqueePersistedState>;
+  /**
+   * Font size in SVG user units (viewBox space). Scales with the SVG, so grid ↔ focus
+   * portal keeps the same relative size. Prefer this over CSS rem/vw/cqw.
+   */
+  fontSize?: number;
 }
 
 export type MarqueePersistedState = {
@@ -37,7 +42,8 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
   interactive = true,
   paused = false,
   onTap,
-  persistedState
+  persistedState,
+  fontSize = 96
 }) => {
   const text = useMemo(() => {
     const hasTrailing = /\s|\u00A0$/.test(marqueeText);
@@ -46,7 +52,10 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
 
   const measureRef = useRef<SVGTextElement | null>(null);
   const textPathRef = useRef<SVGTextPathElement | null>(null);
-  const [spacing, setSpacing] = useState(() => persistedState?.current.spacing ?? 0);
+  const [spacing, setSpacing] = useState(() => {
+    const saved = persistedState?.current;
+    return saved?.initialized && saved.spacing > 0 ? saved.spacing : 0;
+  });
   const [dragging, setDragging] = useState(false);
   const uid = useId();
   const pathId = `curve-${uid}`;
@@ -72,6 +81,7 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
         .join('')
     : text;
   const ready = spacing > 0;
+  const showMarquee = ready || Boolean(persistedState?.current.initialized && persistedState.current.spacing > 0);
 
   useEffect(() => {
     persistedStateRef.current = persistedState;
@@ -116,15 +126,20 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     }
   }, [paused]);
 
-  // Measure with the same class/styles as the visible text so loop seams stay accurate
+  // Measure with the same class/styles as the visible text so loop seams stay accurate.
+  // Quietly correct on resize — never clear spacing, so no blink.
   useEffect(() => {
     let cancelled = false;
 
     const measure = () => {
       if (cancelled || !measureRef.current) return;
       const next = measureRef.current.getComputedTextLength();
-      if (next > 0) {
-        setSpacing((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+      if (next <= 0) return;
+      setSpacing((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
+      const saved = persistedStateRef.current?.current;
+      if (saved) {
+        saved.spacing = next;
+        saved.initialized = true;
       }
     };
 
@@ -132,11 +147,21 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     const raf = requestAnimationFrame(measure);
     void document.fonts?.ready.then(measure);
 
+    const svg = measureRef.current?.ownerSVGElement ?? null;
+    const ro =
+      typeof ResizeObserver !== 'undefined' && svg
+        ? new ResizeObserver(() => {
+            measure();
+          })
+        : null;
+    if (ro && svg) ro.observe(svg);
+
     return () => {
       cancelled = true;
       cancelAnimationFrame(raf);
+      ro?.disconnect();
     };
-  }, [text, className]);
+  }, [text, className, fontSize]);
 
   // Restore saved offset on mount / spacing change — only default to 0 on first ever paint
   useEffect(() => {
@@ -232,7 +257,7 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     <div
       className="curved-loop-jacket"
       style={{
-        visibility: ready ? 'visible' : 'hidden',
+        visibility: showMarquee ? 'visible' : 'hidden',
         cursor: interactive && !paused ? (dragging ? 'grabbing' : 'grab') : 'auto'
       }}
       onPointerDown={onPointerDown}
@@ -245,6 +270,7 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
         <text
           ref={measureRef}
           className={className}
+          fontSize={fontSize}
           style={{ visibility: 'hidden', opacity: 0, pointerEvents: 'none' }}
           {...{ xmlSpace: 'preserve' }}
         >
@@ -253,8 +279,8 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
         <defs>
           <path id={pathId} d={pathD} fill="none" stroke="transparent" />
         </defs>
-        {ready ? (
-          <text fontWeight="bold" className={className} {...{ xmlSpace: 'preserve' }}>
+        {ready || Boolean(persistedState?.current.initialized && persistedState.current.spacing > 0) ? (
+          <text fontSize={fontSize} fontWeight="bold" className={className} {...{ xmlSpace: 'preserve' }}>
             <textPath ref={textPathRef} href={`#${pathId}`} {...{ xmlSpace: 'preserve' }}>
               {totalText}
             </textPath>
