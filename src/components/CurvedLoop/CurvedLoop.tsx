@@ -32,6 +32,10 @@ export type MarqueePersistedState = {
 };
 
 const DRAG_THRESHOLD_PX = 6;
+/** Touch: cancel tap sooner than marquee scrub so a canvas pan doesn't open focus. */
+const TOUCH_TAP_CANCEL_PX = 8;
+/** Touch needs more slop before the marquee claims the gesture as a scrub. */
+const TOUCH_DRAG_THRESHOLD_PX = 14;
 
 const CurvedLoop: FC<CurvedLoopProps> = ({
   marqueeText = '',
@@ -222,8 +226,16 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
 
     const dx = e.clientX - pointerDownPosRef.current.x;
     const dy = e.clientY - pointerDownPosRef.current.y;
-    if (!didDragRef.current && Math.hypot(dx, dy) >= DRAG_THRESHOLD_PX) {
+    const dist = Math.hypot(dx, dy);
+    const isTouch = e.pointerType === 'touch';
+    const tapCancelPx = isTouch ? TOUCH_TAP_CANCEL_PX : DRAG_THRESHOLD_PX;
+    const dragThresholdPx = isTouch ? TOUCH_DRAG_THRESHOLD_PX : DRAG_THRESHOLD_PX;
+
+    if (!didDragRef.current && dist >= tapCancelPx) {
       didDragRef.current = true;
+    }
+
+    if (!dragRef.current && dist >= dragThresholdPx) {
       dragRef.current = true;
       setDragging(true);
     }
@@ -236,9 +248,9 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     applyOffset(offsetRef.current + moveDx);
   };
 
-  const endDrag = () => {
+  const endPointer = (fireTap: boolean) => {
     if (!pointerActiveRef.current) return;
-    if (interactive && !paused && !didDragRef.current) {
+    if (fireTap && interactive && !paused && !didDragRef.current) {
       onTap?.();
     }
     pointerActiveRef.current = false;
@@ -262,9 +274,9 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
       }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerLeave={endDrag}
-      onPointerCancel={endDrag}
+      onPointerUp={() => endPointer(true)}
+      onPointerLeave={() => endPointer(false)}
+      onPointerCancel={() => endPointer(false)}
     >
       <svg className="curved-loop-svg" viewBox="0 0 1440 120">
         <text

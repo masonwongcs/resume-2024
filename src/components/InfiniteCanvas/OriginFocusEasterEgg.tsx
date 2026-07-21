@@ -46,7 +46,7 @@ const COVER_FLOW_LAYOUT = {
   rotation: 50,
   fitRatio: 0.4,
   /** Keep sleeves compact on narrow / coarse viewports */
-  mobileFitRatio: 0.2
+  mobileFitRatio: 0.25
 } as const;
 
 /** Dwell between auto-advances on the grid face (ms). */
