@@ -129,21 +129,55 @@ const FOCUS_COPY_SLIDE_TRANSITION = {
   duration: 0.45,
   ease: [0.22, 1, 0.36, 1] as const
 };
-const getFocusSlideInitial = (dir: number) =>
-  dir === 0 ? false : { x: dir > 0 ? '8%' : '-8%', opacity: 0 };
-const getFocusSlideExit = (dir: number) => ({
-  x: dir > 0 ? '-8%' : '8%',
-  opacity: 0
-});
-/** Desktop: outgoing fades in swipe direction; incoming slides in from the opposite side */
-const getFocusCopySlideInitial = (dir: number) =>
-  dir === 0
-    ? { opacity: 0, y: 16 }
-    : { opacity: 0, x: dir > 0 ? '40%' : '-40%' };
-const getFocusCopySlideExit = (dir: number) =>
-  dir === 0
-    ? { opacity: 0, y: 8 }
-    : { opacity: 0, x: dir > 0 ? '-40%' : '40%' };
+/** First-open copy reveal — explicit values, not variants (avoids parent motion inheritance) */
+const FOCUS_COPY_ITEM_REVEAL = {
+  title: { ...FOCUS_COPY_SPRING, delay: 0.04 },
+  body: { ...FOCUS_COPY_SPRING, delay: 0.1 },
+  link: { ...FOCUS_COPY_SPRING, delay: 0.16 }
+};
+
+type FocusSlideTargets = {
+  initial: false | { x?: string | number; y?: number; opacity: number };
+  animate: { x: number; y: number; opacity: number };
+  exit: { x?: string | number; y?: number; opacity: number };
+  transition: object;
+};
+
+const FOCUS_SLIDE_CENTER = { x: 0, y: 0, opacity: 1 } as const;
+
+const getFocusCardSlideTargets = (dir: number): FocusSlideTargets => {
+  if (dir === 0) {
+    return {
+      initial: false,
+      animate: FOCUS_SLIDE_CENTER,
+      exit: { x: 0, opacity: 0 },
+      transition: FOCUS_SLIDE_TRANSITION
+    };
+  }
+  return {
+    initial: { x: dir > 0 ? '8%' : '-8%', opacity: 0 },
+    animate: FOCUS_SLIDE_CENTER,
+    exit: { x: dir > 0 ? '-8%' : '8%', opacity: 0 },
+    transition: FOCUS_SLIDE_TRANSITION
+  };
+};
+
+const getFocusCopySlideTargets = (dir: number): FocusSlideTargets => {
+  if (dir === 0) {
+    return {
+      initial: { opacity: 0, y: 16, x: 0 },
+      animate: FOCUS_SLIDE_CENTER,
+      exit: { opacity: 0, y: 8, x: 0 },
+      transition: FOCUS_COPY_ITEM_REVEAL.body
+    };
+  }
+  return {
+    initial: { opacity: 0, x: dir > 0 ? '40%' : '-40%', y: 0 },
+    animate: FOCUS_SLIDE_CENTER,
+    exit: { opacity: 0, x: dir > 0 ? '-40%' : '40%', y: 0 },
+    transition: FOCUS_COPY_SLIDE_TRANSITION
+  };
+};
 /**
  * Mobile swipe copy parallax (relative to its panel):
  * outgoing accelerates in the swipe direction + fades;
@@ -161,12 +195,6 @@ const focusSwipeSeatProgress = (
   if (side === 'current') return 1 - Math.min(1, Math.abs(dragX) / w);
   if (side === 'next') return Math.max(0, Math.min(1, -dragX / w));
   return Math.max(0, Math.min(1, dragX / w));
-};
-/** First-open copy reveal — explicit values, not variants (avoids parent motion inheritance) */
-const FOCUS_COPY_ITEM_REVEAL = {
-  title: { ...FOCUS_COPY_SPRING, delay: 0.04 },
-  body: { ...FOCUS_COPY_SPRING, delay: 0.1 },
-  link: { ...FOCUS_COPY_SPRING, delay: 0.16 }
 };
 /** Matches .infiniteCanvasFocusDetail width — focused card scales to this */
 const FOCUS_DETAIL_MAX_WIDTH = 600;
@@ -426,8 +454,6 @@ const FOCUS_SWIPE_COMMIT = {
 const RECENTER_SHOW_DIST = 0.95;
 /** Hide again once this close to home (hysteresis) */
 const RECENTER_HIDE_DIST = 0.4;
-/** Return seat farther than this × viewport diagonal → shrink to center instead of flying home */
-const FOCUS_RETURN_CENTER_DIST = 0.45;
 /** Wait until pan/coast settles before showing the control */
 const RECENTER_IDLE_MS = 480;
 
@@ -534,6 +560,14 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const focusReturnScaleOnlyRef = useRef(false);
   /** Gallery slide direction: 1 next, -1 prev, 0 initial open */
   const [focusNavDirection, setFocusNavDirection] = useState(0);
+  /**
+   * Enter/exit targets for desktop gallery slides.
+   * Exit is flushSync’d onto the *current* slide before the key changes, so
+   * AnimatePresence keeps the correct direction on the outgoing node (variants
+   * + custom still one-behind / retarget on rapid prev↔next).
+   */
+  const [focusCardSlide, setFocusCardSlide] = useState(() => getFocusCardSlideTargets(0));
+  const [focusCopySlide, setFocusCopySlide] = useState(() => getFocusCopySlideTargets(0));
   /** Skip enter/exit slide after a committed swipe (peek already in place) */
   const [focusNavInstant, setFocusNavInstant] = useState(false);
   /** Mobile focus gallery swipe tracking */
@@ -871,29 +905,16 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     [isItemIdOnScreen, panCameraToItemId]
   );
 
-  /** True when the return seat is too far from the viewport — close shrinks to center (desktop only) */
+  /**
+   * Desktop only: fully off-screen seats dissolve at focus center.
+   * On-screen seats (including near the edge) morph home to their grid position.
+   */
   const shouldReturnFocusToCenter = useCallback(
     (id: string | null) => {
       if (isMobile || !id) return false;
-      if (!isItemIdOnScreen(id)) return true;
-      const match = /^item_(-?\d+)_(-?\d+)$/.exec(id);
-      const item = itemsRef.current.get(id);
-      if (!match || !item) return false;
-      const view = viewRef.current;
-      if (view.width <= 0 || view.height <= 0) return false;
-      const center = getGridItemContentCenter({
-        ...item,
-        x: Number(match[1]),
-        y: Number(match[2])
-      });
-      const z = Math.max(view.zoom, 0.001);
-      const vpX = view.width / 2 - view.offsetX / z;
-      const vpY = view.height / 2 - view.offsetY / z;
-      const dist = Math.hypot(center.x - vpX, center.y - vpY);
-      const threshold = (Math.hypot(view.width, view.height) / z) * FOCUS_RETURN_CENTER_DIST;
-      return dist > threshold;
+      return !isItemIdOnScreen(id);
     },
-    [isMobile, getGridItemContentCenter, isItemIdOnScreen]
+    [isMobile, isItemIdOnScreen]
   );
 
   /** Mobile swipe keeps the camera fixed — park on the return seat before morph home */
@@ -1447,6 +1468,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     setFocusSnapshot(null);
     setFocusPhase(null);
     setFocusNavDirection(0);
+    setFocusCardSlide(getFocusCardSlideTargets(0));
+    setFocusCopySlide(getFocusCopySlideTargets(0));
     setMorphCardHidden(false);
     setReleaseFocusPeers(false);
     setOriginPortraitUp(false);
@@ -1740,6 +1763,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       setReleaseFocusPeers(false);
       setOriginPortraitUp(false);
       setFocusNavDirection(0);
+      setFocusCardSlide(getFocusCardSlideTargets(0));
+      setFocusCopySlide(getFocusCopySlideTargets(0));
       setFocusSnapshot({
         ...layout,
         originCenterX,
@@ -1842,8 +1867,24 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
           focusScrollRef.current.scrollTop = 0;
         }
 
-        setFocusNavDirection(direction);
-        setFocusedWork(nextWork);
+        // Pin exit direction on the outgoing slide, then swap enter + content.
+        // Without the first flushSync, AnimatePresence keeps the previous exit prop.
+        const cardTargets = getFocusCardSlideTargets(direction);
+        const copyTargets = getFocusCopySlideTargets(direction);
+        flushSync(() => {
+          setFocusCardSlide((prev) => ({ ...prev, exit: cardTargets.exit }));
+          setFocusCopySlide((prev) => ({
+            ...prev,
+            exit: copyTargets.exit,
+            transition: FOCUS_COPY_SLIDE_TRANSITION
+          }));
+        });
+        flushSync(() => {
+          setFocusNavDirection(direction);
+          setFocusCardSlide(cardTargets);
+          setFocusCopySlide(copyTargets);
+          setFocusedWork(nextWork);
+        });
 
         // Prefer a mounted return seat; if none yet, keep the current id for close morph
         if (cell) {
@@ -2942,9 +2983,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
 
   // Desktop: AnimatePresence slides (production morph). Mobile: track + peeks.
   const useFocusSlidePresence = !isMobile && focusGallery.length > 1;
-  const focusSlideInitial = getFocusSlideInitial(focusNavDirection);
-  const focusSlideExit = getFocusSlideExit(focusNavDirection);
-  const focusSlideTransition = FOCUS_SLIDE_TRANSITION;
   const focusSwipePanels = useMemo(() => {
     if (!focusedWork) return [] as { work: Work; side: 'prev' | 'current' | 'next' }[];
     if (!useFocusSwipeGallery) {
@@ -3381,10 +3419,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                               <motion.div
                                 key={focusWorkKey}
                                 className={styles.infiniteCanvasFocusSlide}
-                                initial={focusSlideInitial}
-                                animate={{ x: 0, opacity: 1 }}
-                                exit={focusSlideExit}
-                                transition={focusSlideTransition}
+                                initial={focusCardSlide.initial}
+                                animate={focusCardSlide.animate}
+                                exit={focusCardSlide.exit}
+                                transition={focusCardSlide.transition}
                               >
                                 <div
                                   ref={setFocusCardNode}
@@ -3458,14 +3496,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                                 <motion.div
                                   key={focusWorkKey}
                                   className={styles.infiniteCanvasFocusCopy}
-                                  initial={getFocusCopySlideInitial(focusNavDirection)}
-                                  animate={{ opacity: 1, x: 0, y: 0 }}
-                                  exit={getFocusCopySlideExit(focusNavDirection)}
-                                  transition={
-                                    focusNavDirection === 0
-                                      ? FOCUS_COPY_ITEM_REVEAL.body
-                                      : FOCUS_COPY_SLIDE_TRANSITION
-                                  }
+                                  initial={focusCopySlide.initial}
+                                  animate={focusCopySlide.animate}
+                                  exit={focusCopySlide.exit}
+                                  transition={focusCopySlide.transition}
                                 >
                                   <h1 className={styles.infiniteCanvasFocusTitle}>
                                     {focusedWork.name}
