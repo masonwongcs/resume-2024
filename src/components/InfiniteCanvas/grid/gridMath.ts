@@ -268,3 +268,147 @@ export const pinCustomCardAt = ({
   customCardIdsRef.current.set(customCard.id, id);
   return item;
 };
+
+/** Whether a grid seat can open / be landed on in focus mode */
+export const isGridItemFocusable = (
+  item: GridItem,
+  originCard?: OriginCardConfig,
+  customCards?: CustomCardConfig[]
+) => {
+  if (item.isOriginCard && originCard?.focusable === false) return false;
+  if (item.customCardId) {
+    const card = customCards?.find((c) => c.id === item.customCardId);
+    if (card?.focusable === false) return false;
+  }
+  return true;
+};
+
+export type EnsureGridItemArgs = {
+  x: number;
+  y: number;
+  items: Map<string, GridItem>;
+  works: Work[];
+  excludedWorkKeys?: Set<string> | null;
+  seedFactor: number;
+  workUsageCount: Map<string, number>;
+  staggerOffset: number;
+  originCard?: OriginCardConfig;
+  originCardIdRef?: { current: string | null };
+  customCards?: CustomCardConfig[];
+  customCardIdsRef?: { current: Map<string, string> };
+};
+
+/**
+ * Return the grid item at (x, y), creating it with the same rules as the visible window
+ * when missing. Used by spatial focus prev/next so neighbors always exist.
+ */
+export const ensureGridItemAt = ({
+  x,
+  y,
+  items,
+  works,
+  excludedWorkKeys,
+  seedFactor,
+  workUsageCount,
+  staggerOffset,
+  originCard,
+  originCardIdRef,
+  customCards,
+  customCardIdsRef
+}: EnsureGridItemArgs): GridItem & { x: number; y: number } => {
+  const id = generateItemId(x, y);
+  let item = items.get(id);
+
+  if (!item && originCard && originCardIdRef?.current === id) {
+    item = pinOriginCardAt({
+      gx: x,
+      gy: y,
+      originCard,
+      items,
+      originCardIdRef,
+      staggerOffset
+    });
+  }
+
+  if (!item && customCardIdsRef) {
+    let configId: string | undefined;
+    for (const [cid, gridId] of customCardIdsRef.current) {
+      if (gridId === id) {
+        configId = cid;
+        break;
+      }
+    }
+    if (configId) {
+      const card = customCards?.find((c) => c.id === configId);
+      if (card) {
+        item = pinCustomCardAt({
+          gx: x,
+          gy: y,
+          customCard: card,
+          items,
+          customCardIdsRef,
+          staggerOffset
+        });
+      }
+    }
+  }
+
+  if (!item) {
+    const adjacentWorks = getAdjacentWorks(x, y, items, 3);
+    const selectedWork = selectUniqueWork({
+      x,
+      y,
+      adjacentWorks,
+      works,
+      excludedWorkKeys,
+      seedFactor,
+      workUsageCount
+    });
+    item = {
+      id,
+      work: selectedWork,
+      offsetX: 0,
+      offsetY: x % 2 === 0 ? 0 : staggerOffset
+    };
+    items.set(id, item);
+  }
+
+  return { ...item, x, y };
+};
+
+/**
+ * Walk horizontally from a focused seat (±x, same y) until a focusable neighbor is found.
+ * Prefers a different work than the current seat so the overlay always advances.
+ * Creates missing cells along the way. No wrap — the grid is infinite.
+ */
+export const findHorizontalFocusNeighbor = ({
+  fromId,
+  direction,
+  maxSteps = 24,
+  ...ensureArgs
+}: {
+  fromId: string;
+  direction: -1 | 1;
+  maxSteps?: number;
+} & Omit<EnsureGridItemArgs, 'x' | 'y'>): (GridItem & { x: number; y: number }) | null => {
+  const coords = parseGridCoords(fromId);
+  if (!coords) return null;
+
+  const fromItem = ensureArgs.items.get(fromId);
+  const fromKey = fromItem ? getWorkKey(fromItem.work) : null;
+  let fallback: (GridItem & { x: number; y: number }) | null = null;
+
+  for (let step = 1; step <= maxSteps; step++) {
+    const cell = ensureGridItemAt({
+      ...ensureArgs,
+      x: coords.x + direction * step,
+      y: coords.y
+    });
+    if (!isGridItemFocusable(cell, ensureArgs.originCard, ensureArgs.customCards)) continue;
+    if (!fallback) fallback = cell;
+    // Skip duplicate works so prev/next always changes overlay content (matches old gallery).
+    if (fromKey && getWorkKey(cell.work) === fromKey) continue;
+    return cell;
+  }
+  return fallback;
+};

@@ -36,10 +36,12 @@ export type FocusOverlayProps = {
   useFocusSlidePresence: boolean;
   showFocusSwipePeeks: boolean;
   isMobile: boolean;
-  focusGalleryLength: number;
+  canSpatialFocusNav: boolean;
   focusSwipePanels: FocusSwipePanel[];
   focusSwipeDragX: MotionValue<number>;
   focusWorkKey: string;
+  /** Presence slide key — unique per nav step (avoids A→B→A freeze) */
+  focusSlideKey: string;
   focusImageSrc: string;
   focusCardSlide: FocusSlideTargets;
   focusCopySlide: FocusSlideTargets;
@@ -80,10 +82,11 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
   useFocusSlidePresence,
   showFocusSwipePeeks,
   isMobile,
-  focusGalleryLength,
+  canSpatialFocusNav,
   focusSwipePanels,
   focusSwipeDragX,
   focusWorkKey,
+  focusSlideKey,
   focusImageSrc,
   focusCardSlide,
   focusCopySlide,
@@ -196,7 +199,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                       const panelBanner = getFocusBannerForWork?.(work);
                       return (
                         <div
-                          key={panelKey}
+                          key={`${side}-${focusSlideKey}-${panelKey}`}
                           className={styles.infiniteCanvasFocusSwipePanel}
                           data-side={side}
                           aria-hidden={!isCurrent}
@@ -258,7 +261,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                         {useFocusSlidePresence ? (
                           <AnimatePresence mode="sync" initial={false}>
                             <motion.div
-                              key={focusWorkKey}
+                              key={focusSlideKey}
                               className={styles.infiniteCanvasFocusSlide}
                               initial={focusCardSlide.initial}
                               animate={focusCardSlide.animate}
@@ -343,7 +346,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                           {useFocusSlidePresence ? (
                             <AnimatePresence mode="sync">
                               <motion.div
-                                key={focusWorkKey}
+                                key={focusSlideKey}
                                 className={styles.infiniteCanvasFocusCopy}
                                 initial={focusCopySlide.initial}
                                 animate={focusCopySlide.animate}
@@ -372,7 +375,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                             </AnimatePresence>
                           ) : (
                             <motion.div
-                              key={focusWorkKey}
+                              key={focusSlideKey}
                               className={styles.infiniteCanvasFocusCopy}
                               initial={
                                 focusNavDirection === 0 && !focusNavInstant
@@ -415,7 +418,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
             </div>
           </div>
           <AnimatePresence>
-            {isFocusSettled && !isMobile && focusGalleryLength > 1 ? (
+            {isFocusSettled && !isMobile && canSpatialFocusNav ? (
               <>
                 <motion.button
                   key="focus-prev"

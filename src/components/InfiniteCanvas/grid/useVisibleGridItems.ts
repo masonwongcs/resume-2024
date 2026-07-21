@@ -1,14 +1,12 @@
 import { useMemo, type RefObject } from 'react';
 
 import {
+  ensureGridItemAt,
   findCenterGridSeat,
-  generateItemId,
-  getAdjacentWorks,
   parseGridCoords,
   pickRandomCustomCardSeat,
   pinCustomCardAt,
-  pinOriginCardAt,
-  selectUniqueWork
+  pinOriginCardAt
 } from './gridMath';
 import type { CustomCardConfig, GridItem, OriginCardConfig, Work } from '../types';
 
@@ -115,12 +113,6 @@ export const useVisibleGridItems = ({
       });
     }
 
-    const customGridIdToConfigId = new Map<string, string>();
-    for (const [configId, gridId] of customCardIdsRef.current) {
-      customGridIdToConfigId.set(gridId, configId);
-    }
-    const customCardById = new Map((customCards ?? []).map((card) => [card.id, card]));
-
     const startX =
       Math.floor((-offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) - viewportPadding;
     const startY =
@@ -134,54 +126,22 @@ export const useVisibleGridItems = ({
     const items: (GridItem & { x: number; y: number })[] = [];
     for (let x = startX; x <= endX; x++) {
       for (let y = startY; y <= endY; y++) {
-        const id = generateItemId(x, y);
-        let item = itemsRef.current.get(id);
-        if (!item) {
-          if (originCard && originCardIdRef.current === id) {
-            item = pinOriginCardAt({
-              gx: x,
-              gy: y,
-              originCard,
-              items: itemsRef.current,
-              originCardIdRef,
-              staggerOffset
-            });
-          } else if (customGridIdToConfigId.has(id)) {
-            const configId = customGridIdToConfigId.get(id)!;
-            const card = customCardById.get(configId);
-            if (card) {
-              item = pinCustomCardAt({
-                gx: x,
-                gy: y,
-                customCard: card,
-                items: itemsRef.current,
-                customCardIdsRef,
-                staggerOffset
-              });
-            }
-          }
-
-          if (!item) {
-            const adjacentWorks = getAdjacentWorks(x, y, itemsRef.current, 3);
-            const selectedWork = selectUniqueWork({
-              x,
-              y,
-              adjacentWorks,
-              works,
-              excludedWorkKeys,
-              seedFactor,
-              workUsageCount: workUsageCountRef.current
-            });
-            item = {
-              id,
-              work: selectedWork,
-              offsetX: 0,
-              offsetY: x % 2 === 0 ? 0 : staggerOffset
-            };
-            itemsRef.current.set(id, item);
-          }
-        }
-        items.push({ ...item, x, y });
+        items.push(
+          ensureGridItemAt({
+            x,
+            y,
+            items: itemsRef.current,
+            works,
+            excludedWorkKeys,
+            seedFactor,
+            workUsageCount: workUsageCountRef.current,
+            staggerOffset,
+            originCard,
+            originCardIdRef,
+            customCards,
+            customCardIdsRef
+          })
+        );
       }
     }
 
