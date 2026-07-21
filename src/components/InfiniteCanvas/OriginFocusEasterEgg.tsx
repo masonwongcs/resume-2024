@@ -45,8 +45,8 @@ const COVER_FLOW_LAYOUT = {
   centerGap: 160,
   rotation: 50,
   fitRatio: 0.4,
-  /** Narrow cards read oversized at desktop fit — pull sleeves in on mobile */
-  mobileFitRatio: 0.3
+  /** Sleeves read a bit small on narrow viewports — size up on mobile */
+  mobileFitRatio: 0.45
 } as const;
 
 const useListeningCoverIndex = () => {
