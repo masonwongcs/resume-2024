@@ -46,7 +46,7 @@ const COVER_FLOW_LAYOUT = {
   rotation: 50,
   fitRatio: 0.4,
   /** Sleeves read a bit small on narrow viewports — size up on mobile */
-  mobileFitRatio: 0.45
+  mobileFitRatio: 0.3
 } as const;
 
 const useListeningCoverIndex = () => {
