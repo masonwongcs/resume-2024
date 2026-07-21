@@ -119,29 +119,37 @@ const FOCUS_CLOSE_TRANSITION = {
   duration: 0.6,
   ease: [0.4, 0, 0.2, 1] as const
 };
-const FOCUS_COPY_REVEAL_DELAY_S = 0.01;
-const FOCUS_COPY_CONTAINER_VARIANTS = {
-  hidden: {},
-  show: {
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: FOCUS_COPY_REVEAL_DELAY_S
-    }
-  }
+/** Direction-aware gallery slide (1 = next, -1 = prev, 0 = first open). */
+const FOCUS_SLIDE_TRANSITION = {
+  duration: 0.3,
+  ease: [0.22, 1, 0.36, 1] as const
 };
-const FOCUS_COPY_ITEM_VARIANTS = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: FOCUS_COPY_SPRING }
-};
-const FOCUS_COPY_LINK_VARIANTS = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: FOCUS_COPY_SPRING }
+const getFocusSlideInitial = (dir: number) =>
+  dir === 0 ? false : { x: dir > 0 ? '8%' : '-8%', opacity: 0 };
+const getFocusSlideExit = (dir: number) => ({
+  x: dir > 0 ? '-8%' : '8%',
+  opacity: 0
+});
+/** First-open copy reveal — explicit values, not variants (avoids parent motion inheritance) */
+const FOCUS_COPY_ITEM_REVEAL = {
+  title: { ...FOCUS_COPY_SPRING, delay: 0.04 },
+  body: { ...FOCUS_COPY_SPRING, delay: 0.1 },
+  link: { ...FOCUS_COPY_SPRING, delay: 0.16 }
 };
 /** Matches .infiniteCanvasFocusDetail width — focused card scales to this */
 const FOCUS_DETAIL_MAX_WIDTH = 600;
 const FOCUS_DETAIL_MAX_WIDTH_XL = 700;
 /** Must match .infiniteCanvasFocusScrollInner mobile side padding */
 const FOCUS_MOBILE_SIDE_PAD = 24;
+
+const FOCUS_LINK_ARROW = (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path
+      d="M20.7806 12.5306L14.0306 19.2806C13.8899 19.4213 13.699 19.5004 13.5 19.5004C13.301 19.5004 13.1101 19.4213 12.9694 19.2806C12.8286 19.1399 12.7496 18.949 12.7496 18.75C12.7496 18.551 12.8286 18.3601 12.9694 18.2194L18.4397 12.75H3.75C3.55109 12.75 3.36032 12.671 3.21967 12.5303C3.07902 12.3897 3 12.1989 3 12C3 11.8011 3.07902 11.6103 3.21967 11.4697C3.36032 11.329 3.55109 11.25 3.75 11.25H18.4397L12.9694 5.78061C12.8286 5.63988 12.7496 5.44901 12.7496 5.24999C12.7496 5.05097 12.8286 4.8601 12.9694 4.71936C13.1101 4.57863 13.301 4.49957 13.5 4.49957C13.699 4.49957 13.8899 4.57863 14.0306 4.71936L20.7806 11.4694C20.8504 11.539 20.9057 11.6217 20.9434 11.7128C20.9812 11.8038 21.0006 11.9014 21.0006 12C21.0006 12.0986 20.9812 12.1961 20.9434 12.2872C20.9057 12.3782 20.8504 12.461 20.7806 12.5306Z"
+      fill="#ffffff"
+    />
+  </svg>
+);
 
 const formatUrl = (url?: string) => {
   if (!url) return;
@@ -303,7 +311,20 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const focusPhaseRef = useRef<FocusPhase | null>(null);
   const focusCardRef = useRef<HTMLDivElement>(null);
   const focusImageRef = useRef<HTMLImageElement>(null);
+  /** Keep refs across AnimatePresence slide swaps — exiting nodes must not clear the live card */
+  const setFocusCardNode = useCallback((node: HTMLDivElement | null) => {
+    if (node) focusCardRef.current = node;
+  }, []);
+  const setFocusImageNode = useCallback((node: HTMLImageElement | null) => {
+    if (node) focusImageRef.current = node;
+  }, []);
   const focusArriveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** After gallery swap, immediately hide the previous morph card (skip home → push spring) */
+  const focusNavPrevIdRef = useRef<string | null>(null);
+  /** True while close is lerping the camera to an off-screen return seat */
+  const focusReturnPanActiveRef = useRef(false);
+  /** Gallery slide direction: 1 next, -1 prev, 0 initial open */
+  const [focusNavDirection, setFocusNavDirection] = useState(0);
   const [originCanvasHost, setOriginCanvasHost] = useState<HTMLDivElement | null>(null);
   /** Portrait raised while focus is settled — face stays on the canvas morph (no portal) */
   const [originPortraitUp, setOriginPortraitUp] = useState(false);
@@ -363,6 +384,19 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const getWorkKey = (work: Work) => work.url ?? work.name;
 
   const originCardKey = originCard ? getWorkKey(originCard.work) : null;
+
+  /** Gallery order for focus prev/next — origin first when focusable, then works */
+  const focusGallery = useMemo(() => {
+    const list: Work[] = [];
+    if (originCard && originCard.focusable !== false) {
+      list.push(originCard.work);
+    }
+    for (const work of works) {
+      if (originCardKey && getWorkKey(work) === originCardKey) continue;
+      list.push(work);
+    }
+    return list;
+  }, [works, originCard, originCardKey]);
 
   const pinOriginCardAt = useCallback(
     (gx: number, gy: number) => {
@@ -518,6 +552,91 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     setOffset({ x, y });
     setZoom(z);
   }, []);
+
+  const getGridItemContentCenter = useCallback(
+    (item: { x: number; y: number; offsetX: number; offsetY: number }) => ({
+      x: item.x * (cellWidth + gapSize) + item.offsetX + cellWidth / 2,
+      y: item.y * (cellHeight + gapSize) + item.offsetY + cellHeight / 2
+    }),
+    [cellWidth, cellHeight, gapSize]
+  );
+
+  /** Aim the camera so a content-space point sits at the viewport center (keeps current zoom). */
+  const panCameraToContentCenter = useCallback(
+    (cx: number, cy: number, immediate = false) => {
+      const view = viewRef.current;
+      if (view.width <= 0 || view.height <= 0) return;
+      const z = Math.max(view.zoom, 0.001);
+      const next = {
+        x: (view.width / 2 - cx) * z,
+        y: (view.height / 2 - cy) * z
+      };
+      targetOffsetRef.current = next;
+      targetZoomRef.current = z;
+      if (immediate || prefersReducedMotion) {
+        view.offsetX = next.x;
+        view.offsetY = next.y;
+        view.zoom = z;
+        applyCameraTransform(next.x, next.y, z);
+        const windowKey = getCellWindowKey(next.x, next.y, z, view.width, view.height);
+        commitCullPose(next.x, next.y, z, windowKey, true);
+      }
+    },
+    [applyCameraTransform, commitCullPose, getCellWindowKey, prefersReducedMotion]
+  );
+
+  const panCameraToGridItem = useCallback(
+    (item: { x: number; y: number; offsetX: number; offsetY: number }, immediate = false) => {
+      const center = getGridItemContentCenter(item);
+      panCameraToContentCenter(center.x, center.y, immediate);
+    },
+    [getGridItemContentCenter, panCameraToContentCenter]
+  );
+
+  const panCameraToItemId = useCallback(
+    (id: string | null, immediate = false) => {
+      if (!id) return;
+      const match = /^item_(-?\d+)_(-?\d+)$/.exec(id);
+      const item = itemsRef.current.get(id);
+      if (!match || !item) return;
+      panCameraToGridItem({ ...item, x: Number(match[1]), y: Number(match[2]) }, immediate);
+    },
+    [panCameraToGridItem]
+  );
+
+  const isItemIdOnScreen = useCallback(
+    (id: string | null) => {
+      if (!id) return false;
+      const match = /^item_(-?\d+)_(-?\d+)$/.exec(id);
+      const item = itemsRef.current.get(id);
+      if (!match || !item) return false;
+      const view = viewRef.current;
+      if (view.width <= 0 || view.height <= 0) return false;
+      const gx = Number(match[1]);
+      const gy = Number(match[2]);
+      const posX = gx * (cellWidth + gapSize) + item.offsetX;
+      const posY = gy * (cellHeight + gapSize) + item.offsetY;
+      const z = Math.max(view.zoom, 0.001);
+      const originOffsetX = (view.width / 2) * (1 - 1 / z);
+      const originOffsetY = (view.height / 2) * (1 - 1 / z);
+      const left = originOffsetX - view.offsetX / z;
+      const top = originOffsetY - view.offsetY / z;
+      const right = left + view.width / z;
+      const bottom = top + view.height / z;
+      return posX + cellWidth > left && posX < right && posY + cellHeight > top && posY < bottom;
+    },
+    [cellWidth, cellHeight, gapSize]
+  );
+
+  /** Pan only when the seat is outside the current viewport */
+  const panCameraToItemIdIfOffscreen = useCallback(
+    (id: string | null, immediate = false) => {
+      if (!id || isItemIdOnScreen(id)) return false;
+      panCameraToItemId(id, immediate);
+      return true;
+    },
+    [isItemIdOnScreen, panCameraToItemId]
+  );
 
   /** Content-space center of the intro / origin seat — camera home */
   const ensureHomeContent = useCallback(() => {
@@ -744,6 +863,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
 
   const animateOffset = useCallback(() => {
     // Focus locks the camera — freeze pose while morph / peer springs run.
+    // Exception: while returning to an off-screen seat we lerp the camera there.
     // Also idle the camera while the menu drawer animates/scales .main so we
     // don't compete for compositor bandwidth during the shrink.
     const drawerBusy =
@@ -752,11 +872,20 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         document.body.classList.contains('is-dragging') ||
         document.body.classList.contains('is-animating'));
 
-    if (!focusedIdRef.current && !drawerBusy) {
+    const focusFollowHome = focusPhaseRef.current === 'returning' && focusReturnPanActiveRef.current;
+    const cameraFollowAllowed = !drawerBusy && (!focusedIdRef.current || focusFollowHome);
+
+    if (cameraFollowAllowed) {
       const view = viewRef.current;
 
-      // Coast: keep pushing the camera target after touch release
-      if (isCoastingRef.current && !isDragging.current && !isPinching.current && !prefersReducedMotion) {
+      // Coast only when not in a focus morph — return just lerps to target
+      if (
+        !focusedIdRef.current &&
+        isCoastingRef.current &&
+        !isDragging.current &&
+        !isPinching.current &&
+        !prefersReducedMotion
+      ) {
         const v = panVelocityRef.current;
         targetOffsetRef.current = {
           x: targetOffsetRef.current.x + v.x,
@@ -771,8 +900,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         }
       }
 
-      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast use lerpFactor
-      const follow = isPinching.current || (isDragging.current && isTouchDrag.current) ? touchLerpFactor : lerpFactor;
+      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast + focus-home use lerpFactor
+      const follow =
+        !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
+          ? touchLerpFactor
+          : lerpFactor;
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
       const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
       const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
@@ -982,6 +1114,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       clearTimeout(focusArriveTimeoutRef.current);
       focusArriveTimeoutRef.current = null;
     }
+    focusNavPrevIdRef.current = null;
+    focusReturnPanActiveRef.current = false;
+    focusCardRef.current = null;
+    focusImageRef.current = null;
     focusedIdRef.current = null;
     focusPhaseRef.current = null;
     focusScrollNudgeY.set(0);
@@ -990,6 +1126,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     setFocusedWork(null);
     setFocusSnapshot(null);
     setFocusPhase(null);
+    setFocusNavDirection(0);
     setMorphCardHidden(false);
     setReleaseFocusPeers(false);
     setOriginPortraitUp(false);
@@ -1072,27 +1209,31 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     if (!focusedIdRef.current || !focusPhaseRef.current) return;
     if (focusPhaseRef.current === 'out' || focusPhaseRef.current === 'returning') return;
 
-    if (focusPhaseRef.current === 'settled' && focusCardRef.current) {
-      const rect = focusCardRef.current.getBoundingClientRect();
-      const view = viewRef.current;
-      const zoomValue = Math.max(view.zoom, 0.001);
-      const screenCenterX = rect.left + rect.width / 2 - view.left;
-      const screenCenterY = rect.top + rect.height / 2 - view.top;
-      const contentCenterX = view.width / 2 + (screenCenterX - view.width / 2 - view.offsetX) / zoomValue;
-      const contentCenterY = view.height / 2 + (screenCenterY - view.height / 2 - view.offsetY) / zoomValue;
-      const cardScale = rect.width / (cellWidth * zoomValue);
+    if (focusPhaseRef.current === 'settled') {
+      // Prefer live card rect (handles scroll). Fall back to snapshot if the slide
+      // remount cleared the ref mid-transition.
+      if (focusCardRef.current) {
+        const rect = focusCardRef.current.getBoundingClientRect();
+        const view = viewRef.current;
+        const zoomValue = Math.max(view.zoom, 0.001);
+        const screenCenterX = rect.left + rect.width / 2 - view.left;
+        const screenCenterY = rect.top + rect.height / 2 - view.top;
+        const contentCenterX = view.width / 2 + (screenCenterX - view.width / 2 - view.offsetX) / zoomValue;
+        const contentCenterY = view.height / 2 + (screenCenterY - view.height / 2 - view.offsetY) / zoomValue;
+        const cardScale = rect.width / (cellWidth * zoomValue);
 
-      setFocusSnapshot((prev) =>
-        prev
-          ? {
-              ...prev,
-              contentCenterX,
-              contentCenterY,
-              cardScale,
-              scaledScreenHeight: rect.height
-            }
-          : null
-      );
+        setFocusSnapshot((prev) =>
+          prev
+            ? {
+                ...prev,
+                contentCenterX,
+                contentCenterY,
+                cardScale,
+                scaledScreenHeight: rect.height
+              }
+            : null
+        );
+      }
       focusPhaseRef.current = 'out';
       setReleaseFocusPeers(false);
       // Reveal morph before HTML unmounts — same render as phase 'out'
@@ -1107,6 +1248,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         clearTimeout(focusArriveTimeoutRef.current);
         focusArriveTimeoutRef.current = null;
       }
+      focusReturnPanActiveRef.current = panCameraToItemIdIfOffscreen(focusedIdRef.current);
       focusPhaseRef.current = 'returning';
       setReleaseFocusPeers(false);
       setMorphCardHidden(false);
@@ -1114,7 +1256,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       setFocusPhase('returning');
       setCanvasFocused(false);
     }
-  }, [cellWidth, setCanvasFocused]);
+  }, [cellWidth, setCanvasFocused, panCameraToItemIdIfOffscreen]);
 
   // After snapshot absorbs the scrolled position, drop the nudge before paint (avoids a jump)
   useLayoutEffect(() => {
@@ -1146,6 +1288,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     let inner = 0;
     const outer = requestAnimationFrame(() => {
       inner = requestAnimationFrame(() => {
+        focusReturnPanActiveRef.current = panCameraToItemIdIfOffscreen(focusedIdRef.current);
         focusPhaseRef.current = 'returning';
         setReleaseFocusPeers(false);
         setFocusPhase('returning');
@@ -1156,7 +1299,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
     };
-  }, [focusPhase, setCanvasFocused]);
+  }, [focusPhase, setCanvasFocused, panCameraToItemIdIfOffscreen]);
 
   const handleFocusReturnComplete = useCallback(
     (id: string) => {
@@ -1224,6 +1367,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       setMorphCardHidden(false);
       setReleaseFocusPeers(false);
       setOriginPortraitUp(false);
+      setFocusNavDirection(0);
       setFocusSnapshot({
         ...layout,
         originCenterX,
@@ -1254,6 +1398,110 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     handleItemClick(id, item.work);
   }, [handleItemClick]);
 
+  const parseGridCoords = useCallback((id: string) => {
+    const match = /^item_(-?\d+)_(-?\d+)$/.exec(id);
+    if (!match) return null;
+    return { x: Number(match[1]), y: Number(match[2]) };
+  }, []);
+
+  /** Nearest mounted grid seat for a work — exit morph returns here after gallery nav */
+  const findReturnCellForWork = useCallback(
+    (work: Work, nearId: string | null) => {
+      const key = getWorkKey(work);
+
+      if (originCard && getWorkKey(originCard.work) === key) {
+        const id = originCardIdRef.current;
+        if (!id) return null;
+        const item = itemsRef.current.get(id);
+        const coords = parseGridCoords(id);
+        if (!item || !coords) return null;
+        return { ...item, ...coords };
+      }
+
+      const near = nearId ? parseGridCoords(nearId) : null;
+      const fromX = near?.x ?? 0;
+      const fromY = near?.y ?? 0;
+
+      let best: (GridItem & { x: number; y: number }) | null = null;
+      let bestDist = Infinity;
+
+      for (const item of itemsRef.current.values()) {
+        if (item.isOriginCard) continue;
+        if (getWorkKey(item.work) !== key) continue;
+        const coords = parseGridCoords(item.id);
+        if (!coords) continue;
+        const dist = Math.hypot(coords.x - fromX, coords.y - fromY);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = { ...item, ...coords };
+        }
+      }
+
+      return best;
+    },
+    [originCard, parseGridCoords]
+  );
+
+  const navigateFocus = useCallback(
+    (direction: -1 | 1) => {
+      if (focusPhaseRef.current !== 'settled') return;
+      if (!focusedWork || focusGallery.length < 2) return;
+
+      const currentKey = getWorkKey(focusedWork);
+      const currentIndex = focusGallery.findIndex((work) => getWorkKey(work) === currentKey);
+      if (currentIndex < 0) return;
+
+      const len = focusGallery.length;
+      for (let step = 1; step <= len; step++) {
+        const nextIndex = ((currentIndex + direction * step) % len + len) % len;
+        const nextWork = focusGallery[nextIndex];
+        if (!nextWork || getWorkKey(nextWork) === currentKey) continue;
+
+        const cell = findReturnCellForWork(nextWork, focusedIdRef.current);
+        const view = viewRef.current;
+        if (view.width <= 0 || view.height <= 0) return;
+
+        focusScrollNudgeY.set(0);
+        if (focusScrollRef.current) focusScrollRef.current.scrollTop = 0;
+
+        setFocusNavDirection(direction);
+        setFocusedWork(nextWork);
+
+        // Prefer a mounted return seat; if none yet, keep the current id for close morph
+        if (cell) {
+          panCameraToItemIdIfOffscreen(cell.id, true);
+          const layout = computeFocusLayout(viewRef.current, cellWidth, cellHeight);
+          const origin = getGridItemContentCenter(cell);
+          const prevId = focusedIdRef.current;
+
+          focusNavPrevIdRef.current = prevId;
+          focusedIdRef.current = cell.id;
+          setFocusedId(cell.id);
+          setFocusSnapshot({
+            ...layout,
+            originCenterX: origin.x,
+            originCenterY: origin.y
+          });
+
+          const isOrigin = Boolean(cell.isOriginCard);
+          setMorphCardHidden(!isOrigin);
+          setOriginPortraitUp(isOrigin);
+        }
+        return;
+      }
+    },
+    [
+      focusedWork,
+      focusGallery,
+      findReturnCellForWork,
+      focusScrollNudgeY,
+      cellWidth,
+      cellHeight,
+      panCameraToItemIdIfOffscreen,
+      getGridItemContentCenter
+    ]
+  );
+
   useEffect(() => {
     return () => {
       setCanvasFocused(false);
@@ -1265,18 +1513,34 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     focusedIdRef.current = focusedId;
   }, [focusedId]);
 
+  // Clear the previous morph id after the gallery swap has painted
+  useLayoutEffect(() => {
+    if (!focusNavPrevIdRef.current) return;
+    focusNavPrevIdRef.current = null;
+  }, [focusedId]);
+
   useEffect(() => {
     if (!focusedId) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         requestClose();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        navigateFocus(-1);
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        navigateFocus(1);
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [focusedId, requestClose]);
+  }, [focusedId, requestClose, navigateFocus]);
 
   // Single proximity rAF for the whole canvas — idle while panning / intro / focus / drawer
   useAnimationFrame(() => {
@@ -2070,6 +2334,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const showFocusScrim = focusPhase === 'in' || focusPhase === 'settled';
   // Keep HTML through 'out' so the morph can paint underneath before the overlay exits
   const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled' || focusPhase === 'out';
+  const focusWorkKey = focusedWork ? getWorkKey(focusedWork) : '';
 
   // Start the marquee as soon as the origin card joins the stack (not when load/intro fully finishes)
   const originCardId = originCardIdRef.current;
@@ -2170,19 +2435,26 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
             }
           }
 
-          // During cluster hold, force-mount intro stack cards (cull can drop them after snap)
-          const renderItems =
-            isClusterHold && introStackRef.current?.length
-              ? (() => {
-                  const byId = new Map(visibleItems.map((item) => [item.id, item]));
-                  for (const entry of introStackRef.current) {
-                    if (!byId.has(entry.id)) {
-                      byId.set(entry.id, entry.item);
-                    }
-                  }
-                  return [...byId.values()];
-                })()
-              : visibleItems;
+          // During cluster hold, force-mount intro stack cards (cull can drop them after snap).
+          // Always keep the focused return seat mounted after gallery nav (may sit outside cull).
+          const renderItems = (() => {
+            const byId = new Map(visibleItems.map((item) => [item.id, item]));
+            if (focusedId) {
+              const focused = itemsRef.current.get(focusedId);
+              const coords = focused ? parseGridCoords(focusedId) : null;
+              if (focused && coords && !byId.has(focusedId)) {
+                byId.set(focusedId, { ...focused, ...coords });
+              }
+            }
+            if (isClusterHold && introStackRef.current?.length) {
+              for (const entry of introStackRef.current) {
+                if (!byId.has(entry.id)) {
+                  byId.set(entry.id, entry.item);
+                }
+              }
+            }
+            return [...byId.values()];
+          })();
 
           return renderItems.map((item) => {
             const position = getItemPosition(item);
@@ -2223,11 +2495,12 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                   // Origin: keep the morph visible — face never leaves this card
                   focusOpacity = item.isOriginCard ? 1 : morphCardHidden ? 0 : 1;
                   // Instant opacity only for handoff hide/show — never on morph-in (skips enter)
-                  // Also snap on viewport resize so morph tracks the HTML overlay
+                  // Also snap on viewport resize / gallery swap so morph tracks the HTML overlay
                   focusImmediate =
                     snapFocusLayoutRef.current ||
                     isFocusHandingOff ||
-                    (morphCardHidden && isFocusSettled && !item.isOriginCard);
+                    (morphCardHidden && isFocusSettled && !item.isOriginCard) ||
+                    (isFocusSettled && Boolean(focusNavPrevIdRef.current));
                 }
               } else if (releaseFocusPeers && isFocusReturning) {
                 // Peers released early — fall through to idle so peer-return springs run
@@ -2246,6 +2519,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 focusY = position.y + dy * focusSnapshot.pushDistance;
                 focusScale = FOCUS_EXIT_SCALE;
                 focusOpacity = 0;
+                // After gallery swap, skip the previous card's home → push spring
+                focusImmediate = item.id === focusNavPrevIdRef.current;
                 if (staggerMode === 'legacy') {
                   // Original: reuse intro spread delays
                   focusReturnDelay = introConfigRef.current?.get(item.id)?.delay ?? 0;
@@ -2338,77 +2613,136 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className={styles.infiniteCanvasFocusDetail} style={{ width: focusSnapshot.detailWidth }}>
-                  {/* Exact morph target size + same 1.08 crop as InfiniteCanvasItem */}
-                  <div
-                    ref={focusCardRef}
-                    className={styles.infiniteCanvasFocusCard}
-                    data-origin={focusedIsOriginCard ? 'true' : undefined}
-                    style={{
-                      width: focusSnapshot.detailWidth,
-                      height: focusSnapshot.scaledScreenHeight,
-                      borderRadius: focusSnapshot.detailWidth * CARD_BORDER_RADIUS_RATIO
-                    }}
-                  >
-                    {focusedIsOriginCard ? (
-                      // Transparent spacer — live face stays on the canvas morph underneath
-                      <div className={styles.infiniteCanvasFocusCardCustom} aria-hidden />
-                    ) : (
-                      <img
-                        ref={focusImageRef}
-                        className={styles.infiniteCanvasFocusCardImage}
-                        src={focusImageSrc}
-                        alt={focusedWork.name}
-                        draggable={false}
-                        decoding="async"
-                        fetchPriority="high"
-                        onLoad={() => markImageLoaded(focusImageSrc)}
-                      />
-                    )}
-                  </div>
-                  {isFocusSettled ? (
-                    <motion.div
-                      className={styles.infiniteCanvasFocusCopy}
-                      initial="hidden"
-                      animate="show"
-                      variants={FOCUS_COPY_CONTAINER_VARIANTS}
-                    >
-                      <motion.h1 className={styles.infiniteCanvasFocusTitle} variants={FOCUS_COPY_ITEM_VARIANTS}>
-                        {focusedWork.name}
-                      </motion.h1>
+                  <div className={styles.infiniteCanvasFocusCardStage}>
+                    <AnimatePresence mode="sync" initial={false}>
                       <motion.div
-                        className={styles.infiniteCanvasFocusDescription}
-                        variants={FOCUS_COPY_ITEM_VARIANTS}
+                        key={focusWorkKey}
+                        className={styles.infiniteCanvasFocusSlide}
+                        initial={getFocusSlideInitial(focusNavDirection)}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={getFocusSlideExit(focusNavDirection)}
+                        transition={FOCUS_SLIDE_TRANSITION}
                       >
-                        {focusedWork.description}
-                      </motion.div>
-                      {focusedWork.url ? (
-                        <motion.a
-                          className={styles.infiniteCanvasFocusLink}
-                          href={focusedWork.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          variants={FOCUS_COPY_LINK_VARIANTS}
+                        {/* Exact morph target size + same 1.08 crop as InfiniteCanvasItem */}
+                        <div
+                          ref={setFocusCardNode}
+                          className={styles.infiniteCanvasFocusCard}
+                          data-origin={focusedIsOriginCard ? 'true' : undefined}
+                          style={{
+                            width: focusSnapshot.detailWidth,
+                            height: focusSnapshot.scaledScreenHeight,
+                            borderRadius: focusSnapshot.detailWidth * CARD_BORDER_RADIUS_RATIO
+                          }}
                         >
-                          {formatUrl(focusedWork.url)}
-                          <svg
-                            width="24"
-                            height="24"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              d="M20.7806 12.5306L14.0306 19.2806C13.8899 19.4213 13.699 19.5004 13.5 19.5004C13.301 19.5004 13.1101 19.4213 12.9694 19.2806C12.8286 19.1399 12.7496 18.949 12.7496 18.75C12.7496 18.551 12.8286 18.3601 12.9694 18.2194L18.4397 12.75H3.75C3.55109 12.75 3.36032 12.671 3.21967 12.5303C3.07902 12.3897 3 12.1989 3 12C3 11.8011 3.07902 11.6103 3.21967 11.4697C3.36032 11.329 3.55109 11.25 3.75 11.25H18.4397L12.9694 5.78061C12.8286 5.63988 12.7496 5.44901 12.7496 5.24999C12.7496 5.05097 12.8286 4.8601 12.9694 4.71936C13.1101 4.57863 13.301 4.49957 13.5 4.49957C13.699 4.49957 13.8899 4.57863 14.0306 4.71936L20.7806 11.4694C20.8504 11.539 20.9057 11.6217 20.9434 11.7128C20.9812 11.8038 21.0006 11.9014 21.0006 12C21.0006 12.0986 20.9812 12.1961 20.9434 12.2872C20.9057 12.3782 20.8504 12.461 20.7806 12.5306Z"
-                              fill="#ffffff"
+                          {focusedIsOriginCard ? (
+                            // Transparent spacer — live face stays on the canvas morph underneath
+                            <div className={styles.infiniteCanvasFocusCardCustom} aria-hidden />
+                          ) : (
+                            <img
+                              ref={setFocusImageNode}
+                              className={styles.infiniteCanvasFocusCardImage}
+                              src={focusImageSrc}
+                              alt={focusedWork.name}
+                              draggable={false}
+                              decoding="async"
+                              fetchPriority="high"
+                              onLoad={() => markImageLoaded(focusImageSrc)}
                             />
-                          </svg>
-                        </motion.a>
-                      ) : null}
-                    </motion.div>
+                          )}
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {isFocusSettled ? (
+                    <div className={styles.infiniteCanvasFocusCopyStage}>
+                      <AnimatePresence mode="sync">
+                        <motion.div
+                          key={focusWorkKey}
+                          className={styles.infiniteCanvasFocusCopy}
+                          initial={
+                            focusNavDirection === 0
+                              ? { opacity: 0, y: 16 }
+                              : { opacity: 0, x: focusNavDirection > 0 ? '8%' : '-8%' }
+                          }
+                          animate={{ opacity: 1, x: 0, y: 0 }}
+                          exit={
+                            focusNavDirection === 0
+                              ? { opacity: 0, y: 8 }
+                              : { opacity: 0, x: focusNavDirection > 0 ? '-8%' : '8%' }
+                          }
+                          transition={
+                            focusNavDirection === 0 ? FOCUS_COPY_ITEM_REVEAL.body : FOCUS_SLIDE_TRANSITION
+                          }
+                        >
+                          <h1 className={styles.infiniteCanvasFocusTitle}>{focusedWork.name}</h1>
+                          <div className={styles.infiniteCanvasFocusDescription}>{focusedWork.description}</div>
+                          {focusedWork.url ? (
+                            <a
+                              className={styles.infiniteCanvasFocusLink}
+                              href={focusedWork.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {formatUrl(focusedWork.url)}
+                              {FOCUS_LINK_ARROW}
+                            </a>
+                          ) : null}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
                   ) : null}
                 </div>
               </div>
             </div>
+            <AnimatePresence>
+              {isFocusSettled && focusGallery.length > 1 ? (
+                <>
+                  <motion.button
+                    key="focus-prev"
+                    type="button"
+                    className={styles.infiniteCanvasFocusNavPrev}
+                    aria-label="Previous project"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    onClick={() => navigateFocus(-1)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path
+                        d="M14.5 5.5L8 12l6.5 6.5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </motion.button>
+                  <motion.button
+                    key="focus-next"
+                    type="button"
+                    className={styles.infiniteCanvasFocusNavNext}
+                    aria-label="Next project"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    onClick={() => navigateFocus(1)}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path
+                        d="M9.5 5.5L16 12l-6.5 6.5"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </motion.button>
+                </>
+              ) : null}
+            </AnimatePresence>
           </>
         )}
       </AnimatePresence>

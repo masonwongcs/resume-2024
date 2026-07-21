@@ -82,6 +82,7 @@
   }
 
   .infiniteCanvasFocusDetail {
+    position: relative;
     width: min(92vw, 600px);
     max-width: 100%;
     text-align: left;
@@ -95,6 +96,18 @@
     @media screen and (max-width: 480px) {
       width: 100%;
     }
+  }
+
+  .infiniteCanvasFocusCardStage,
+  .infiniteCanvasFocusCopyStage {
+    display: grid;
+    width: 100%;
+  }
+
+  .infiniteCanvasFocusSlide {
+    grid-area: 1 / 1;
+    width: 100%;
+    will-change: transform, opacity;
   }
 
   .infiniteCanvasFocusCard {
@@ -159,8 +172,10 @@
   }
 
   .infiniteCanvasFocusCopy {
+    grid-area: 1 / 1;
     width: 100%;
     padding: 0 10px;
+    will-change: transform, opacity;
   }
 
   .infiniteCanvasFocusClose {
@@ -188,6 +203,76 @@
     @media screen and (min-width: 481px) {
       top: 30px;
       right: 30px;
+    }
+  }
+
+  .infiniteCanvasFocusNavPrev,
+  .infiniteCanvasFocusNavNext {
+    cursor: pointer;
+    position: absolute;
+    top: calc(50% - 22px);
+    z-index: 6;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    outline: none;
+    padding: 0;
+    background: transparent;
+    color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    transition: color 200ms ease;
+
+    svg {
+      display: block;
+      transition: transform 200ms ease;
+    }
+
+    @media not all and (hover: none) {
+      &:hover {
+        color: rgba(0, 0, 0, 0.7);
+      }
+
+      &:active {
+        color: rgba(0, 0, 0, 0.9);
+      }
+    }
+
+    &:focus-visible {
+      color: rgba(0, 0, 0, 0.7);
+      outline: 1px solid rgba(0, 0, 0, 0.25);
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+  }
+
+  .infiniteCanvasFocusNavPrev {
+    left: max(4px, env(safe-area-inset-left, 0px));
+
+    @media not all and (hover: none) {
+      &:hover svg {
+        transform: translateX(-2px);
+      }
+    }
+
+    @media screen and (min-width: 481px) {
+      left: 32px;
+    }
+  }
+
+  .infiniteCanvasFocusNavNext {
+    right: max(4px, env(safe-area-inset-right, 0px));
+
+    @media not all and (hover: none) {
+      &:hover svg {
+        transform: translateX(2px);
+      }
+    }
+
+    @media screen and (min-width: 481px) {
+      right: 32px;
     }
   }
 
