@@ -85,6 +85,8 @@ interface InfiniteCanvasItemProps {
   focusImmediate?: boolean;
   /** Shrink/fade in place when the grid home is too far off-screen */
   focusReturnDissolve?: boolean;
+  /** Camera already parked — shrink at the grid seat without a lateral spring */
+  focusReturnScaleOnly?: boolean;
   /** Stagger delay (seconds) when exiting / returning from focus */
   focusReturnDelay?: number;
   /**
@@ -126,6 +128,14 @@ const focusSpring = {
   type: 'spring' as const,
   stiffness: 150,
   damping: 22,
+  mass: 0.85
+};
+
+/** Overdamped — no left/right overshoot when flying back to the grid */
+const focusReturnSpring = {
+  type: 'spring' as const,
+  stiffness: 150,
+  damping: 36,
   mass: 0.85
 };
 
@@ -219,6 +229,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusOpacity = 1,
   focusImmediate = false,
   focusReturnDissolve = false,
+  focusReturnScaleOnly = false,
   focusReturnDelay = 0,
   focusScrollNudgeY,
   focusScrollNudgeX,
@@ -641,7 +652,16 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
             ? { duration: 0 }
             : focusReturnDissolve
               ? exitSpring
-              : focusMode === 'exiting'
+              : focusReturnScaleOnly
+                ? {
+                    x: { duration: 0 },
+                    y: { duration: 0 },
+                    scale: focusReturnSpring,
+                    opacity: focusReturnSpring
+                  }
+                : focusMode === 'returning'
+                  ? focusReturnSpring
+                  : focusMode === 'exiting'
               ? exitSpring
               : peerReturnActiveRef.current
                 ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }

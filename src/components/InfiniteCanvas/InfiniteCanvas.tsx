@@ -530,6 +530,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const focusReturnPanActiveRef = useRef(false);
   /** Far-off return seat: shrink/fade at focus center instead of flying to grid home */
   const focusReturnToCenterRef = useRef(false);
+  /** Mobile: camera snaps first — return is scale-only at the grid seat (no lateral spring) */
+  const focusReturnScaleOnlyRef = useRef(false);
   /** Gallery slide direction: 1 next, -1 prev, 0 initial open */
   const [focusNavDirection, setFocusNavDirection] = useState(0);
   /** Skip enter/exit slide after a committed swipe (peek already in place) */
@@ -894,19 +896,21 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     [isMobile, getGridItemContentCenter, isItemIdOnScreen]
   );
 
-  /** Mobile swipe keeps the camera fixed — always park on the return seat before morph home */
+  /** Mobile swipe keeps the camera fixed — park on the return seat before morph home */
   const panCameraToFocusReturnSeat = useCallback(
-    (id: string | null) => {
+    (id: string | null, immediate = false) => {
       if (!id) return false;
       const view = viewRef.current;
       const prevTargetX = targetOffsetRef.current.x;
       const prevTargetY = targetOffsetRef.current.y;
-      panCameraToItemId(id, false);
+      const prevOffsetX = view.offsetX;
+      const prevOffsetY = view.offsetY;
+      panCameraToItemId(id, immediate);
       return (
         Math.abs(targetOffsetRef.current.x - prevTargetX) > 0.5 ||
         Math.abs(targetOffsetRef.current.y - prevTargetY) > 0.5 ||
-        Math.abs(view.offsetX - targetOffsetRef.current.x) > 0.5 ||
-        Math.abs(view.offsetY - targetOffsetRef.current.y) > 0.5
+        Math.abs(prevOffsetX - targetOffsetRef.current.x) > 0.5 ||
+        Math.abs(prevOffsetY - targetOffsetRef.current.y) > 0.5
       );
     },
     [panCameraToItemId]
@@ -916,12 +920,21 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     const id = focusedIdRef.current;
     const toCenter = shouldReturnFocusToCenter(id);
     focusReturnToCenterRef.current = toCenter;
+    focusReturnScaleOnlyRef.current = false;
 
     if (toCenter) {
       focusReturnPanActiveRef.current = false;
     } else if (isMobile) {
-      // Gallery swipes never pan during focus — catch up now so the card can fly home
-      focusReturnPanActiveRef.current = panCameraToFocusReturnSeat(id);
+      // Gallery swipe freezes the camera — only when the return seat is off-screen
+      // do we snap + scale in place. On-screen seats morph home normally (no camera
+      // snap), otherwise every close looks like a mid-screen shrink.
+      if (!isItemIdOnScreen(id)) {
+        panCameraToFocusReturnSeat(id, true);
+        focusReturnPanActiveRef.current = false;
+        focusReturnScaleOnlyRef.current = true;
+      } else {
+        focusReturnPanActiveRef.current = false;
+      }
     } else {
       focusReturnPanActiveRef.current = panCameraToItemIdIfOffscreen(id);
     }
@@ -933,6 +946,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   }, [
     isMobile,
     shouldReturnFocusToCenter,
+    isItemIdOnScreen,
     panCameraToFocusReturnSeat,
     panCameraToItemIdIfOffscreen,
     setCanvasFocused
@@ -1173,8 +1187,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         document.body.classList.contains('is-animating'));
 
     const focusFollowHome =
-      focusReturnPanActiveRef.current &&
-      (focusPhaseRef.current === 'returning' || focusPhaseRef.current === 'out');
+      focusReturnPanActiveRef.current && focusPhaseRef.current === 'returning';
     const cameraFollowAllowed = !drawerBusy && (!focusedIdRef.current || focusFollowHome);
 
     if (cameraFollowAllowed) {
@@ -1419,6 +1432,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     focusNavPrevIdRef.current = null;
     focusReturnPanActiveRef.current = false;
     focusReturnToCenterRef.current = false;
+    focusReturnScaleOnlyRef.current = false;
     focusCardRef.current = null;
     focusImageRef.current = null;
     focusSwipeRef.current = null;
@@ -1587,13 +1601,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       focusScrollNudgeY.set(0);
       focusScrollNudgeX.set(0);
 
-      // Mobile: start panning to the return seat during handoff (camera was frozen in focus)
-      if (isMobile && focusedIdRef.current) {
-        focusReturnPanActiveRef.current = panCameraToFocusReturnSeat(focusedIdRef.current);
-      } else {
-        focusReturnPanActiveRef.current = false;
-      }
-
       focusPhaseRef.current = 'out';
       flushSync(() => {
         if (nextSnapshot) setFocusSnapshot(nextSnapshot);
@@ -1619,12 +1626,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     }
   }, [
     cellWidth,
-    isMobile,
     focusSwipeDragX,
     focusScrollNudgeX,
     focusScrollNudgeY,
     getLiveFocusCardNode,
-    panCameraToFocusReturnSeat,
     beginFocusReturn
   ]);
 
@@ -3215,6 +3220,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                   isFocusReturning &&
                   item.id === focusedId &&
                   focusReturnToCenterRef.current
+                }
+                focusReturnScaleOnly={
+                  isFocusReturning &&
+                  item.id === focusedId &&
+                  focusReturnScaleOnlyRef.current
                 }
                 focusReturnDelay={focusReturnDelay}
                 focusScrollNudgeY={item.isOriginCard ? focusScrollNudgeY : undefined}
