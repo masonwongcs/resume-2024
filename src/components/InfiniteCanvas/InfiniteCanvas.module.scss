@@ -71,7 +71,7 @@
     width: 100%;
     padding-left: 24px;
     padding-right: 24px;
-    padding-bottom: max(160px, env(safe-area-inset-bottom, 0px) + 120px);
+    padding-bottom: max(80px, env(safe-area-inset-bottom, 0px) + 48px);
     box-sizing: border-box;
 
     @media screen and (min-width: 481px) {
@@ -88,6 +88,8 @@
     text-align: left;
     pointer-events: auto;
     box-sizing: border-box;
+    // Peeks are clipped by .infiniteCanvasFocusScroll's overflow-x — don't use
+    // overflow:hidden here or iOS crops the link button mid-scroll (transform layer).
 
     @media screen and (min-width: 1920px) {
       width: min(92vw, 700px);
@@ -95,6 +97,37 @@
 
     @media screen and (max-width: 480px) {
       width: 100%;
+    }
+  }
+
+  .infiniteCanvasFocusSwipeTrack {
+    position: relative;
+    width: 100%;
+    will-change: transform;
+  }
+
+  // Keyed by work so swipe commit can move the peek DOM into the current seat
+  .infiniteCanvasFocusSwipePanel {
+    width: 100%;
+    text-align: left;
+
+    &[data-side='prev'],
+    &[data-side='next'] {
+      position: absolute;
+      top: 0;
+      pointer-events: none;
+    }
+
+    &[data-side='prev'] {
+      left: calc(-100% - 32px);
+    }
+
+    &[data-side='next'] {
+      left: calc(100% + 32px);
+    }
+
+    &[data-side='current'] {
+      position: relative;
     }
   }
 
@@ -218,7 +251,7 @@
     outline: none;
     padding: 0;
     background: transparent;
-    color: rgba(0, 0, 0, 0.75);
+    color: rgba(0, 0, 0, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -249,30 +282,22 @@
   }
 
   .infiniteCanvasFocusNavPrev {
-    left: max(4px, env(safe-area-inset-left, 0px));
+    left: 32px;
 
     @media not all and (hover: none) {
       &:hover svg {
         transform: translateX(-2px);
       }
     }
-
-    @media screen and (min-width: 481px) {
-      left: 32px;
-    }
   }
 
   .infiniteCanvasFocusNavNext {
-    right: max(4px, env(safe-area-inset-right, 0px));
+    right: 32px;
 
     @media not all and (hover: none) {
       &:hover svg {
         transform: translateX(2px);
       }
-    }
-
-    @media screen and (min-width: 481px) {
-      right: 32px;
     }
   }
 

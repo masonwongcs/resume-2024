@@ -90,6 +90,10 @@ interface InfiniteCanvasItemProps {
    * Applied outside the focus spring so scrolling stays 1:1.
    */
   focusScrollNudgeY?: MotionValue<number>;
+  /**
+   * Extra content-space X nudge (e.g. sync origin morph with focus swipe / gallery slide).
+   */
+  focusScrollNudgeX?: MotionValue<number>;
   /** Register/unregister with the canvas's single proximity rAF */
   registerProximity?: (id: string, handlers: ProximityRegistration) => void;
   unregisterProximity?: (id: string) => void;
@@ -214,6 +218,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusImmediate = false,
   focusReturnDelay = 0,
   focusScrollNudgeY,
+  focusScrollNudgeX,
   registerProximity,
   unregisterProximity,
   onSelect,
@@ -712,6 +717,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     >
       <motion.div
         style={{
+          x: focusScrollNudgeX,
           y: focusScrollNudgeY,
           width: '100%',
           height: '100%',
