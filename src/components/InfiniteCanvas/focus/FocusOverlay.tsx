@@ -36,7 +36,7 @@ export type FocusOverlayProps = {
   useFocusSlidePresence: boolean;
   showFocusSwipePeeks: boolean;
   isMobile: boolean;
-  focusGalleryLength: number;
+  canSpatialFocusNav: boolean;
   focusSwipePanels: FocusSwipePanel[];
   focusSwipeDragX: MotionValue<number>;
   focusWorkKey: string;
@@ -80,7 +80,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
   useFocusSlidePresence,
   showFocusSwipePeeks,
   isMobile,
-  focusGalleryLength,
+  canSpatialFocusNav,
   focusSwipePanels,
   focusSwipeDragX,
   focusWorkKey,
@@ -415,7 +415,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
             </div>
           </div>
           <AnimatePresence>
-            {isFocusSettled && !isMobile && focusGalleryLength > 1 ? (
+            {isFocusSettled && !isMobile && canSpatialFocusNav ? (
               <>
                 <motion.button
                   key="focus-prev"

@@ -6,7 +6,7 @@ import { flushSync } from 'react-dom';
 import { animate, useMotionValue, useMotionValueEvent } from 'motion/react';
 
 import type { InfiniteCanvasViewState } from '../camera/canvasView';
-import { getWorkKey, parseGridCoords } from '../grid/gridMath';
+import { findHorizontalFocusNeighbor, getWorkKey, parseGridCoords } from '../grid/gridMath';
 import type { CustomCardConfig, FocusPhase, FocusSnapshot, GridItem, OriginCardConfig, Work } from '../types';
 import { FOCUS_MOBILE_SIDE_PAD, computeFocusLayout, getLiveCellMetrics } from './focusLayout';
 import {
@@ -26,15 +26,18 @@ import {
 type UseFocusModeArgs = {
   works: Work[];
   originCard?: OriginCardConfig;
-  originCardKey: string | null;
   customCards?: CustomCardConfig[];
   customCardIdsRef: RefObject<Map<string, string>>;
   itemsRef: RefObject<Map<string, GridItem>>;
   originCardIdRef: RefObject<string | null>;
+  workUsageCountRef: RefObject<Map<string, number>>;
+  excludedWorkKeys: Set<string>;
+  seedFactor: number;
   viewRef: RefObject<InfiniteCanvasViewState>;
   cellWidth: number;
   cellHeight: number;
   gapSize: number;
+  staggerOffset: number;
   isMobile: boolean;
   setCanvasFocused: (focused: boolean) => void;
   clearPointer: () => void;
@@ -63,15 +66,18 @@ type UseFocusModeArgs = {
 export const useFocusMode = ({
   works,
   originCard,
-  originCardKey,
   customCards,
   customCardIdsRef,
   itemsRef,
   originCardIdRef,
+  workUsageCountRef,
+  excludedWorkKeys,
+  seedFactor,
   viewRef,
   cellWidth,
   cellHeight,
   gapSize,
+  staggerOffset,
   isMobile,
   setCanvasFocused,
   clearPointer,
@@ -159,30 +165,35 @@ export const useFocusMode = ({
     focusDetailWidthRef.current = focusSnapshot.detailWidth;
   }
 
-  /** Gallery order for focus prev/next — origin first when focusable, then custom cards, then works */
-  const focusGallery = useMemo(() => {
-    const list: Work[] = [];
-    const seen = new Set<string>();
-    if (originCard && originCard.focusable !== false) {
-      list.push(originCard.work);
-      seen.add(getWorkKey(originCard.work));
-    }
-    for (const card of customCards ?? []) {
-      if (card.focusable === false) continue;
-      const key = getWorkKey(card.work);
-      if (seen.has(key)) continue;
-      list.push(card.work);
-      seen.add(key);
-    }
-    for (const work of works) {
-      const key = getWorkKey(work);
-      if (seen.has(key)) continue;
-      if (originCardKey && key === originCardKey) continue;
-      list.push(work);
-      seen.add(key);
-    }
-    return list;
-  }, [works, originCard, originCardKey, customCards]);
+  /** Infinite grid always has horizontal neighbors once a seat is focused */
+  const canSpatialFocusNav = Boolean(focusedId);
+
+  const getEnsureNeighborArgs = useCallback(
+    () => ({
+      items: itemsRef.current,
+      works,
+      excludedWorkKeys,
+      seedFactor,
+      workUsageCount: workUsageCountRef.current,
+      staggerOffset,
+      originCard,
+      originCardIdRef,
+      customCards,
+      customCardIdsRef
+    }),
+    [
+      itemsRef,
+      works,
+      excludedWorkKeys,
+      seedFactor,
+      workUsageCountRef,
+      staggerOffset,
+      originCard,
+      originCardIdRef,
+      customCards,
+      customCardIdsRef
+    ]
+  );
 
   const clearFocus = useCallback(() => {
     if (focusArriveTimeoutRef.current) {
@@ -605,133 +616,78 @@ export const useFocusMode = ({
     ]
   );
 
-  /** Nearest mounted grid seat for a work — exit morph returns here after gallery nav */
-  const findReturnCellForWork = useCallback(
-    (work: Work, nearId: string | null) => {
-      const key = getWorkKey(work);
-
-      if (originCard && getWorkKey(originCard.work) === key) {
-        const id = originCardIdRef.current;
-        if (!id) return null;
-        const item = itemsRef.current.get(id);
-        const coords = id ? parseGridCoords(id) : null;
-        if (!item || !coords) return null;
-        return { ...item, ...coords };
-      }
-
-      for (const card of customCards ?? []) {
-        if (getWorkKey(card.work) !== key) continue;
-        const id = customCardIdsRef.current.get(card.id);
-        if (!id) continue;
-        const item = itemsRef.current.get(id);
-        const coords = parseGridCoords(id);
-        if (!item || !coords) continue;
-        return { ...item, ...coords };
-      }
-
-      const near = nearId ? parseGridCoords(nearId) : null;
-      const fromX = near?.x ?? 0;
-      const fromY = near?.y ?? 0;
-
-      let best: (GridItem & { x: number; y: number }) | null = null;
-      let bestDist = Infinity;
-
-      for (const item of itemsRef.current.values()) {
-        if (item.isOriginCard || item.customCardId) continue;
-        if (getWorkKey(item.work) !== key) continue;
-        const coords = parseGridCoords(item.id);
-        if (!coords) continue;
-        const dist = Math.hypot(coords.x - fromX, coords.y - fromY);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = { ...item, ...coords };
-        }
-      }
-
-      return best;
-    },
-    [originCard, customCards, itemsRef, originCardIdRef, customCardIdsRef]
-  );
-
+  /** Walk left/right on the grid row — prev = x-1, next = x+1 (skip non-focusable seats) */
   const navigateFocus = useCallback(
     (direction: -1 | 1, options?: { preserveSwipeX?: boolean; instant?: boolean }) => {
       if (focusPhaseRef.current !== 'settled') return;
-      if (!focusedWork || focusGallery.length < 2) return;
+      const fromId = focusedIdRef.current;
+      if (!fromId) return;
 
-      const currentKey = getWorkKey(focusedWork);
-      const currentIndex = focusGallery.findIndex((work) => getWorkKey(work) === currentKey);
-      if (currentIndex < 0) return;
+      const cell = findHorizontalFocusNeighbor({
+        fromId,
+        direction,
+        ...getEnsureNeighborArgs()
+      });
+      if (!cell) return;
 
-      const len = focusGallery.length;
-      for (let step = 1; step <= len; step++) {
-        const nextIndex = (((currentIndex + direction * step) % len) + len) % len;
-        const nextWork = focusGallery[nextIndex];
-        if (!nextWork || getWorkKey(nextWork) === currentKey) continue;
+      const view = viewRef.current;
+      if (view.width <= 0 || view.height <= 0) return;
 
-        const cell = findReturnCellForWork(nextWork, focusedIdRef.current);
-        const view = viewRef.current;
-        if (view.width <= 0 || view.height <= 0) return;
+      const nextWork = cell.work;
 
-        focusScrollNudgeY.set(0);
-        focusScrollNudgeX.set(0);
-        if (!options?.preserveSwipeX) {
-          if (focusScrollRef.current) focusScrollRef.current.scrollTop = 0;
-          focusSwipeDragX.set(0);
-        } else if (focusScrollRef.current) {
-          focusScrollRef.current.scrollTop = 0;
-        }
-
-        // Pin exit direction on the outgoing slide, then swap enter + content.
-        // Without the first flushSync, AnimatePresence keeps the previous exit prop.
-        const cardTargets = getFocusCardSlideTargets(direction);
-        const copyTargets = getFocusCopySlideTargets(direction);
-        flushSync(() => {
-          setFocusCardSlide((prev) => ({ ...prev, exit: cardTargets.exit }));
-          setFocusCopySlide((prev) => ({
-            ...prev,
-            exit: copyTargets.exit,
-            transition: FOCUS_COPY_SLIDE_TRANSITION
-          }));
-        });
-        flushSync(() => {
-          setFocusNavDirection(direction);
-          setFocusCardSlide(cardTargets);
-          setFocusCopySlide(copyTargets);
-          setFocusedWork(nextWork);
-        });
-
-        // Prefer a mounted return seat; if none yet, keep the current id for close morph
-        if (cell) {
-          // Mobile swipe keeps the camera fixed under the HTML card — panning here
-          // desyncs the invisible morph and makes close start from the wrong place.
-          // Desktop / non-swipe nav can park the seat immediately (production behavior).
-          if (!options?.preserveSwipeX) {
-            panCameraToItemIdIfOffscreen(cell.id, true);
-          }
-          const layout = computeFocusLayout(viewRef.current, cellWidth, cellHeight);
-          const origin = getGridItemContentCenter(cell);
-          const prevId = focusedIdRef.current;
-
-          focusNavPrevIdRef.current = prevId;
-          focusedIdRef.current = cell.id;
-          setFocusedId(cell.id);
-          setFocusSnapshot({
-            ...layout,
-            originCenterX: origin.x,
-            originCenterY: origin.y
-          });
-
-          const isOrigin = Boolean(cell.isOriginCard);
-          setMorphCardHidden(!isOrigin);
-          setOriginPortraitUp(isOrigin);
-        }
-        return;
+      focusScrollNudgeY.set(0);
+      focusScrollNudgeX.set(0);
+      if (!options?.preserveSwipeX) {
+        if (focusScrollRef.current) focusScrollRef.current.scrollTop = 0;
+        focusSwipeDragX.set(0);
+      } else if (focusScrollRef.current) {
+        focusScrollRef.current.scrollTop = 0;
       }
+
+      // Pin exit direction on the outgoing slide, then swap enter + content.
+      // Without the first flushSync, AnimatePresence keeps the previous exit prop.
+      const cardTargets = getFocusCardSlideTargets(direction);
+      const copyTargets = getFocusCopySlideTargets(direction);
+      flushSync(() => {
+        setFocusCardSlide((prev) => ({ ...prev, exit: cardTargets.exit }));
+        setFocusCopySlide((prev) => ({
+          ...prev,
+          exit: copyTargets.exit,
+          transition: FOCUS_COPY_SLIDE_TRANSITION
+        }));
+      });
+      flushSync(() => {
+        setFocusNavDirection(direction);
+        setFocusCardSlide(cardTargets);
+        setFocusCopySlide(copyTargets);
+        setFocusedWork(nextWork);
+      });
+
+      // Mobile swipe keeps the camera fixed under the HTML card — panning here
+      // desyncs the invisible morph and makes close start from the wrong place.
+      // Desktop / non-swipe nav can park the seat immediately (production behavior).
+      if (!options?.preserveSwipeX) {
+        panCameraToItemIdIfOffscreen(cell.id, true);
+      }
+      const layout = computeFocusLayout(viewRef.current, cellWidth, cellHeight);
+      const origin = getGridItemContentCenter(cell);
+      const prevId = focusedIdRef.current;
+
+      focusNavPrevIdRef.current = prevId;
+      focusedIdRef.current = cell.id;
+      setFocusedId(cell.id);
+      setFocusSnapshot({
+        ...layout,
+        originCenterX: origin.x,
+        originCenterY: origin.y
+      });
+
+      const isOrigin = Boolean(cell.isOriginCard);
+      setMorphCardHidden(!isOrigin);
+      setOriginPortraitUp(isOrigin);
     },
     [
-      focusedWork,
-      focusGallery,
-      findReturnCellForWork,
+      getEnsureNeighborArgs,
       focusScrollNudgeY,
       focusScrollNudgeX,
       focusSwipeDragX,
@@ -830,7 +786,7 @@ export const useFocusMode = ({
 
   const handleFocusSwipeTouchStart = useCallback(
     (event: React.TouchEvent) => {
-      if (!isMobile || focusGallery.length < 2) return;
+      if (!isMobile || !canSpatialFocusNav) return;
       if (focusPhaseRef.current !== 'settled') return;
       if (focusSwipeCommittingRef.current) return;
       const touch = event.touches[0];
@@ -840,13 +796,13 @@ export const useFocusMode = ({
       focusSwipeDragX.set(0);
       focusSwipeRef.current = { x: touch.clientX, y: touch.clientY, axis: null };
     },
-    [isMobile, focusGallery.length, focusSwipeDragX, focusPhaseRef]
+    [isMobile, canSpatialFocusNav, focusSwipeDragX, focusPhaseRef]
   );
 
   const handleFocusSwipeTouchEnd = useCallback(
     (event: React.TouchEvent) => {
       const start = focusSwipeRef.current;
-      if (!start || !isMobile || focusGallery.length < 2) {
+      if (!start || !isMobile || !canSpatialFocusNav) {
         resetFocusSwipeTrail(true);
         return;
       }
@@ -868,7 +824,7 @@ export const useFocusMode = ({
 
       resetFocusSwipeTrail(true);
     },
-    [isMobile, focusGallery.length, focusSwipeDragX, commitFocusSwipe, resetFocusSwipeTrail, focusPhaseRef]
+    [isMobile, canSpatialFocusNav, focusSwipeDragX, commitFocusSwipe, resetFocusSwipeTrail, focusPhaseRef]
   );
 
   const handleFocusSwipeTouchCancel = useCallback(() => {
@@ -878,7 +834,7 @@ export const useFocusMode = ({
 
   // Non-passive touchmove so we can lock horizontal swipes and drive the trail
   useEffect(() => {
-    if (!isMobile || focusPhase !== 'settled' || focusGallery.length < 2) return;
+    if (!isMobile || focusPhase !== 'settled' || !canSpatialFocusNav) return;
     const el = focusScrollShellRef.current;
     if (!el) return;
 
@@ -910,7 +866,7 @@ export const useFocusMode = ({
 
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     return () => el.removeEventListener('touchmove', onTouchMove);
-  }, [isMobile, focusPhase, focusGallery.length, rubberbandSwipeX, focusPhaseRef]);
+  }, [isMobile, focusPhase, canSpatialFocusNav, rubberbandSwipeX, focusPhaseRef]);
 
   useEffect(() => {
     return () => {
@@ -1010,16 +966,23 @@ export const useFocusMode = ({
   const focusWorkKey = focusedWork ? getWorkKey(focusedWork) : '';
 
   const focusAdjacentWorks = useMemo(() => {
-    if (!focusedWork || focusGallery.length < 2) return { prev: null as Work | null, next: null as Work | null };
-    const currentKey = getWorkKey(focusedWork);
-    const currentIndex = focusGallery.findIndex((work) => getWorkKey(work) === currentKey);
-    if (currentIndex < 0) return { prev: null, next: null };
-    const len = focusGallery.length;
+    if (!focusedId) return { prev: null as Work | null, next: null as Work | null };
+    const ensureArgs = getEnsureNeighborArgs();
+    const prevCell = findHorizontalFocusNeighbor({
+      fromId: focusedId,
+      direction: -1,
+      ...ensureArgs
+    });
+    const nextCell = findHorizontalFocusNeighbor({
+      fromId: focusedId,
+      direction: 1,
+      ...ensureArgs
+    });
     return {
-      prev: focusGallery[(currentIndex - 1 + len) % len] ?? null,
-      next: focusGallery[(currentIndex + 1) % len] ?? null
+      prev: prevCell?.work ?? null,
+      next: nextCell?.work ?? null
     };
-  }, [focusedWork, focusGallery]);
+  }, [focusedId, getEnsureNeighborArgs]);
 
   return {
     focusedId,
@@ -1046,7 +1009,7 @@ export const useFocusMode = ({
     focusSwipeDragX,
     originSwipeSlotRef,
     originSwipeHandoffRef,
-    focusGallery,
+    canSpatialFocusNav,
     focusAdjacentWorks,
     isFocused,
     isFocusSettled,

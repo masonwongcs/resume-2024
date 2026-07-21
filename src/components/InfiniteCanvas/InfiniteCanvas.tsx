@@ -228,15 +228,18 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const focus = useFocusMode({
     works: canvasWorks,
     originCard,
-    originCardKey,
     customCards,
     customCardIdsRef,
     itemsRef,
     originCardIdRef,
+    workUsageCountRef,
+    excludedWorkKeys,
+    seedFactor,
     viewRef: camera.viewRef,
     cellWidth,
     cellHeight,
     gapSize,
+    staggerOffset,
     isMobile,
     setCanvasFocused,
     clearPointer: camera.clearPointer,
@@ -345,7 +348,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     focusSwipeDragX,
     originSwipeSlotRef,
     originSwipeHandoffRef,
-    focusGallery,
+    canSpatialFocusNav,
     focusAdjacentWorks,
     isFocused,
     isFocusSettled,
@@ -361,7 +364,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
 
   const isInteractionLocked = intro.isIntroPlaying || isFocused;
 
-  const useFocusSwipeGallery = isMobile && focusGallery.length > 1;
+  const useFocusSwipeGallery = isMobile && canSpatialFocusNav;
   /** Per-panel scroll is mobile-only; desktop keeps the shared shell scroll */
   const useMobilePanelScroll = useFocusSwipeGallery;
   const showFocusSwipePeeks = useFocusSwipeGallery && isFocusSettled && focusSwipePeeksLive;
@@ -385,7 +388,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   }, [originSwipeSlot, syncOriginFocusSwipeNudge, focusSwipeDragX, originSwipeHandoffRef]);
 
   // Desktop: AnimatePresence slides (production morph). Mobile: track + peeks.
-  const useFocusSlidePresence = !isMobile && focusGallery.length > 1;
+  const useFocusSlidePresence = !isMobile && canSpatialFocusNav;
   const focusSwipePanels = useMemo(() => {
     if (!focusedWork) return [] as { work: Work; side: 'prev' | 'current' | 'next' }[];
     if (!useFocusSwipeGallery) {
@@ -679,7 +682,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         useFocusSlidePresence={useFocusSlidePresence}
         showFocusSwipePeeks={showFocusSwipePeeks}
         isMobile={isMobile}
-        focusGalleryLength={focusGallery.length}
+        canSpatialFocusNav={canSpatialFocusNav}
         focusSwipePanels={focusSwipePanels}
         focusSwipeDragX={focusSwipeDragX}
         focusWorkKey={focusWorkKey}
