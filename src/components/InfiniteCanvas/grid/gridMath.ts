@@ -1,4 +1,4 @@
-import type { GridItem, OriginCardConfig, Work } from '../types';
+import type { CustomCardConfig, GridItem, OriginCardConfig, Work } from '../types';
 
 export const generateItemId = (x: number, y: number) => `item_${x}_${y}`;
 
@@ -99,18 +99,12 @@ export const getAdjacentWorks = (
   radius: number = 2
 ) => {
   const adjacent: Work[] = [];
-  const seen = new Set<string>();
   for (let dx = -radius; dx <= radius; dx++) {
     for (let dy = -radius; dy <= radius; dy++) {
       if (dx === 0 && dy === 0) continue;
-      const distance = Math.abs(dx) + Math.abs(dy);
-      if (distance > radius) continue;
       const id = generateItemId(x + dx, y + dy);
-      const item = items.get(id);
-      if (item?.work && !seen.has(getWorkKey(item.work))) {
-        adjacent.push(item.work);
-        seen.add(getWorkKey(item.work));
-      }
+      const neighbor = items.get(id);
+      if (neighbor) adjacent.push(neighbor.work);
     }
   }
   return adjacent;
@@ -121,7 +115,7 @@ export const selectUniqueWork = ({
   y,
   adjacentWorks,
   works,
-  originCardKey,
+  excludedWorkKeys,
   seedFactor,
   workUsageCount
 }: {
@@ -129,7 +123,7 @@ export const selectUniqueWork = ({
   y: number;
   adjacentWorks: Work[];
   works: Work[];
-  originCardKey: string | null;
+  excludedWorkKeys?: Set<string> | null;
   seedFactor: number;
   workUsageCount: Map<string, number>;
 }) => {
@@ -138,12 +132,12 @@ export const selectUniqueWork = ({
 
   const availableWorks = works.filter((work) => {
     const key = getWorkKey(work);
-    if (originCardKey && key === originCardKey) return false;
+    if (excludedWorkKeys?.has(key)) return false;
     return !adjacentKeys.has(key);
   });
 
-  const fallbackWorks = originCardKey
-    ? works.filter((work) => getWorkKey(work) !== originCardKey)
+  const fallbackWorks = excludedWorkKeys?.size
+    ? works.filter((work) => !excludedWorkKeys.has(getWorkKey(work)))
     : works;
   const candidateWorks =
     availableWorks.length > 0 ? availableWorks : fallbackWorks.length > 0 ? fallbackWorks : works;
@@ -198,5 +192,79 @@ export const pinOriginCardAt = ({
   };
   items.set(id, item);
   originCardIdRef.current = id;
+  return item;
+};
+
+const CUSTOM_CARD_MIN_DIST = 3;
+const CUSTOM_CARD_MAX_DIST = 6;
+
+/** Stable seeded seat in a ring around origin (Chebyshev distance 3–6). */
+export const pickRandomCustomCardSeat = ({
+  originGX,
+  originGY,
+  seedFactor,
+  cardIndex,
+  occupied
+}: {
+  originGX: number;
+  originGY: number;
+  seedFactor: number;
+  cardIndex: number;
+  occupied: Set<string>;
+}) => {
+  const candidates: { gx: number; gy: number }[] = [];
+  for (let dx = -CUSTOM_CARD_MAX_DIST; dx <= CUSTOM_CARD_MAX_DIST; dx++) {
+    for (let dy = -CUSTOM_CARD_MAX_DIST; dy <= CUSTOM_CARD_MAX_DIST; dy++) {
+      const dist = Math.max(Math.abs(dx), Math.abs(dy));
+      if (dist < CUSTOM_CARD_MIN_DIST || dist > CUSTOM_CARD_MAX_DIST) continue;
+      const gx = originGX + dx;
+      const gy = originGY + dy;
+      const id = generateItemId(gx, gy);
+      if (occupied.has(id)) continue;
+      candidates.push({ gx, gy });
+    }
+  }
+
+  if (candidates.length === 0) {
+    return { gx: originGX + CUSTOM_CARD_MIN_DIST, gy: originGY };
+  }
+
+  const t = seededRandom(seedFactor * 1.618 + cardIndex * 97.13 + 11.7, seedFactor);
+  const idx = Math.floor(Math.abs(t) * candidates.length) % candidates.length;
+  return candidates[idx]!;
+};
+
+export const pinCustomCardAt = ({
+  gx,
+  gy,
+  customCard,
+  items,
+  customCardIdsRef,
+  staggerOffset
+}: {
+  gx: number;
+  gy: number;
+  customCard: CustomCardConfig;
+  items: Map<string, GridItem>;
+  customCardIdsRef: { current: Map<string, string> };
+  staggerOffset: number;
+}) => {
+  const id = generateItemId(gx, gy);
+  const prevId = customCardIdsRef.current.get(customCard.id);
+  if (prevId && prevId !== id) {
+    const prev = items.get(prevId);
+    if (prev?.customCardId === customCard.id) {
+      items.delete(prevId);
+    }
+  }
+  const item: GridItem = {
+    id,
+    work: customCard.work,
+    offsetX: 0,
+    offsetY: gx % 2 === 0 ? 0 : staggerOffset,
+    customCardId: customCard.id
+  };
+  items.set(id, item);
+  customCardIdsRef.current.set(customCard.id, id);
   return item;
 };

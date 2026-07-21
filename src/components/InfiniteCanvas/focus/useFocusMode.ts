@@ -7,7 +7,7 @@ import { animate, useMotionValue, useMotionValueEvent } from 'motion/react';
 
 import type { InfiniteCanvasViewState } from '../camera/canvasView';
 import { getWorkKey, parseGridCoords } from '../grid/gridMath';
-import type { FocusPhase, FocusSnapshot, GridItem, OriginCardConfig, Work } from '../types';
+import type { CustomCardConfig, FocusPhase, FocusSnapshot, GridItem, OriginCardConfig, Work } from '../types';
 import { FOCUS_MOBILE_SIDE_PAD, computeFocusLayout, getLiveCellMetrics } from './focusLayout';
 import {
   FOCUS_COPY_SLIDE_TRANSITION,
@@ -27,6 +27,8 @@ type UseFocusModeArgs = {
   works: Work[];
   originCard?: OriginCardConfig;
   originCardKey: string | null;
+  customCards?: CustomCardConfig[];
+  customCardIdsRef: RefObject<Map<string, string>>;
   itemsRef: RefObject<Map<string, GridItem>>;
   originCardIdRef: RefObject<string | null>;
   viewRef: RefObject<InfiniteCanvasViewState>;
@@ -62,6 +64,8 @@ export const useFocusMode = ({
   works,
   originCard,
   originCardKey,
+  customCards,
+  customCardIdsRef,
   itemsRef,
   originCardIdRef,
   viewRef,
@@ -155,18 +159,30 @@ export const useFocusMode = ({
     focusDetailWidthRef.current = focusSnapshot.detailWidth;
   }
 
-  /** Gallery order for focus prev/next — origin first when focusable, then works */
+  /** Gallery order for focus prev/next — origin first when focusable, then custom cards, then works */
   const focusGallery = useMemo(() => {
     const list: Work[] = [];
+    const seen = new Set<string>();
     if (originCard && originCard.focusable !== false) {
       list.push(originCard.work);
+      seen.add(getWorkKey(originCard.work));
+    }
+    for (const card of customCards ?? []) {
+      if (card.focusable === false) continue;
+      const key = getWorkKey(card.work);
+      if (seen.has(key)) continue;
+      list.push(card.work);
+      seen.add(key);
     }
     for (const work of works) {
-      if (originCardKey && getWorkKey(work) === originCardKey) continue;
+      const key = getWorkKey(work);
+      if (seen.has(key)) continue;
+      if (originCardKey && key === originCardKey) continue;
       list.push(work);
+      seen.add(key);
     }
     return list;
-  }, [works, originCard, originCardKey]);
+  }, [works, originCard, originCardKey, customCards]);
 
   const clearFocus = useCallback(() => {
     if (focusArriveTimeoutRef.current) {
@@ -516,6 +532,10 @@ export const useFocusMode = ({
 
       const stored = itemsRef.current.get(id);
       if (stored?.isOriginCard && originCard?.focusable === false) return;
+      if (stored?.customCardId) {
+        const card = customCards?.find((c) => c.id === stored.customCardId);
+        if (card?.focusable === false) return;
+      }
 
       // Stop any fling before locking the camera for focus
       isCoastingRef.current = false;
@@ -571,6 +591,7 @@ export const useFocusMode = ({
       setCanvasFocused,
       handleFocusArrive,
       originCard,
+      customCards,
       suppressClickRef,
       focusedIdRef,
       focusPhaseRef,
@@ -598,6 +619,16 @@ export const useFocusMode = ({
         return { ...item, ...coords };
       }
 
+      for (const card of customCards ?? []) {
+        if (getWorkKey(card.work) !== key) continue;
+        const id = customCardIdsRef.current.get(card.id);
+        if (!id) continue;
+        const item = itemsRef.current.get(id);
+        const coords = parseGridCoords(id);
+        if (!item || !coords) continue;
+        return { ...item, ...coords };
+      }
+
       const near = nearId ? parseGridCoords(nearId) : null;
       const fromX = near?.x ?? 0;
       const fromY = near?.y ?? 0;
@@ -606,7 +637,7 @@ export const useFocusMode = ({
       let bestDist = Infinity;
 
       for (const item of itemsRef.current.values()) {
-        if (item.isOriginCard) continue;
+        if (item.isOriginCard || item.customCardId) continue;
         if (getWorkKey(item.work) !== key) continue;
         const coords = parseGridCoords(item.id);
         if (!coords) continue;
@@ -619,7 +650,7 @@ export const useFocusMode = ({
 
       return best;
     },
-    [originCard, itemsRef, originCardIdRef]
+    [originCard, customCards, itemsRef, originCardIdRef, customCardIdsRef]
   );
 
   const navigateFocus = useCallback(
@@ -863,7 +894,9 @@ export const useFocusMode = ({
 
       if (!start.axis) {
         if (Math.abs(dx) < FOCUS_SWIPE_LOCK_PX && Math.abs(dy) < FOCUS_SWIPE_LOCK_PX) return;
-        start.axis = Math.abs(dx) > Math.abs(dy) * 1.05 ? 'x' : 'y';
+        // Must clearly beat vertical (matches the touchend fallback) — a near-45°
+        // drag should default to scroll, not hijack it as a swipe.
+        start.axis = Math.abs(dx) > Math.abs(dy) * FOCUS_SWIPE_AXIS_RATIO ? 'x' : 'y';
       }
 
       if (start.axis === 'x') {

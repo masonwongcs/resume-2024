@@ -21,6 +21,7 @@ import { useVisibleGridItems } from './grid/useVisibleGridItems';
 import { useIntroSequence } from './intro/useIntroSequence';
 import { InfiniteCanvasItem } from './InfiniteCanvasItem';
 import type {
+  CustomCardConfig,
   FocusPhase,
   GridItem,
   InfiniteCanvasProps,
@@ -29,6 +30,9 @@ import type {
 } from './types';
 
 export type {
+  CustomCardConfig,
+  CustomCardFocusContentProps,
+  CustomCardRenderProps,
   OriginCardConfig,
   OriginCardRenderProps,
   PeerReturnStagger,
@@ -39,6 +43,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   works,
   peerReturnStagger,
   originCard,
+  customCards,
   onRecenterAvailabilityChange,
   recenterActionRef
 }) => {
@@ -58,6 +63,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const workUsageCountRef = useRef<Map<string, number>>(new Map());
   /** Grid id of the one-shot custom origin card */
   const originCardIdRef = useRef<string | null>(null);
+  /** config id → grid item id for pinned random custom cards */
+  const customCardIdsRef = useRef<Map<string, string>>(new Map());
   /** Content-space center of the card that should sit dead-middle after intro */
   const introOriginRef = useRef<{ x: number; y: number } | null>(null);
   const viewRef = useRef(createCanvasViewState());
@@ -124,6 +131,39 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
 
   const originCardKey = originCard ? getWorkKey(originCard.work) : null;
 
+  /** Only Hello stays unique — custom cards may tile across the grid */
+  const excludedWorkKeys = useMemo(() => {
+    const keys = new Set<string>();
+    if (originCardKey) keys.add(originCardKey);
+    return keys;
+  }, [originCardKey]);
+
+  /** Portfolio works + custom card works so they can be selected / repeated */
+  const canvasWorks = useMemo(() => {
+    const list = [...works];
+    const seen = new Set(list.map(getWorkKey));
+    for (const card of customCards ?? []) {
+      const key = getWorkKey(card.work);
+      if (seen.has(key)) continue;
+      list.push(card.work);
+      seen.add(key);
+    }
+    return list;
+  }, [works, customCards]);
+
+  const customCardById = useMemo(
+    () => new Map((customCards ?? []).map((card) => [card.id, card])),
+    [customCards]
+  );
+
+  const customCardByWorkKey = useMemo(() => {
+    const map = new Map<string, CustomCardConfig>();
+    for (const card of customCards ?? []) {
+      map.set(getWorkKey(card.work), card);
+    }
+    return map;
+  }, [customCards]);
+
   const camera = useCanvasCamera({
     outerContainerRef,
     innerContainerRef,
@@ -168,11 +208,14 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     itemsRef,
     workUsageCountRef,
     originCardIdRef,
+    customCardIdsRef,
     offset: camera.offset,
     zoom: camera.zoom,
-    works,
+    works: canvasWorks,
     originCard,
     originCardKey,
+    customCards,
+    excludedWorkKeys,
     seedFactor,
     cellWidth,
     cellHeight,
@@ -183,9 +226,11 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   });
 
   const focus = useFocusMode({
-    works,
+    works: canvasWorks,
     originCard,
     originCardKey,
+    customCards,
+    customCardIdsRef,
     itemsRef,
     originCardIdRef,
     viewRef: camera.viewRef,
@@ -247,12 +292,15 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
 
   const intro = useIntroSequence({
     prefersReducedMotion,
-    works,
+    works: canvasWorks,
     outerContainerRef,
     itemsRef,
     workUsageCountRef,
     originCard,
     originCardKey,
+    excludedWorkKeys,
+    customCards,
+    customCardIdsRef,
     originCardIdRef,
     introOriginRef,
     pendingIntroSnapRef,
@@ -375,6 +423,27 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         : null,
     [originCard, cellWidth, cellHeight, originMarqueeActive, handleOriginActivate, originInFocus]
   );
+
+  const getFocusExtraForWork = useCallback(
+    (work: Work) => {
+      const key = getWorkKey(work);
+      if (originCard?.renderFocusContent && originCardKey && key === originCardKey) {
+        return originCard.renderFocusContent({ work });
+      }
+      for (const card of customCards ?? []) {
+        if (!card.renderFocusContent) continue;
+        if (getWorkKey(card.work) !== key) continue;
+        return card.renderFocusContent({ work });
+      }
+      return null;
+    },
+    [originCard, originCardKey, customCards]
+  );
+
+  const focusedFocusExtra = useMemo(() => {
+    if (!focusedWork) return null;
+    return getFocusExtraForWork(focusedWork);
+  }, [focusedWork, getFocusExtraForWork]);
 
   // Origin face always lives on the canvas morph — never portal into the focus overlay
   // (mobile browsers flash on portal host swaps).
@@ -518,6 +587,20 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
               seedFactor
             });
 
+            const customCard =
+              (item.customCardId != null ? customCardById.get(item.customCardId) : undefined) ??
+              customCardByWorkKey.get(getWorkKey(item.work));
+            const customFace =
+              customCard?.render != null
+                ? customCard.render({
+                    width: cellWidth,
+                    height: cellHeight,
+                    active: !intro.isClusterHold || intro.shouldSpread,
+                    onActivate: () => focus.handleItemClick(item.id, item.work),
+                    inFocus: focusedId === item.id && isFocusSettled
+                  })
+                : undefined;
+
             return (
               <InfiniteCanvasItem
                 key={item.id}
@@ -531,6 +614,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 intro={intro.isIntroPlaying || intro.isClusterHold ? introConfig : undefined}
                 shouldSpread={intro.shouldSpread}
                 stackEntered={!introConfig || intro.shouldSpread || intro.stackEnteredIds.has(item.id)}
+                customContent={customFace}
                 customContentHostRef={item.isOriginCard ? setOriginCanvasHost : undefined}
                 viewRef={camera.viewRef}
                 proximityEnabled={!intro.isIntroPlaying && !focusedId}
@@ -586,6 +670,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         prefersReducedMotion={Boolean(prefersReducedMotion)}
         originCardKey={originCardKey}
         getWorkKey={getWorkKey}
+        focusedFocusExtra={focusedFocusExtra}
+        getFocusExtraForWork={getFocusExtraForWork}
         requestClose={focus.requestClose}
         navigateFocus={focus.navigateFocus}
         handleFocusScroll={focus.handleFocusScroll}

@@ -11,7 +11,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Background, Blob } from '@/components/Background';
 import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponent';
 import { Header } from '@/components/Header';
-import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard } from '@/components/InfiniteCanvas';
+import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard, listeningCustomCard } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { usePortfolioViewStore } from '@/store';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
@@ -38,6 +38,8 @@ const originCard: OriginCardConfig = {
   render: (props) => <OriginHeroCard {...props} />,
   focusable: true
 };
+
+const customCards = [listeningCustomCard];
 
 const LandingExperience = ({ works }: LandingExperienceProps) => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
@@ -88,6 +90,7 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
               <InfiniteCanvasCSR
                 works={works}
                 originCard={originCard}
+                customCards={customCards}
                 onRecenterAvailabilityChange={handleRecenterAvailabilityChange}
                 recenterActionRef={recenterActionRef}
               />

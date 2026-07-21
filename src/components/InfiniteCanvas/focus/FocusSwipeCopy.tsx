@@ -39,7 +39,9 @@ export const FocusSwipeCopy: React.FC<{
   isCurrent: boolean;
   firstOpenReveal: boolean;
   reducedMotion: boolean;
-}> = ({ work, side, dragX, panelStride, isCurrent, firstOpenReveal, reducedMotion }) => {
+  /** Optional focus-only easter egg under the description */
+  focusExtra?: React.ReactNode;
+}> = ({ work, side, dragX, panelStride, isCurrent, firstOpenReveal, reducedMotion, focusExtra }) => {
   const copyX = useTransform(dragX, (x) => {
     if (reducedMotion) return 0;
     const w = panelStride || 1;
@@ -83,6 +85,7 @@ export const FocusSwipeCopy: React.FC<{
         <h1 className={styles.infiniteCanvasFocusTitle}>{work.name}</h1>
         <div className={styles.infiniteCanvasFocusDescription}>{work.description}</div>
         {link}
+        {focusExtra}
       </motion.div>
     );
   }
@@ -95,6 +98,7 @@ export const FocusSwipeCopy: React.FC<{
       <h1 className={styles.infiniteCanvasFocusTitle}>{work.name}</h1>
       <div className={styles.infiniteCanvasFocusDescription}>{work.description}</div>
       {link}
+      {focusExtra}
     </motion.div>
   );
 };

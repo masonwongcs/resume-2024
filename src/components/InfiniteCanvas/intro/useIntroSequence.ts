@@ -8,12 +8,14 @@ import {
   generateItemId,
   getAdjacentWorks,
   getItemPosition,
+  getWorkKey,
+  pinCustomCardAt,
   pinOriginCardAt,
   selectUniqueWork,
   seededRandom
 } from '../grid/gridMath';
 import type { InfiniteCanvasItemIntro } from '../InfiniteCanvasItem';
-import type { GridItem, OriginCardConfig, Work } from '../types';
+import type { CustomCardConfig, GridItem, OriginCardConfig, Work } from '../types';
 
 // Matches Loader.module.scss exit: clip-path 1s @ 400ms + fade 200ms @ 1.4s
 const INTRO_SPREAD_RIPPLE_S = 0.42;
@@ -73,6 +75,9 @@ type UseIntroSequenceArgs = {
   workUsageCountRef: RefObject<Map<string, number>>;
   originCard?: OriginCardConfig;
   originCardKey: string | null;
+  excludedWorkKeys: Set<string>;
+  customCards?: CustomCardConfig[];
+  customCardIdsRef: MutableRefObject<Map<string, string>>;
   originCardIdRef: MutableRefObject<string | null>;
   introOriginRef: MutableRefObject<{ x: number; y: number } | null>;
   pendingIntroSnapRef: MutableRefObject<{ x: number; y: number } | null>;
@@ -102,6 +107,9 @@ export const useIntroSequence = ({
   workUsageCountRef,
   originCard,
   originCardKey,
+  excludedWorkKeys,
+  customCards,
+  customCardIdsRef,
   originCardIdRef,
   introOriginRef,
   pendingIntroSnapRef,
@@ -471,7 +479,7 @@ export const useIntroSequence = ({
               y: originGY,
               adjacentWorks,
               works,
-              originCardKey,
+              excludedWorkKeys,
               seedFactor,
               workUsageCount: workUsageCountRef.current
             }),
@@ -481,6 +489,42 @@ export const useIntroSequence = ({
           itemsRef.current.set(originId, originItem);
         }
         viewportItems.push({ ...originItem, x: originGX, y: originGY });
+      }
+
+      // Fold custom cards into the intro stack so they peel with the rest
+      for (const card of customCards ?? []) {
+        if (card.placement === 'origin') continue;
+        const key = getWorkKey(card.work);
+        const alreadyInStack = viewportItems.some((item) => getWorkKey(item.work) === key);
+        if (alreadyInStack) continue;
+
+        let bestIdx = -1;
+        let bestDist = -1;
+        for (let i = 0; i < viewportItems.length; i++) {
+          const item = viewportItems[i]!;
+          if (item.isOriginCard || item.id === originId) continue;
+          const pos = getItemPosition(item, metrics);
+          const dist = Math.hypot(
+            pos.x + cellWidth / 2 - originX,
+            pos.y + cellHeight / 2 - originY
+          );
+          if (dist > bestDist) {
+            bestDist = dist;
+            bestIdx = i;
+          }
+        }
+        if (bestIdx < 0) continue;
+
+        const target = viewportItems[bestIdx]!;
+        const pinned = pinCustomCardAt({
+          gx: target.x,
+          gy: target.y,
+          customCard: card,
+          items: itemsRef.current,
+          customCardIdsRef,
+          staggerOffset
+        });
+        viewportItems[bestIdx] = { ...pinned, x: target.x, y: target.y };
       }
 
       const itemTargets = viewportItems.map((item) => {
@@ -569,6 +613,9 @@ export const useIntroSequence = ({
       staggerOffset,
       originCard,
       originCardKey,
+      excludedWorkKeys,
+      customCards,
+      customCardIdsRef,
       itemsRef,
       workUsageCountRef,
       originCardIdRef,

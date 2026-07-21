@@ -4,21 +4,27 @@ import {
   findCenterGridSeat,
   generateItemId,
   getAdjacentWorks,
+  parseGridCoords,
+  pickRandomCustomCardSeat,
+  pinCustomCardAt,
   pinOriginCardAt,
   selectUniqueWork
 } from './gridMath';
-import type { GridItem, OriginCardConfig, Work } from '../types';
+import type { CustomCardConfig, GridItem, OriginCardConfig, Work } from '../types';
 
 type UseVisibleGridItemsArgs = {
   outerContainerRef: RefObject<HTMLDivElement | null>;
   itemsRef: RefObject<Map<string, GridItem>>;
   workUsageCountRef: RefObject<Map<string, number>>;
   originCardIdRef: RefObject<string | null>;
+  customCardIdsRef: RefObject<Map<string, string>>;
   offset: { x: number; y: number };
   zoom: number;
   works: Work[];
   originCard?: OriginCardConfig;
   originCardKey: string | null;
+  customCards?: CustomCardConfig[];
+  excludedWorkKeys: Set<string>;
   seedFactor: number;
   cellWidth: number;
   cellHeight: number;
@@ -33,11 +39,14 @@ export const useVisibleGridItems = ({
   itemsRef,
   workUsageCountRef,
   originCardIdRef,
+  customCardIdsRef,
   offset,
   zoom,
   works,
   originCard,
   originCardKey,
+  customCards,
+  excludedWorkKeys,
   seedFactor,
   cellWidth,
   cellHeight,
@@ -65,6 +74,53 @@ export const useVisibleGridItems = ({
       });
     }
 
+    // Pin random-seat custom cards once (stable across pan/cull)
+    if (customCards?.length && width > 0 && height > 0) {
+      let originGX = 0;
+      let originGY = 0;
+      const originId = originCardIdRef.current;
+      const originCoords = originId ? parseGridCoords(originId) : null;
+      if (originCoords) {
+        originGX = originCoords.x;
+        originGY = originCoords.y;
+      } else {
+        const seat = findCenterGridSeat(width, height, metrics);
+        originGX = seat.originGX;
+        originGY = seat.originGY;
+      }
+
+      const occupied = new Set<string>();
+      if (originId) occupied.add(originId);
+      for (const id of customCardIdsRef.current.values()) occupied.add(id);
+
+      customCards.forEach((card, cardIndex) => {
+        if (card.placement === 'origin') return;
+        if (customCardIdsRef.current.has(card.id)) return;
+        const { gx, gy } = pickRandomCustomCardSeat({
+          originGX,
+          originGY,
+          seedFactor,
+          cardIndex,
+          occupied
+        });
+        const pinned = pinCustomCardAt({
+          gx,
+          gy,
+          customCard: card,
+          items: itemsRef.current,
+          customCardIdsRef,
+          staggerOffset
+        });
+        occupied.add(pinned.id);
+      });
+    }
+
+    const customGridIdToConfigId = new Map<string, string>();
+    for (const [configId, gridId] of customCardIdsRef.current) {
+      customGridIdToConfigId.set(gridId, configId);
+    }
+    const customCardById = new Map((customCards ?? []).map((card) => [card.id, card]));
+
     const startX =
       Math.floor((-offset.x + initialOffsetX) / ((cellWidth + gapSize) * zoom)) - viewportPadding;
     const startY =
@@ -90,14 +146,29 @@ export const useVisibleGridItems = ({
               originCardIdRef,
               staggerOffset
             });
-          } else {
+          } else if (customGridIdToConfigId.has(id)) {
+            const configId = customGridIdToConfigId.get(id)!;
+            const card = customCardById.get(configId);
+            if (card) {
+              item = pinCustomCardAt({
+                gx: x,
+                gy: y,
+                customCard: card,
+                items: itemsRef.current,
+                customCardIdsRef,
+                staggerOffset
+              });
+            }
+          }
+
+          if (!item) {
             const adjacentWorks = getAdjacentWorks(x, y, itemsRef.current, 3);
             const selectedWork = selectUniqueWork({
               x,
               y,
               adjacentWorks,
               works,
-              originCardKey,
+              excludedWorkKeys,
               seedFactor,
               workUsageCount: workUsageCountRef.current
             });
@@ -129,6 +200,8 @@ export const useVisibleGridItems = ({
     initialOffsetX,
     originCard,
     originCardKey,
+    customCards,
+    excludedWorkKeys,
     seedFactor,
     cellWidth,
     cellHeight,
@@ -139,6 +212,7 @@ export const useVisibleGridItems = ({
     outerContainerRef,
     itemsRef,
     workUsageCountRef,
-    originCardIdRef
+    originCardIdRef,
+    customCardIdsRef
   ]);
 };

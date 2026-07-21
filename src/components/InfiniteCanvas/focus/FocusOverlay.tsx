@@ -48,6 +48,10 @@ export type FocusOverlayProps = {
   prefersReducedMotion: boolean;
   originCardKey: string | null;
   getWorkKey: (work: Work) => string;
+  /** Focus-only easter egg for the currently focused custom card (if any) */
+  focusedFocusExtra?: React.ReactNode;
+  /** Resolve focus extra for a swipe panel work (origin / custom cards) */
+  getFocusExtraForWork?: (work: Work) => React.ReactNode;
   requestClose: () => void;
   navigateFocus: (dir: -1 | 1) => void;
   handleFocusScroll: (event: React.UIEvent<HTMLDivElement>) => void;
@@ -84,6 +88,8 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
   prefersReducedMotion,
   originCardKey,
   getWorkKey,
+  focusedFocusExtra,
+  getFocusExtraForWork,
   requestClose,
   navigateFocus,
   handleFocusScroll,
@@ -232,6 +238,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                 isCurrent && focusNavDirection === 0 && !focusNavInstant
                               }
                               reducedMotion={Boolean(prefersReducedMotion)}
+                              focusExtra={getFocusExtraForWork?.(work)}
                             />
                           ) : null}
                         </div>
@@ -344,6 +351,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                     {FOCUS_LINK_ARROW}
                                   </a>
                                 ) : null}
+                                {focusedFocusExtra}
                               </motion.div>
                             </AnimatePresence>
                           ) : (
@@ -379,6 +387,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                   {FOCUS_LINK_ARROW}
                                 </a>
                               ) : null}
+                              {focusedFocusExtra}
                             </motion.div>
                           )}
                         </div>
