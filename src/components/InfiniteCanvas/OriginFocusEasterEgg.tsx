@@ -45,9 +45,12 @@ const COVER_FLOW_LAYOUT = {
   centerGap: 160,
   rotation: 50,
   fitRatio: 0.4,
-  /** Sleeves read a bit small on narrow viewports — size up on mobile */
+  /** Keep sleeves compact on narrow / coarse viewports */
   mobileFitRatio: 0.3
 } as const;
+
+/** Dwell between auto-advances on the grid face (ms). */
+const COVER_FLOW_AUTO_ADVANCE_MS = 16000;
 
 const useListeningCoverIndex = () => {
   const [index, setIndex] = useState(getListeningCoverIndex);
@@ -97,7 +100,7 @@ export const ListeningCardFace = ({ onActivate, inFocus }: CustomCardRenderProps
           enableClickToSnap={false}
           enableScroll={false}
           showCaption={false}
-          autoAdvanceMs={inFocus || vinylPlaying ? undefined : 10000}
+          autoAdvanceMs={inFocus || vinylPlaying ? undefined : COVER_FLOW_AUTO_ADVANCE_MS}
           className={styles.coverFlowEmbedded}
         />
       </div>

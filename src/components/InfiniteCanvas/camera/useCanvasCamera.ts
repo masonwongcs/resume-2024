@@ -521,6 +521,11 @@ export const useCanvasCamera = ({
       const dx = clientX - lastPosition.current.x;
       const dy = clientY - lastPosition.current.y;
       dragDistanceRef.current += Math.hypot(dx, dy);
+      // Mark as pan as soon as we exceed the slop — origin onTap fires on pointerup
+      // before touchend, so waiting until handleEnd lets focus steal the gesture.
+      if (dragDistanceRef.current > clickDragThresholdPx) {
+        suppressClickRef.current = true;
+      }
       targetOffsetRef.current = {
         x: targetOffsetRef.current.x + dx,
         y: targetOffsetRef.current.y + dy
@@ -548,7 +553,7 @@ export const useCanvasCamera = ({
 
       lastPosition.current = { x: clientX, y: clientY };
     },
-    [touchVelocitySmoothing, isDragging, targetOffsetRef, panVelocityRef, touchInertiaEligibleRef]
+    [touchVelocitySmoothing, isDragging, targetOffsetRef, panVelocityRef, touchInertiaEligibleRef, clickDragThresholdPx, suppressClickRef]
   );
 
   const handleEnd = useCallback(() => {

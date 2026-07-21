@@ -337,12 +337,22 @@ export function CoverFlow({
 
     let cancelled = false;
     let timeoutId = 0;
+    let inView = false;
+    let pageVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+
+    const clear = () => {
+      window.clearTimeout(timeoutId);
+      timeoutId = 0;
+    };
+
+    const canRun = () => inView && pageVisible && !cancelled;
 
     const advance = () => {
       if (isDraggingRef.current) return;
       const prev = activeIndexRef.current;
-      const next = prev + 1;
-      if (next >= itemsLengthRef.current) {
+      const next = prev + 1 >= itemsLengthRef.current ? 0 : prev + 1;
+      // Wrap with set+jump so the fan loops without springing backward through the stack
+      if (next === 0 && prev !== 0) {
         setActiveIndex(0);
         scrollXRef.current.jump(0);
         tickRef.current('right', 80);
@@ -352,26 +362,55 @@ export function CoverFlow({
     };
 
     const schedule = () => {
+      clear();
+      if (!canRun()) return;
       timeoutId = window.setTimeout(() => {
-        if (cancelled) return;
+        if (!canRun()) return;
         // Still dwell while dragging — retry shortly without burning the full interval
         if (isDraggingRef.current) {
           timeoutId = window.setTimeout(() => {
-            if (!cancelled) schedule();
+            if (canRun()) schedule();
           }, 250);
           return;
         }
         advance();
-        if (!cancelled) schedule();
+        // activeIndex change restarts this effect with a fresh dwell
       }, autoAdvanceMs);
     };
 
-    schedule();
+    const onVisibility = () => {
+      pageVisible = document.visibilityState !== 'hidden';
+      if (pageVisible) schedule();
+      else clear();
+    };
+
+    const container = containerRef.current;
+    let io: IntersectionObserver | undefined;
+    if (container && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          inView = Boolean(entry?.isIntersecting);
+          if (canRun()) schedule();
+          else clear();
+        },
+        { threshold: 0.25 }
+      );
+      io.observe(container);
+    } else {
+      inView = true;
+      schedule();
+    }
+
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       cancelled = true;
-      window.clearTimeout(timeoutId);
+      clear();
+      io?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [autoAdvanceMs, prefersReducedMotion, items.length]);
+    // Restart the dwell whenever the active cover changes (auto or external)
+  }, [autoAdvanceMs, prefersReducedMotion, items.length, activeIndex]);
 
   useEffect(() => {
     const container = containerRef.current;
