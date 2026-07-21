@@ -359,6 +359,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     showFocusScrim,
     showFocusHtml,
     focusWorkKey,
+    focusSlideKey,
     syncOriginFocusSwipeNudge
   } = focus;
 
@@ -686,6 +687,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         focusSwipePanels={focusSwipePanels}
         focusSwipeDragX={focusSwipeDragX}
         focusWorkKey={focusWorkKey}
+        focusSlideKey={focusSlideKey}
         focusImageSrc={focusImageSrc}
         focusCardSlide={focusCardSlide}
         focusCopySlide={focusCopySlide}

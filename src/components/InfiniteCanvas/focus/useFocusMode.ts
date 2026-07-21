@@ -131,6 +131,11 @@ export const useFocusMode = ({
   // (focusReturnPanActiveRef / focusReturnToCenterRef / focusReturnScaleOnlyRef are shared refs from the parent)
   /** Gallery slide direction: 1 next, -1 prev, 0 initial open */
   const [focusNavDirection, setFocusNavDirection] = useState(0);
+  /**
+   * Monotonic nav counter — AnimatePresence keys include this so A→B→A
+   * (back/forth) never reuses a key mid-exit, which otherwise freezes the slide.
+   */
+  const [focusNavSeq, setFocusNavSeq] = useState(0);
   const [focusCardSlide, setFocusCardSlide] = useState(() => getFocusCardSlideTargets(0));
   const [focusCopySlide, setFocusCopySlide] = useState(() => getFocusCopySlideTargets(0));
   /** Skip enter/exit slide after a committed swipe (peek already in place) */
@@ -572,6 +577,7 @@ export const useFocusMode = ({
       setReleaseFocusPeers(false);
       setOriginPortraitUp(false);
       setFocusNavDirection(0);
+      setFocusNavSeq(0);
       setFocusCardSlide(getFocusCardSlideTargets(0));
       setFocusCopySlide(getFocusCopySlideTargets(0));
       setFocusSnapshot({
@@ -658,6 +664,7 @@ export const useFocusMode = ({
       });
       flushSync(() => {
         setFocusNavDirection(direction);
+        setFocusNavSeq((seq) => seq + 1);
         setFocusCardSlide(cardTargets);
         setFocusCopySlide(copyTargets);
         setFocusedWork(nextWork);
@@ -964,6 +971,8 @@ export const useFocusMode = ({
   // Keep HTML through 'out' so the morph can paint underneath before the overlay exits
   const showFocusHtml = focusPhase === 'in' || focusPhase === 'settled' || focusPhase === 'out';
   const focusWorkKey = focusedWork ? getWorkKey(focusedWork) : '';
+  /** Unique per open + nav step — keeps Presence slides from sticking on A→B→A */
+  const focusSlideKey = `${focusNavSeq}:${focusWorkKey}`;
 
   const focusAdjacentWorks = useMemo(() => {
     if (!focusedId) return { prev: null as Work | null, next: null as Work | null };
@@ -1020,6 +1029,7 @@ export const useFocusMode = ({
     showFocusScrim,
     showFocusHtml,
     focusWorkKey,
+    focusSlideKey,
     focusReturnToCenterRef,
     focusReturnScaleOnlyRef,
     focusNavPrevIdRef,

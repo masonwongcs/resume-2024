@@ -378,12 +378,13 @@ export const ensureGridItemAt = ({
 
 /**
  * Walk horizontally from a focused seat (±x, same y) until a focusable neighbor is found.
+ * Prefers a different work than the current seat so the overlay always advances.
  * Creates missing cells along the way. No wrap — the grid is infinite.
  */
 export const findHorizontalFocusNeighbor = ({
   fromId,
   direction,
-  maxSteps = 12,
+  maxSteps = 24,
   ...ensureArgs
 }: {
   fromId: string;
@@ -393,15 +394,21 @@ export const findHorizontalFocusNeighbor = ({
   const coords = parseGridCoords(fromId);
   if (!coords) return null;
 
+  const fromItem = ensureArgs.items.get(fromId);
+  const fromKey = fromItem ? getWorkKey(fromItem.work) : null;
+  let fallback: (GridItem & { x: number; y: number }) | null = null;
+
   for (let step = 1; step <= maxSteps; step++) {
     const cell = ensureGridItemAt({
       ...ensureArgs,
       x: coords.x + direction * step,
       y: coords.y
     });
-    if (isGridItemFocusable(cell, ensureArgs.originCard, ensureArgs.customCards)) {
-      return cell;
-    }
+    if (!isGridItemFocusable(cell, ensureArgs.originCard, ensureArgs.customCards)) continue;
+    if (!fallback) fallback = cell;
+    // Skip duplicate works so prev/next always changes overlay content (matches old gallery).
+    if (fromKey && getWorkKey(cell.work) === fromKey) continue;
+    return cell;
   }
-  return null;
+  return fallback;
 };
