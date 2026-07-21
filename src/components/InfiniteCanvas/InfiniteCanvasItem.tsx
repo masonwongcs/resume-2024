@@ -83,6 +83,8 @@ interface InfiniteCanvasItemProps {
   focusOpacity?: number;
   /** Skip spring and jump to focus targets (handoff frames) */
   focusImmediate?: boolean;
+  /** Shrink/fade in place when the grid home is too far off-screen */
+  focusReturnDissolve?: boolean;
   /** Stagger delay (seconds) when exiting / returning from focus */
   focusReturnDelay?: number;
   /**
@@ -216,6 +218,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusScale = 1,
   focusOpacity = 1,
   focusImmediate = false,
+  focusReturnDissolve = false,
   focusReturnDelay = 0,
   focusScrollNudgeY,
   focusScrollNudgeX,
@@ -636,7 +639,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           ? stackEnterSpring
           : focusImmediate
             ? { duration: 0 }
-            : focusMode === 'exiting'
+            : focusReturnDissolve
+              ? exitSpring
+              : focusMode === 'exiting'
               ? exitSpring
               : peerReturnActiveRef.current
                 ? { ...peerReturnSpring, delay: peerReturnDelayRef.current }
@@ -671,14 +676,24 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
                   opacity: 1
                 }
               : getPillApproachPose(intro, viewRef.current)
-          : // Soft fade when culled cards remount; skip if the image was already painted this session
-            {
-              x,
-              y,
-              rotate: 0,
-              scale: 1,
-              opacity: hasCustomContent || isImageCached(imageSrc) ? 1 : 0
-            }
+          : isFocusing
+            ? // Gallery swap may force-mount the return seat mid-focus — start in the
+              // focused pose (often opacity 0) so we never flash the card at home.
+              {
+                x: focusX ?? x,
+                y: focusY ?? y,
+                rotate: 0,
+                scale: focusScale,
+                opacity: focusOpacity
+              }
+            : // Soft fade when culled cards remount; skip if the image was already painted this session
+              {
+                x,
+                y,
+                rotate: 0,
+                scale: 1,
+                opacity: hasCustomContent || isImageCached(imageSrc) ? 1 : 0
+              }
       }
       animate={animateState}
       transition={transition}
