@@ -25,6 +25,8 @@ export const FocusSwipeCard: React.FC<{
   borderRadius: number;
   panelSrc: string;
   workName: string;
+  /** Custom hero instead of the work image (e.g. Cover Flow) */
+  banner?: React.ReactNode;
   setFocusCardNode?: (node: HTMLDivElement | null) => void;
   setFocusImageNode?: (node: HTMLImageElement | null) => void;
 }> = ({
@@ -40,6 +42,7 @@ export const FocusSwipeCard: React.FC<{
   borderRadius,
   panelSrc,
   workName,
+  banner,
   setFocusCardNode,
   setFocusImageNode
 }) => {
@@ -68,6 +71,10 @@ export const FocusSwipeCard: React.FC<{
     >
       {isOriginWork ? (
         <div className={styles.infiniteCanvasFocusCardCustom} aria-hidden />
+      ) : banner ? (
+        <div className={styles.infiniteCanvasFocusCardBanner} aria-hidden={!isCurrent}>
+          {banner}
+        </div>
       ) : (
         <img
           ref={isCurrent ? setFocusImageNode : undefined}

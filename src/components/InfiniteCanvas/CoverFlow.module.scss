@@ -1,0 +1,190 @@
+.reflectionSvg {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.coverFlow {
+  --cf-ink: rgba(255, 255, 255, 0.92);
+  --cf-muted: rgba(255, 255, 255, 0.55);
+  --cf-fade: #050505;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: transparent;
+  touch-action: pan-y;
+  outline: none;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  isolation: isolate;
+}
+
+.isIdle {
+  cursor: grab;
+}
+
+.isDragging {
+  cursor: grabbing;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.isDragging .card {
+  cursor: grabbing !important;
+}
+
+.cursorPointer {
+  cursor: pointer;
+}
+
+.cursorGrab {
+  cursor: grab;
+}
+
+.cardFace {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  //border-radius: 0.75rem;
+  background: #000;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+.cardFaceReflect {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+.cardBorder {
+  position: absolute;
+  inset: 0;
+  //border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.cardImageWrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  //border-radius: 0.75rem;
+}
+
+.cardImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.cardSheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top right, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.reflection {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 1px;
+  pointer-events: none;
+  overflow: hidden;
+  transform-origin: top center;
+  transform: rotateX(12deg) translateZ(0);
+  will-change: transform;
+}
+
+.reflectionFlip {
+  width: 100%;
+  height: 100%;
+  transform: scaleY(-1);
+}
+
+.reflectionFade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    var(--cf-fade) 0%,
+    color-mix(in srgb, var(--cf-fade) 70%, transparent) 40%,
+    transparent 100%
+  );
+}
+
+.caption {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.captionInner {
+  text-align: center;
+  padding: 0 0.75rem;
+}
+
+.captionTitle {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: clamp(0.7rem, 2.8vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--cf-ink);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.captionSubtitle {
+  margin: 0.2rem 0 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: clamp(0.55rem, 1.8vw, 0.8rem);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--cf-muted);
+}
+
+/* Absolute fill helpers for canvas / focus hero slots */
+.slotFill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}

@@ -66,6 +66,11 @@
     @media (hover: none), (pointer: coarse) {
       transform-style: flat;
       border-width: 0;
+
+      // Custom faces (Cover Flow) need a live 3D context on touch
+      &:has(.infiniteCanvasItemCustom) {
+        transform-style: preserve-3d;
+      }
     }
 
     &:before {
@@ -121,6 +126,9 @@
     z-index: 1;
     // Match origin face — empty host shouldn't flash the white card placeholder
     background-color: #0a0a0a;
+    // Keep Cover Flow / custom 3D faces alive on touch (parent often uses flat)
+    transform-style: preserve-3d;
+    perspective: 1000px;
   }
 
   .infiniteCanvasItemShine {

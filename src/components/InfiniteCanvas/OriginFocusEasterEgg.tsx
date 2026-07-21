@@ -2,25 +2,64 @@
 
 import styles from './VinylListening.module.scss';
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import { motion, useReducedMotion } from 'motion/react';
 
+import { CoverFlow } from './CoverFlow';
 import { CustomCard } from './CustomCard';
+import {
+  getListeningCoverIndex,
+  getListeningVinylPlaying,
+  setListeningCoverIndex,
+  setListeningVinylPlaying,
+  subscribeListeningCoverIndex,
+  subscribeListeningVinylPlaying
+} from './listeningCoverFlowState';
 import {
   FEATURED_ALBUM,
   NOW_LISTENING_LIBRARY,
-  PREVIEW_DURATION_MS,
   type NowListeningAlbum,
-  type NowListeningTrack
+  type NowListeningTrack,
+  PREVIEW_DURATION_MS
 } from './nowListeningTrack';
-import type { CustomCardConfig, CustomCardRenderProps, Work } from './types';
+import type { CustomCardConfig, CustomCardFocusContentProps, CustomCardRenderProps, Work } from './types';
 
 const library = NOW_LISTENING_LIBRARY;
 const defaultAlbum = FEATURED_ALBUM;
-const defaultTrack =
-  defaultAlbum.tracks.find((t) => t.title === 'Time') ?? defaultAlbum.tracks[0]!;
+const defaultTrack = defaultAlbum.tracks.find((t) => t.title === 'Time') ?? defaultAlbum.tracks[0]!;
+
+const COVER_FLOW_ITEMS = library.map((album) => ({
+  id: album.collectionId,
+  image: album.artworkUrl,
+  title: album.artist,
+  subtitle: album.title.replace(/ \(.*\)$/, '')
+}));
+
+/** Layout is authored at cell size — focus CSS-scales the same box (origin-card pattern). */
+const COVER_FLOW_LAYOUT = {
+  itemWidth: 180,
+  itemHeight: 180,
+  stackSpacing: 64,
+  centerGap: 160,
+  rotation: 50,
+  fitRatio: 0.4,
+  /** Narrow cards read oversized at desktop fit — pull sleeves in on mobile */
+  mobileFitRatio: 0.3
+} as const;
+
+const useListeningCoverIndex = () => {
+  const [index, setIndex] = useState(getListeningCoverIndex);
+  useEffect(() => subscribeListeningCoverIndex(setIndex), []);
+  return index;
+};
+
+const useListeningVinylPlaying = () => {
+  const [playing, setPlaying] = useState(getListeningVinylPlaying);
+  useEffect(() => subscribeListeningVinylPlaying(setPlaying), []);
+  return playing;
+};
 
 /** Metadata for the listening custom card (focus morph uses featured album art) */
 export const LISTENING_CUSTOM_WORK: Work = {
@@ -28,15 +67,19 @@ export const LISTENING_CUSTOM_WORK: Work = {
   image: defaultAlbum.artworkUrl,
   description: (
     <p>
-      A small shelf of records — {library.map((a) => a.title.replace(/ \(.*\)$/, '')).join(', ')}.
+      My current playlist is a mix of timeless classics and modern favorites that span different genres and eras. I
+      enjoy music that creates a strong atmosphere, whether it is reflective, energetic, or simply easy to get lost in.
+      The collection reflects a balance of familiar albums, newer discoveries, and artists whose music I keep coming
+      back to.
     </p>
   )
+  // description: <p>A small shelf of records — {library.map((a) => a.title.replace(/ \(.*\)$/, '')).join(', ')}.</p>
 };
 
-/** Grid face — stacked album sleeves */
-export const ListeningCardFace = ({ onActivate }: CustomCardRenderProps) => {
-  // Draw back → front so the featured album sits on top
-  const stack = [...library].reverse();
+/** Grid face — compact Cover Flow fan (non-interactive; card click opens focus) */
+export const ListeningCardFace = ({ onActivate, inFocus }: CustomCardRenderProps) => {
+  const coverIndex = useListeningCoverIndex();
+  const vinylPlaying = useListeningVinylPlaying();
 
   return (
     <CustomCard
@@ -44,31 +87,49 @@ export const ListeningCardFace = ({ onActivate }: CustomCardRenderProps) => {
       onActivate={onActivate}
       aria-label={`Now listening — ${defaultAlbum.title}`}
     >
-      <div className={styles.stackStage} aria-hidden>
-        <div className={styles.vinylPeek} />
-        {stack.map((album, i) => {
-          // i=0 is back-most after reverse
-          const depth = stack.length - 1 - i;
-          return (
-            <div
-              key={album.collectionId}
-              className={styles.stackSleeve}
-              style={
-                {
-                  '--stack-i': depth,
-                  zIndex: i + 1
-                } as CSSProperties
-              }
-            >
-              <img src={album.artworkUrl} alt="" draggable={false} decoding="async" />
-            </div>
-          );
-        })}
-      </div>
-      <div className={styles.sleeveMeta}>
-        <p className={styles.sleeveLabel}>Now listening</p>
+      <div className={styles.coverFlowSlot} aria-hidden>
+        <CoverFlow
+          items={COVER_FLOW_ITEMS}
+          {...COVER_FLOW_LAYOUT}
+          initialIndex={coverIndex}
+          onIndexChange={setListeningCoverIndex}
+          enableReflection
+          enableClickToSnap={false}
+          enableScroll={false}
+          showCaption={false}
+          autoAdvanceMs={inFocus || vinylPlaying ? undefined : 10000}
+          className={styles.coverFlowEmbedded}
+        />
       </div>
     </CustomCard>
+  );
+};
+
+/** Focus hero — fills the morph card; same fitRatio as grid (no CSS scale — that flattens 3D) */
+export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
+  const coverIndex = useListeningCoverIndex();
+  const active = COVER_FLOW_ITEMS[coverIndex] ?? COVER_FLOW_ITEMS[0];
+
+  return (
+    <div className={styles.coverFlowBannerSlot}>
+      <CoverFlow
+        items={COVER_FLOW_ITEMS}
+        {...COVER_FLOW_LAYOUT}
+        initialIndex={coverIndex}
+        onIndexChange={setListeningCoverIndex}
+        enableReflection
+        enableClickToSnap
+        enableScroll
+        showCaption={false}
+        className={styles.coverFlowEmbedded}
+      />
+      {active ? (
+        <div className={styles.coverFlowBannerCaption}>
+          <p className={styles.coverFlowBannerTitle}>{active.title}</p>
+          {active.subtitle ? <p className={styles.coverFlowBannerSubtitle}>{active.subtitle}</p> : null}
+        </div>
+      ) : null}
+    </div>
   );
 };
 
@@ -80,14 +141,19 @@ export const VinylFocusPlayer = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRafRef = useRef<number | null>(null);
   const stopTimerRef = useRef<number | null>(null);
-  const albumRef = useRef(defaultAlbum);
-  const trackRef = useRef(defaultTrack);
+
+  const startAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
+  const startTrack =
+    startAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (startAlbum.tracks[0] ?? defaultTrack);
+
+  const albumRef = useRef(startAlbum);
+  const trackRef = useRef(startTrack);
   const playTrackRef = useRef<
     (album: NowListeningAlbum, track: NowListeningTrack, opts?: { softStart?: boolean }) => Promise<void>
   >(async () => undefined);
 
-  const [album, setAlbum] = useState(defaultAlbum);
-  const [track, setTrack] = useState(defaultTrack);
+  const [album, setAlbum] = useState(startAlbum);
+  const [track, setTrack] = useState(startTrack);
   const [playing, setPlaying] = useState(false);
   const [needsGesture, setNeedsGesture] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -126,11 +192,22 @@ export const VinylFocusPlayer = () => {
   }, []);
 
   const playTrack = useCallback(
-    async (nextAlbum: NowListeningAlbum, nextTrack: NowListeningTrack, opts?: { softStart?: boolean }) => {
+    async (
+      nextAlbum: NowListeningAlbum,
+      nextTrack: NowListeningTrack,
+      opts?: { softStart?: boolean; syncCover?: boolean }
+    ) => {
       albumRef.current = nextAlbum;
       trackRef.current = nextTrack;
       setAlbum(nextAlbum);
       setTrack(nextTrack);
+
+      // Only flip Cover Flow on explicit user album picks — not auto-next while playing
+      if (opts?.syncCover) {
+        const coverIdx = library.findIndex((a) => a.collectionId === nextAlbum.collectionId);
+        if (coverIdx >= 0) setListeningCoverIndex(coverIdx);
+      }
+
       clearStopTimer();
       clearFade();
 
@@ -148,6 +225,7 @@ export const VinylFocusPlayer = () => {
       try {
         await audio.play();
         setPlaying(true);
+        setListeningVinylPlaying(true);
         setNeedsGesture(false);
         if (opts?.softStart) {
           await fadeTo(audio, 0.85, 450);
@@ -163,13 +241,14 @@ export const VinylFocusPlayer = () => {
               return;
             }
             const albumIndex = library.findIndex((a) => a.collectionId === currentAlbum.collectionId);
-            const nextAlbum = library[(albumIndex + 1) % library.length]!;
-            void playTrackRef.current(nextAlbum, nextAlbum.tracks[0]!);
+            const following = library[(albumIndex + 1) % library.length]!;
+            void playTrackRef.current(following, following.tracks[0]!);
           });
         }, PREVIEW_DURATION_MS);
       } catch {
         setNeedsGesture(true);
         setPlaying(false);
+        setListeningVinylPlaying(false);
       }
     },
     [fadeTo]
@@ -177,12 +256,16 @@ export const VinylFocusPlayer = () => {
 
   playTrackRef.current = playTrack;
 
-  // Auto-start featured track on open
+  // Auto-start the album currently showing in Cover Flow
   useEffect(() => {
-    void playTrack(defaultAlbum, defaultTrack, { softStart: true });
+    const coverAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
+    const coverTrack =
+      coverAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (coverAlbum.tracks[0] ?? defaultTrack);
+    void playTrack(coverAlbum, coverTrack, { softStart: true });
     return () => {
       clearStopTimer();
       clearFade();
+      setListeningVinylPlaying(false);
       const audio = audioRef.current;
       if (audio) {
         audio.pause();
@@ -193,10 +276,19 @@ export const VinylFocusPlayer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Cover Flow snap / drag → play that album (cover already on this index)
+  useEffect(() => {
+    return subscribeListeningCoverIndex((index) => {
+      const next = library[index];
+      if (!next || next.collectionId === albumRef.current.collectionId) return;
+      void playTrackRef.current(next, next.tracks[0]!);
+    });
+  }, []);
+
   const handleAlbumSelect = (next: NowListeningAlbum) => {
     if (next.collectionId === album.collectionId) return;
     const first = next.tracks[0]!;
-    void playTrack(next, first);
+    void playTrack(next, first, { syncCover: true });
   };
 
   const handleTrackSelect = (next: NowListeningTrack) => {
@@ -208,6 +300,7 @@ export const VinylFocusPlayer = () => {
     if (playing && audio && !audio.paused) {
       audio.pause();
       setPlaying(false);
+      setListeningVinylPlaying(false);
       clearStopTimer();
       return;
     }
@@ -221,7 +314,7 @@ export const VinylFocusPlayer = () => {
 
   return (
     <aside className={styles.lofiPlayer}>
-      <p className={styles.lofiEyebrow}>[CURRENTLY ON REPEAT]</p>
+      {/*<p className={styles.lofiEyebrow}>[CURRENTLY ON REPEAT]</p>*/}
 
       <div
         className={styles.lofiStage}
@@ -232,11 +325,7 @@ export const VinylFocusPlayer = () => {
         <motion.div
           className={styles.lofiRig}
           initial={false}
-          animate={
-            vinylOpen
-              ? { left: 0, x: 0 }
-              : { left: '50%', x: '-50%' }
-          }
+          animate={vinylOpen ? { left: 0, x: 0 } : { left: '50%', x: '-50%' }}
           transition={{ type: 'spring', stiffness: 150, damping: 22 }}
         >
           <motion.div
@@ -330,7 +419,14 @@ export const VinylFocusPlayer = () => {
               >
                 <span className={styles.trackNum}>{item.trackNumber}</span>
                 <span className={styles.trackName}>{item.title}</span>
-                {active && playing ? <span className={styles.trackPlaying}>●</span> : null}
+                {active && playing ? (
+                  <span className={styles.trackPlaying} aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : null}
               </button>
             </li>
           );
@@ -338,7 +434,7 @@ export const VinylFocusPlayer = () => {
       </ol>
 
       <a className={styles.appleLink} href={appleHref} target="_blank" rel="noopener noreferrer">
-        [PREVIEW · APPLE MUSIC]
+        LISTEN ON APPLE MUSIC
       </a>
     </aside>
   );
@@ -353,5 +449,6 @@ export const listeningCustomCard: CustomCardConfig = {
   placement: 'random',
   focusable: true,
   render: (props) => <ListeningCardFace {...props} />,
+  renderFocusBanner: (props) => <ListeningFocusBanner {...props} />,
   renderFocusContent: () => <VinylFocusPlayer />
 };

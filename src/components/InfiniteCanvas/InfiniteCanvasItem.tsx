@@ -781,7 +781,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           rotateX: isTouchUi ? 0 : rotateX,
           rotateY: isTouchUi ? 0 : rotateY,
           scale: isFocusing || isTouchUi ? 1 : scale,
-          transformStyle: isTouchUi ? undefined : 'preserve-3d',
+          transformStyle: isTouchUi && !hasCustomContent ? undefined : 'preserve-3d',
           width: '100%',
           height: '100%',
           ['--card-border-radius' as string]: `${cardBorderRadius}px`,

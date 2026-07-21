@@ -440,10 +440,31 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     [originCard, originCardKey, customCards]
   );
 
+  const getFocusBannerForWork = useCallback(
+    (work: Work) => {
+      const key = getWorkKey(work);
+      if (originCard?.renderFocusBanner && originCardKey && key === originCardKey) {
+        return originCard.renderFocusBanner({ work });
+      }
+      for (const card of customCards ?? []) {
+        if (!card.renderFocusBanner) continue;
+        if (getWorkKey(card.work) !== key) continue;
+        return card.renderFocusBanner({ work });
+      }
+      return null;
+    },
+    [originCard, originCardKey, customCards]
+  );
+
   const focusedFocusExtra = useMemo(() => {
     if (!focusedWork) return null;
     return getFocusExtraForWork(focusedWork);
   }, [focusedWork, getFocusExtraForWork]);
+
+  const focusedFocusBanner = useMemo(() => {
+    if (!focusedWork) return null;
+    return getFocusBannerForWork(focusedWork);
+  }, [focusedWork, getFocusBannerForWork]);
 
   // Origin face always lives on the canvas morph — never portal into the focus overlay
   // (mobile browsers flash on portal host swaps).
@@ -672,6 +693,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         getWorkKey={getWorkKey}
         focusedFocusExtra={focusedFocusExtra}
         getFocusExtraForWork={getFocusExtraForWork}
+        focusedFocusBanner={focusedFocusBanner}
+        getFocusBannerForWork={getFocusBannerForWork}
         requestClose={focus.requestClose}
         navigateFocus={focus.navigateFocus}
         handleFocusScroll={focus.handleFocusScroll}

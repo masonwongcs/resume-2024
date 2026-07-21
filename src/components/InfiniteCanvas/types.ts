@@ -59,6 +59,12 @@ export interface CustomCardConfig {
    * Use for easter eggs — music, photos, notes — without changing the grid face.
    */
   renderFocusContent?: (props: CustomCardFocusContentProps) => ReactNode;
+  /**
+   * Replaces the focus card hero image (`infiniteCanvasFocusCardImage`).
+   * Use for custom banners (e.g. Cover Flow) without changing the grid face
+   * or the focus-content easter egg below the description.
+   */
+  renderFocusBanner?: (props: CustomCardFocusContentProps) => ReactNode;
   /** Open the focus overlay on click. Defaults to true. */
   focusable?: boolean;
   /**

@@ -52,6 +52,10 @@ export type FocusOverlayProps = {
   focusedFocusExtra?: React.ReactNode;
   /** Resolve focus extra for a swipe panel work (origin / custom cards) */
   getFocusExtraForWork?: (work: Work) => React.ReactNode;
+  /** Custom focus hero banner (replaces work image) for the current work */
+  focusedFocusBanner?: React.ReactNode;
+  /** Resolve focus hero banner for a swipe panel work */
+  getFocusBannerForWork?: (work: Work) => React.ReactNode;
   requestClose: () => void;
   navigateFocus: (dir: -1 | 1) => void;
   handleFocusScroll: (event: React.UIEvent<HTMLDivElement>) => void;
@@ -90,6 +94,8 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
   getWorkKey,
   focusedFocusExtra,
   getFocusExtraForWork,
+  focusedFocusBanner,
+  getFocusBannerForWork,
   requestClose,
   navigateFocus,
   handleFocusScroll,
@@ -187,6 +193,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                       const isCurrent = side === 'current';
                       const isOriginWork = Boolean(originCardKey && panelKey === originCardKey);
                       const panelSrc = work.thumbnail || work.image;
+                      const panelBanner = getFocusBannerForWork?.(work);
                       return (
                         <div
                           key={panelKey}
@@ -224,6 +231,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                             borderRadius={focusSnapshot.detailWidth * CARD_BORDER_RADIUS_RATIO}
                             panelSrc={panelSrc}
                             workName={work.name}
+                            banner={panelBanner}
                             setFocusCardNode={isCurrent ? setFocusCardNode : undefined}
                             setFocusImageNode={isCurrent ? setFocusImageNode : undefined}
                           />
@@ -273,6 +281,10 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                     className={styles.infiniteCanvasFocusCardCustom}
                                     aria-hidden
                                   />
+                                ) : focusedFocusBanner ? (
+                                  <div className={styles.infiniteCanvasFocusCardBanner}>
+                                    {focusedFocusBanner}
+                                  </div>
                                 ) : (
                                   <img
                                     ref={setFocusImageNode}
@@ -305,6 +317,10 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                   className={styles.infiniteCanvasFocusCardCustom}
                                   aria-hidden
                                 />
+                              ) : focusedFocusBanner ? (
+                                <div className={styles.infiniteCanvasFocusCardBanner}>
+                                  {focusedFocusBanner}
+                                </div>
                               ) : (
                                 <img
                                   ref={setFocusImageNode}
