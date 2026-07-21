@@ -5,7 +5,7 @@ import styles from './OriginHeroCard.module.scss';
 import { CurvedLoop } from '@/components/CurvedLoop';
 import { CODING_START_DATE, calculateYearDifference } from '@/utils/calculateYearDifference';
 
-import type { OriginCardRenderProps, Work } from './InfiniteCanvas';
+import type { OriginCardRenderProps, Work } from './types';
 
 const MARQUEE_TEXT =
   'Hi · Hello · 你好 · こんにちは · 안녕 · สวัสดี · Xin chào · Halo · नमस्ते · வணக்கம் · مرحبًا · שלום · Merhaba · Γεια σας · Привет · Cześć · Salut · Hallo · Hej · Olá · Ciao · Aloha · Jambo · ';

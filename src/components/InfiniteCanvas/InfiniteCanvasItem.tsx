@@ -21,16 +21,9 @@ import {
   type InfiniteCanvasViewState,
   type ProximityFrameHandler,
   type ProximityResetHandler
-} from './canvasView';
-
-interface Work {
-  name: string;
-  url?: string;
-  image: string;
-  video?: string;
-  thumbnail?: string;
-  description: React.ReactNode;
-}
+} from './camera/canvasView';
+import { CARD_BORDER_RADIUS_RATIO } from './focus/focusLayout';
+import type { Work } from './types';
 
 export interface InfiniteCanvasItemIntro {
   x: number;
@@ -159,7 +152,6 @@ const SCALE_ON_PROXIMITY = 1.1;
 const PROXIMITY_RADIUS_FACTOR = 2.1;
 const MAGNET_STRENGTH = 10;
 const IMAGE_PARALLAX = 4;
-const CARD_BORDER_RADIUS_RATIO = 20 / (1440 / 4.6);
 const CARD_SHADOW_SRC = '/images/shadow.webp';
 const SHADOW_REST_Y = 0;
 const SHADOW_REST_OPACITY = 0;
