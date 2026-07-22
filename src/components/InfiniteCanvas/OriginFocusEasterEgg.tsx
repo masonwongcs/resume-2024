@@ -46,7 +46,7 @@ const COVER_FLOW_LAYOUT = {
   rotation: 50,
   fitRatio: 0.4,
   /** Keep sleeves compact on narrow / coarse viewports */
-  mobileFitRatio: 0.3
+  mobileFitRatio: 0.35
 } as const;
 
 /** Dwell between auto-advances on the grid face (ms). */
@@ -329,7 +329,12 @@ export const VinylFocusPlayer = () => {
         <motion.div
           className={styles.lofiRig}
           initial={false}
-          animate={vinylOpen ? { left: 0, x: 0 } : { left: '50%', x: '-50%' }}
+          animate={
+            // Playing: shift sleeve left so sleeve + pulled vinyl center as one unit
+            vinylOpen
+              ? { left: '50%', x: 'calc(-50% - 2.75rem)' }
+              : { left: '50%', x: '-50%' }
+          }
           transition={{ type: 'spring', stiffness: 150, damping: 22 }}
         >
           <motion.div
