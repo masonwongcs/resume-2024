@@ -30,6 +30,9 @@ const library = NOW_LISTENING_LIBRARY;
 const defaultAlbum = FEATURED_ALBUM;
 const defaultTrack = defaultAlbum.tracks.find((t) => t.title === 'Time') ?? defaultAlbum.tracks[0]!;
 
+const PLAY_VOLUME = 0.85;
+const FADE_MS = 450;
+
 const COVER_FLOW_ITEMS = library.map((album) => ({
   id: album.collectionId,
   image: album.artworkUrl,
@@ -151,8 +154,9 @@ export const VinylFocusPlayer = () => {
 
   const albumRef = useRef(startAlbum);
   const trackRef = useRef(startTrack);
+  const playGenRef = useRef(0);
   const playTrackRef = useRef<
-    (album: NowListeningAlbum, track: NowListeningTrack, opts?: { softStart?: boolean }) => Promise<void>
+    (album: NowListeningAlbum, track: NowListeningTrack, opts?: { syncCover?: boolean }) => Promise<void>
   >(async () => undefined);
 
   const [album, setAlbum] = useState(startAlbum);
@@ -178,6 +182,11 @@ export const VinylFocusPlayer = () => {
   const fadeTo = useCallback((audio: HTMLAudioElement, target: number, ms: number) => {
     return new Promise<void>((resolve) => {
       clearFade();
+      if (ms <= 0 || Math.abs(audio.volume - target) < 0.01) {
+        audio.volume = target;
+        resolve();
+        return;
+      }
       const start = performance.now();
       const from = audio.volume;
       const tick = (now: number) => {
@@ -195,11 +204,9 @@ export const VinylFocusPlayer = () => {
   }, []);
 
   const playTrack = useCallback(
-    async (
-      nextAlbum: NowListeningAlbum,
-      nextTrack: NowListeningTrack,
-      opts?: { softStart?: boolean; syncCover?: boolean }
-    ) => {
+    async (nextAlbum: NowListeningAlbum, nextTrack: NowListeningTrack, opts?: { syncCover?: boolean }) => {
+      const gen = ++playGenRef.current;
+
       albumRef.current = nextAlbum;
       trackRef.current = nextTrack;
       setAlbum(nextAlbum);
@@ -212,7 +219,6 @@ export const VinylFocusPlayer = () => {
       }
 
       clearStopTimer();
-      clearFade();
 
       let audio = audioRef.current;
       if (!audio) {
@@ -221,20 +227,29 @@ export const VinylFocusPlayer = () => {
         audioRef.current = audio;
       }
 
+      // Fade out current audio before swapping tracks
+      if (!audio.paused && audio.volume > 0.01) {
+        await fadeTo(audio, 0, FADE_MS);
+        if (gen !== playGenRef.current) return;
+      }
+
       audio.pause();
       audio.src = nextTrack.previewUrl;
-      audio.volume = opts?.softStart ? 0 : 0.85;
+      audio.volume = 0;
 
       try {
         await audio.play();
+        if (gen !== playGenRef.current) return;
         setPlaying(true);
         setListeningVinylPlaying(true);
         setNeedsGesture(false);
-        if (opts?.softStart) {
-          await fadeTo(audio, 0.85, 450);
-        }
+        await fadeTo(audio, PLAY_VOLUME, FADE_MS);
+        if (gen !== playGenRef.current) return;
+
         stopTimerRef.current = window.setTimeout(() => {
-          void fadeTo(audio!, 0, 450).then(() => {
+          void (async () => {
+            await fadeTo(audio!, 0, FADE_MS);
+            if (gen !== playGenRef.current) return;
             const currentAlbum = albumRef.current;
             const currentTrack = trackRef.current;
             const trackIndex = currentAlbum.tracks.findIndex((t) => t.trackId === currentTrack.trackId);
@@ -246,9 +261,10 @@ export const VinylFocusPlayer = () => {
             const albumIndex = library.findIndex((a) => a.collectionId === currentAlbum.collectionId);
             const following = library[(albumIndex + 1) % library.length]!;
             void playTrackRef.current(following, following.tracks[0]!);
-          });
+          })();
         }, PREVIEW_DURATION_MS);
       } catch {
+        if (gen !== playGenRef.current) return;
         setNeedsGesture(true);
         setPlaying(false);
         setListeningVinylPlaying(false);
@@ -264,8 +280,9 @@ export const VinylFocusPlayer = () => {
     const coverAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
     const coverTrack =
       coverAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (coverAlbum.tracks[0] ?? defaultTrack);
-    void playTrack(coverAlbum, coverTrack, { softStart: true });
+    void playTrack(coverAlbum, coverTrack);
     return () => {
+      playGenRef.current += 1;
       clearStopTimer();
       clearFade();
       setListeningVinylPlaying(false);
@@ -301,10 +318,15 @@ export const VinylFocusPlayer = () => {
   const handlePlayClick = () => {
     const audio = audioRef.current;
     if (playing && audio && !audio.paused) {
-      audio.pause();
+      const gen = ++playGenRef.current;
+      clearStopTimer();
       setPlaying(false);
       setListeningVinylPlaying(false);
-      clearStopTimer();
+      void (async () => {
+        await fadeTo(audio, 0, FADE_MS);
+        if (gen !== playGenRef.current) return;
+        audio.pause();
+      })();
       return;
     }
     void playTrack(album, track);
