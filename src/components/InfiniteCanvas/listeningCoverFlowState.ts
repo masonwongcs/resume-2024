@@ -1,5 +1,5 @@
 /** Shared active cover between grid face + focus banner (survives remount). */
-let activeIndex = 0;
+let activeIndex = 2;
 const indexListeners = new Set<(index: number) => void>();
 
 /** Vinyl playing — pauses Cover Flow auto-advance while true. */

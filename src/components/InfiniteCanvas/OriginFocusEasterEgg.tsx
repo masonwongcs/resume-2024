@@ -312,7 +312,8 @@ export const VinylFocusPlayer = () => {
 
   const appleHref = track.trackViewUrl || album.albumViewUrl;
   const artistShort = album.artist;
-  const trackLabel = `[${artistShort.toUpperCase()} - ${track.title.toUpperCase()}]`;
+  // const trackLabel = `[${artistShort.toUpperCase()} - ${track.title.toUpperCase()}]`;
+  const trackLabel = `${artistShort} - ${track.title}`;
   const vinylOpen = playing || hovered;
 
   return (

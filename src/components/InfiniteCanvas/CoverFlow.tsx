@@ -202,7 +202,7 @@ export function CoverFlow({
   stackSpacing = 100,
   centerGap = 250,
   rotation = 50,
-  initialIndex = 0,
+  initialIndex = 2,
   enableReflection = false,
   enableClickToSnap = true,
   enableScroll = true,

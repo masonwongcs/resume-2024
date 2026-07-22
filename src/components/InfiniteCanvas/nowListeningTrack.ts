@@ -24,7 +24,7 @@ export type NowListeningAlbum = {
 export const NOW_LISTENING_LIBRARY = libraryJson as NowListeningAlbum[];
 
 /** Featured album (front of stack / initial focus) — Dark Side of the Moon */
-export const FEATURED_ALBUM = NOW_LISTENING_LIBRARY[0]!;
+export const FEATURED_ALBUM = NOW_LISTENING_LIBRARY[2]!;
 
 /** @deprecated Prefer FEATURED_ALBUM / library — kept for older imports */
 export const NOW_LISTENING_TRACK = {
@@ -32,11 +32,9 @@ export const NOW_LISTENING_TRACK = {
   title: 'Time',
   artist: FEATURED_ALBUM.artist,
   album: FEATURED_ALBUM.title,
-  previewUrl:
-    FEATURED_ALBUM.tracks.find((t) => t.title === 'Time')?.previewUrl ?? FEATURED_ALBUM.tracks[0]!.previewUrl,
+  previewUrl: FEATURED_ALBUM.tracks.find((t) => t.title === 'Time')?.previewUrl ?? FEATURED_ALBUM.tracks[0]!.previewUrl,
   artworkUrl: FEATURED_ALBUM.artworkUrl,
-  trackViewUrl:
-    FEATURED_ALBUM.tracks.find((t) => t.title === 'Time')?.trackViewUrl ?? FEATURED_ALBUM.albumViewUrl,
+  trackViewUrl: FEATURED_ALBUM.tracks.find((t) => t.title === 'Time')?.trackViewUrl ?? FEATURED_ALBUM.albumViewUrl,
   previewDurationMs: PREVIEW_DURATION_MS
 } as const;
 
