@@ -2,10 +2,10 @@
 
 import styles from './VinylListening.module.scss';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 
 import cx from 'classnames';
-import { motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 import { CoverFlow } from './CoverFlow';
 import { CustomCard } from './CustomCard';
@@ -340,6 +340,28 @@ export const VinylFocusPlayer = () => {
 
   return (
     <aside className={styles.lofiPlayer}>
+      <div className={styles.lofiAccentWash} aria-hidden>
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={album.collectionId}
+            className={styles.lofiAccentWashLayer}
+            style={
+              {
+                '--album-accent': album.accentColor,
+                '--album-accent-2': album.accentColorSecondary ?? album.accentColor,
+                ...(album.washStrength === 'soft'
+                  ? { '--wash-peak': '14%', '--wash-mid': '8%', '--wash-low': '4%' }
+                  : { '--wash-peak': '34%', '--wash-mid': '18%', '--wash-low': '8%' })
+              } as CSSProperties
+            }
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeInOut' }}
+          />
+        </AnimatePresence>
+      </div>
+
       {/*<p className={styles.lofiEyebrow}>[CURRENTLY ON REPEAT]</p>*/}
 
       <div
