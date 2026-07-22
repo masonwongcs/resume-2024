@@ -2,7 +2,7 @@
 
 import styles from './VinylListening.module.scss';
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -305,10 +305,12 @@ export const VinylFocusPlayer = () => {
     });
   }, []);
 
-  const handleAlbumSelect = (next: NowListeningAlbum) => {
+  const handleAlbumStep = (delta: -1 | 1) => {
+    const currentIndex = library.findIndex((a) => a.collectionId === album.collectionId);
+    const from = currentIndex >= 0 ? currentIndex : 0;
+    const next = library[(from + delta + library.length) % library.length]!;
     if (next.collectionId === album.collectionId) return;
-    const first = next.tracks[0]!;
-    void playTrack(next, first, { syncCover: true });
+    void playTrack(next, next.tracks[0]!, { syncCover: true });
   };
 
   const handleTrackSelect = (next: NowListeningTrack) => {
@@ -336,6 +338,7 @@ export const VinylFocusPlayer = () => {
   const artistShort = album.artist;
   // const trackLabel = `[${artistShort.toUpperCase()} - ${track.title.toUpperCase()}]`;
   const trackLabel = `${artistShort} - ${track.title}`;
+  const albumTitleShort = album.title.replace(/ \(.*\)$/, '');
   const vinylOpen = playing || hovered;
 
   return (
@@ -375,9 +378,7 @@ export const VinylFocusPlayer = () => {
           initial={false}
           animate={
             // Playing: shift sleeve left so sleeve + pulled vinyl center as one unit
-            vinylOpen
-              ? { left: '50%', x: 'calc(-50% - 2.75rem)' }
-              : { left: '50%', x: '-50%' }
+            vinylOpen ? { left: '50%', x: 'calc(-50% - 2.75rem)' } : { left: '50%', x: '-50%' }
           }
           transition={{ type: 'spring', stiffness: 150, damping: 22 }}
         >
@@ -396,14 +397,21 @@ export const VinylFocusPlayer = () => {
                   : { duration: 0.45, ease: 'easeOut' }
               }
             >
-              <img
-                className={styles.lofiVinylLabel}
-                src={album.artworkUrl}
-                alt=""
-                draggable={false}
-                decoding="async"
-                aria-hidden
-              />
+              <AnimatePresence initial={false}>
+                <motion.img
+                  key={album.collectionId}
+                  className={styles.lofiVinylLabel}
+                  src={album.artworkUrl}
+                  alt=""
+                  draggable={false}
+                  decoding="async"
+                  aria-hidden
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
+                />
+              </AnimatePresence>
               <div className={styles.lofiVinylHole} aria-hidden />
             </motion.div>
             <button
@@ -421,13 +429,20 @@ export const VinylFocusPlayer = () => {
           </motion.div>
 
           <div className={styles.lofiSleeve}>
-            <img
-              className={styles.lofiSleeveImg}
-              src={album.artworkUrl}
-              alt={`${album.title} cover`}
-              draggable={false}
-              decoding="async"
-            />
+            <AnimatePresence initial={false}>
+              <motion.img
+                key={album.collectionId}
+                className={styles.lofiSleeveImg}
+                src={album.artworkUrl}
+                alt={`${album.title} cover`}
+                draggable={false}
+                decoding="async"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
+              />
+            </AnimatePresence>
             <div className={styles.lofiSleeveSheen} aria-hidden />
           </div>
         </motion.div>
@@ -441,23 +456,33 @@ export const VinylFocusPlayer = () => {
         </button>
       ) : null}
 
-      <div className={styles.albumStrip} role="listbox" aria-label="Albums">
-        {library.map((item) => (
-          <button
-            key={item.collectionId}
-            type="button"
-            role="option"
-            aria-selected={item.collectionId === album.collectionId}
-            className={cx(styles.albumThumb, {
-              [styles.albumThumbActive]: item.collectionId === album.collectionId
-            })}
-            onClick={() => handleAlbumSelect(item)}
-            title={`${item.artist} — ${item.title}`}
-          >
-            <img src={item.artworkUrl} alt="" draggable={false} decoding="async" />
-          </button>
-        ))}
-      </div>
+      <nav className={styles.albumNav} aria-label="Albums">
+        <button
+          type="button"
+          className={styles.albumNavBtn}
+          aria-label="Previous album"
+          onClick={() => handleAlbumStep(-1)}
+        >
+          ‹
+        </button>
+        <p className={styles.albumNavTitle}>
+          <AnimatePresence initial={false}>
+            <motion.span
+              key={album.collectionId}
+              className={styles.albumNavTitleText}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}
+            >
+              {albumTitleShort}
+            </motion.span>
+          </AnimatePresence>
+        </p>
+        <button type="button" className={styles.albumNavBtn} aria-label="Next album" onClick={() => handleAlbumStep(1)}>
+          ›
+        </button>
+      </nav>
 
       <ol className={styles.trackList} aria-label={`${album.title} tracklist`}>
         {album.tracks.map((item) => {

@@ -235,6 +235,8 @@
 }
 
 .lofiSleeveImg {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -348,47 +350,66 @@
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
-.albumStrip {
+.albumNav {
   display: flex;
-  gap: 0.45rem;
+  align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
+  gap: 0.65rem;
   width: 100%;
-  padding-top: 0.25rem;
+  padding: 0.15rem 0.25rem 0.1rem;
 }
 
-.albumThumb {
-  width: 2.55rem;
-  height: 2.55rem;
+.albumNavBtn {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: 0.3rem;
-  overflow: hidden;
-  background: #111;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--lofi-muted);
+  font-family: var(--font-futura), sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
   cursor: pointer;
-  opacity: 0.65;
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    border-color 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-
-  img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+  display: grid;
+  place-items: center;
+  transition: color 0.18s ease, background 0.18s ease;
 
   &:hover {
-    opacity: 1;
-    transform: translateY(-1px);
+    color: var(--lofi-ink);
+    background: rgba(0, 0, 0, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(0, 0, 0, 0.25);
+    outline-offset: 2px;
   }
 }
 
-.albumThumbActive {
-  opacity: 1;
-  border-color: rgba(0, 0, 0, 0.35);
+.albumNavTitle {
+  position: relative;
+  margin: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  max-width: 14rem;
+  height: 1.1em;
+  font-family: var(--font-futura), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: var(--lofi-ink);
+}
+
+.albumNavTitleText {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .trackList {
@@ -528,11 +549,6 @@
   .lofiStage {
     --sleeve-size: 10.25rem;
     width: min(100%, 18rem);
-  }
-
-  .albumThumb {
-    width: 2.25rem;
-    height: 2.25rem;
   }
 
   .lofiPlay {
