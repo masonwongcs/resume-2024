@@ -49,7 +49,7 @@
 }
 
 .coverFlowBannerSubtitle {
-  margin: 0.2rem 0 0;
+  margin: 0.1rem 0 0;
   font-family: var(--font-futura), sans-serif;
   //font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   font-size: clamp(0.55rem, 1.7vw, 0.7rem);
@@ -375,7 +375,9 @@
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: color 0.18s ease, background 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease;
 
   &:hover {
     color: var(--lofi-ink);

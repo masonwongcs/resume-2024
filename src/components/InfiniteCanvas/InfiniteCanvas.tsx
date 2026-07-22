@@ -391,17 +391,29 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   // Desktop: AnimatePresence slides (production morph). Mobile: track + peeks.
   const useFocusSlidePresence = !isMobile && canSpatialFocusNav;
   const focusSwipePanels = useMemo(() => {
-    if (!focusedWork) return [] as { work: Work; side: 'prev' | 'current' | 'next' }[];
+    if (!focusedWork) return [] as { work: Work; side: 'prev' | 'current' | 'next'; reactKey: string }[];
     if (!useFocusSwipeGallery) {
-      return [{ work: focusedWork, side: 'current' as const }];
+      return [{ work: focusedWork, side: 'current' as const, reactKey: getWorkKey(focusedWork) }];
     }
-    const panels: { work: Work; side: 'prev' | 'current' | 'next' }[] = [];
+
+    // Key by work so commit can reuse the peek DOM as current. The infinite grid can
+    // tile the same work on both sides — disambiguate duplicates to avoid React key clashes.
+    const used = new Set<string>();
+    const panelFor = (work: Work, side: 'prev' | 'current' | 'next') => {
+      const workKey = getWorkKey(work);
+      const reactKey = used.has(workKey) ? `${side}:${workKey}` : workKey;
+      used.add(workKey);
+      return { work, side, reactKey };
+    };
+
+    const panels: { work: Work; side: 'prev' | 'current' | 'next'; reactKey: string }[] = [];
+    // Current first so it always owns the canonical work key
+    panels.push(panelFor(focusedWork, 'current'));
     if (showFocusSwipePeeks && focusAdjacentWorks.prev) {
-      panels.push({ work: focusAdjacentWorks.prev, side: 'prev' });
+      panels.unshift(panelFor(focusAdjacentWorks.prev, 'prev'));
     }
-    panels.push({ work: focusedWork, side: 'current' });
     if (showFocusSwipePeeks && focusAdjacentWorks.next) {
-      panels.push({ work: focusAdjacentWorks.next, side: 'next' });
+      panels.push(panelFor(focusAdjacentWorks.next, 'next'));
     }
     return panels;
   }, [focusedWork, useFocusSwipeGallery, showFocusSwipePeeks, focusAdjacentWorks]);

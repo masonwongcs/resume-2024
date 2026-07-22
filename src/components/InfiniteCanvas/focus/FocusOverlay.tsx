@@ -22,6 +22,8 @@ import {
 export type FocusSwipePanel = {
   work: Work;
   side: 'prev' | 'current' | 'next';
+  /** Stable work key; side-prefixed only when the same work is tiled on both peeks */
+  reactKey: string;
 };
 
 export type FocusOverlayProps = {
@@ -191,7 +193,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                   style={{ x: showFocusSwipePeeks ? focusSwipeDragX : 0 }}
                 >
                   {useFocusSwipeGallery ? (
-                    focusSwipePanels.map(({ work, side }) => {
+                    focusSwipePanels.map(({ work, side, reactKey }) => {
                       const panelKey = getWorkKey(work);
                       const isCurrent = side === 'current';
                       const isOriginWork = Boolean(originCardKey && panelKey === originCardKey);
@@ -199,7 +201,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                       const panelBanner = getFocusBannerForWork?.(work);
                       return (
                         <div
-                          key={`${side}-${focusSlideKey}-${panelKey}`}
+                          key={reactKey}
                           className={styles.infiniteCanvasFocusSwipePanel}
                           data-side={side}
                           aria-hidden={!isCurrent}
