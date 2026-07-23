@@ -282,7 +282,7 @@ export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocus
       />
       <HandAnnotation
         targetRef={bannerRef}
-        note="swipe to browse click center to play"
+        note="swipe to browse click cover to play"
         srText="Swipe Cover Flow to browse albums, then click the center cover to play."
         open={hintOpen}
         direction="sw"

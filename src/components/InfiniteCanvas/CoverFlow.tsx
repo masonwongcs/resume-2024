@@ -214,6 +214,9 @@ function clampIndex(index: number, length: number) {
   return Math.min(Math.max(index, 0), Math.max(length - 1, 0));
 }
 
+/** Ignore child clicks after a pan unless movement stayed under this (px) */
+const DRAG_CLICK_SLOP_PX = 10;
+
 export function CoverFlow({
   items,
   itemWidth = 400,
@@ -355,6 +358,16 @@ export function CoverFlow({
   }, [activeIndex]);
 
   const suppressClickUntilRef = useRef(0);
+  /** Parent drag doesn't cancel child clicks — track real pans ourselves */
+  const gestureDraggedRef = useRef(false);
+
+  const isCoverAtRest = useCallback(() => {
+    if (isDraggingRef.current) return false;
+    if (gestureDraggedRef.current) return false;
+    if (Date.now() < suppressClickUntilRef.current) return false;
+    const visual = prefersReducedMotion ? scrollX.get() : springX.get();
+    return Math.abs(visual - activeIndexRef.current) < 0.08;
+  }, [prefersReducedMotion, scrollX, springX]);
 
   const jumpToIndex = useCallback(
     (index: number, velocity = 0, direction?: Direction) => {
@@ -502,21 +515,22 @@ export function CoverFlow({
 
   const handleCardClick = useCallback(
     (item: CoverFlowItem, index: number) => {
-      // Ignore the click that browsers fire after a drag release
-      if (Date.now() < suppressClickUntilRef.current) return;
+      // Child onClick still fires after parent drag — only accept taps when settled
+      if (!isCoverAtRest()) return;
       if (index === activeIndexRef.current) {
         onItemClickRef.current?.(item, index);
       } else if (enableClickToSnapRef.current) {
         jumpToIndex(index);
       }
     },
-    [jumpToIndex]
+    [jumpToIndex, isCoverAtRest]
   );
 
+  const onPointerDownGesture = useCallback(() => {
+    gestureDraggedRef.current = false;
+  }, []);
+
   const onDragStart = useCallback(() => {
-    // Suppress before dragEnd — click can fire between pointerup handlers and would
-    // open the playlist, then onUserIndexChange immediately closes it (shrink → grow).
-    suppressClickUntilRef.current = Date.now() + 500;
     setIsDragging(true);
   }, []);
 
@@ -525,6 +539,9 @@ export function CoverFlow({
 
   const onDrag = useCallback(
     (_: unknown, info: PanInfo) => {
+      if (Math.abs(info.offset.x) > DRAG_CLICK_SLOP_PX) {
+        gestureDraggedRef.current = true;
+      }
       const scale = Math.max(interactionScaleRef.current, 0.001);
       const gap = Math.max(effectiveCenterGap, 1);
       const next = scrollX.get() - info.delta.x / (gap * 0.8 * scale);
@@ -538,8 +555,13 @@ export function CoverFlow({
   const onDragEnd = useCallback(
     (_: unknown, info: PanInfo) => {
       setIsDragging(false);
-      // Keep suppressing through the click that browsers fire after pointerup
-      suppressClickUntilRef.current = Date.now() + 400;
+      const wasDrag =
+        Math.abs(info.offset.x) > DRAG_CLICK_SLOP_PX || Math.abs(info.velocity.x) > 50;
+      if (wasDrag) {
+        gestureDraggedRef.current = true;
+        // Suppress the browser click after pointerup until the spring settles
+        suppressClickUntilRef.current = Date.now() + 500;
+      }
       const scale = Math.max(interactionScaleRef.current, 0.001);
       const projected = scrollX.get() - info.velocity.x * 0.002 / scale;
       const clamped = clampIndex(Math.round(projected), itemsLengthRef.current);
@@ -642,11 +664,13 @@ export function CoverFlow({
         aria-label="Cover Flow"
         tabIndex={enableClickToSnap || enableScroll ? 0 : -1}
         onKeyDown={onKeyDown}
+        onPointerDown={onPointerDownGesture}
         // While flipped, keep drag off so tracklist scrolling / controls aren't stolen
         drag={!isFlipped && (enableClickToSnap || enableScroll) ? 'x' : false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0}
         dragMomentum={false}
+        dragDirectionLock
         onDragStart={!isFlipped && (enableClickToSnap || enableScroll) ? onDragStart : undefined}
         onDrag={!isFlipped && (enableClickToSnap || enableScroll) ? onDrag : undefined}
         onDragEnd={!isFlipped && (enableClickToSnap || enableScroll) ? onDragEnd : undefined}
