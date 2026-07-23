@@ -724,15 +724,20 @@ export const useCanvasCamera = ({
   );
 
   const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
+    (e: TouchEvent | React.TouchEvent) => {
       // Don't cancel native scrolling while the focus layer is open
       if (focusedIdRef.current) return;
+      // React's onTouchMove is passive — only the native { passive: false } listener
+      // can cancel. Guard so a stray passive call never warns.
+      const cancelScroll = () => {
+        if (e.cancelable) e.preventDefault();
+      };
       if (isIntroPlayingRef.current) {
-        e.preventDefault();
+        cancelScroll();
         return;
       }
 
-      e.preventDefault();
+      cancelScroll();
       if (e.touches.length === 2) {
         isPinching.current = true;
         isDragging.current = false;

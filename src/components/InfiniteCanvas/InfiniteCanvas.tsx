@@ -531,7 +531,6 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
       data-focused={isFocused && !isFocusReturning ? 'true' : undefined}
       onMouseDown={isInteractionLocked ? undefined : camera.handleMouseDown}
       onTouchStart={isInteractionLocked ? undefined : camera.handleTouchStart}
-      onTouchMove={isInteractionLocked ? undefined : camera.handleTouchMove}
       onTouchEnd={isInteractionLocked ? undefined : camera.handleTouchEnd}
       onTouchCancel={isInteractionLocked ? undefined : camera.handleTouchEnd}
       style={{ pointerEvents: intro.isClusterHold ? 'none' : undefined }}
