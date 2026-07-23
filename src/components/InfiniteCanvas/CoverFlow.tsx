@@ -176,7 +176,25 @@ export interface CoverFlowProps {
   className?: string;
   onItemClick?: (item: CoverFlowItem, index: number) => void;
   onIndexChange?: (index: number) => void;
+  /**
+   * Fired only for user-driven snaps (click, drag, wheel, arrows) — not external
+   * `initialIndex` sync. Use to unflip Cover Flow without fighting album-nav sync.
+   */
+  onUserIndexChange?: (index: number) => void;
   renderImage?: (props: RenderImageProps) => ReactNode;
+  /**
+   * Desktop Y-flip: when true, the active cover rotates to show its blank back face.
+   * Fan rotateY stays on the outer card; flip is nested inside.
+   */
+  flipped?: boolean;
+  /** Enable visual flip+grow on the active cover (playlist renders outside Cover Flow). */
+  enableFlip?: boolean;
+  /** Height multiplier for the flipped card relative to cover height (default 1.55). */
+  flipHeightRatio?: number;
+  /** Width multiplier for the flipped card relative to cover width (default 1). */
+  flipWidthRatio?: number;
+  /** Active (center) card DOM node — used to position the external playlist overlay. */
+  onActiveCardNode?: (node: HTMLElement | null) => void;
 }
 
 const defaultRenderImage = (props: RenderImageProps) => (
@@ -217,7 +235,13 @@ export function CoverFlow({
   className,
   onItemClick,
   onIndexChange,
-  renderImage
+  onUserIndexChange,
+  renderImage,
+  flipped = false,
+  enableFlip = false,
+  flipHeightRatio = 1.55,
+  flipWidthRatio = 1,
+  onActiveCardNode
 }: CoverFlowProps) {
   const safeInitial = clampIndex(initialIndex, items.length);
   const [activeIndex, setActiveIndex] = useState(safeInitial);
@@ -291,8 +315,11 @@ export function CoverFlow({
   const onItemClickRef = useRef(onItemClick);
   const enableClickToSnapRef = useRef(enableClickToSnap);
   const onIndexChangeRef = useRef(onIndexChange);
+  const onUserIndexChangeRef = useRef(onUserIndexChange);
+  const onActiveCardNodeRef = useRef(onActiveCardNode);
   const isMountedForCallbackRef = useRef(false);
   const isDraggingRef = useRef(false);
+  const flippedRef = useRef(flipped);
 
   activeIndexRef.current = activeIndex;
   enableScrollRef.current = enableScroll;
@@ -300,7 +327,10 @@ export function CoverFlow({
   onItemClickRef.current = onItemClick;
   enableClickToSnapRef.current = enableClickToSnap;
   onIndexChangeRef.current = onIndexChange;
+  onUserIndexChangeRef.current = onUserIndexChange;
+  onActiveCardNodeRef.current = onActiveCardNode;
   isDraggingRef.current = isDragging;
+  flippedRef.current = flipped;
 
   const prefersReducedMotion = useReducedMotion();
   const scrollX = useMotionValue(safeInitial);
@@ -324,15 +354,20 @@ export function CoverFlow({
     onIndexChangeRef.current?.(activeIndex);
   }, [activeIndex]);
 
+  const suppressClickUntilRef = useRef(0);
+
   const jumpToIndex = useCallback(
     (index: number, velocity = 0, direction?: Direction) => {
       const clamped = clampIndex(index, items.length);
       const prev = activeIndexRef.current;
       if (clamped === prev) return;
       const dir: Direction = direction ?? (clamped > prev ? 'right' : 'left');
+      // Browsing must not synthesize a center-cover click (opens playlist / autoplay)
+      suppressClickUntilRef.current = Date.now() + 320;
       setActiveIndex(clamped);
       scrollX.set(clamped);
       tick(dir, velocity);
+      onUserIndexChangeRef.current?.(clamped);
     },
     [items.length, scrollX, tick]
   );
@@ -436,6 +471,7 @@ export function CoverFlow({
 
     const handleWheel = (e: WheelEvent) => {
       if (!enableScrollRef.current) return;
+      if (flippedRef.current) return;
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
       e.preventDefault();
 
@@ -466,6 +502,8 @@ export function CoverFlow({
 
   const handleCardClick = useCallback(
     (item: CoverFlowItem, index: number) => {
+      // Ignore the click that browsers fire after a drag release
+      if (Date.now() < suppressClickUntilRef.current) return;
       if (index === activeIndexRef.current) {
         onItemClickRef.current?.(item, index);
       } else if (enableClickToSnapRef.current) {
@@ -475,7 +513,12 @@ export function CoverFlow({
     [jumpToIndex]
   );
 
-  const onDragStart = useCallback(() => setIsDragging(true), []);
+  const onDragStart = useCallback(() => {
+    // Suppress before dragEnd — click can fire between pointerup handlers and would
+    // open the playlist, then onUserIndexChange immediately closes it (shrink → grow).
+    suppressClickUntilRef.current = Date.now() + 500;
+    setIsDragging(true);
+  }, []);
 
   const interactionScaleRef = useRef(interactionScale);
   interactionScaleRef.current = interactionScale;
@@ -495,6 +538,8 @@ export function CoverFlow({
   const onDragEnd = useCallback(
     (_: unknown, info: PanInfo) => {
       setIsDragging(false);
+      // Keep suppressing through the click that browsers fire after pointerup
+      suppressClickUntilRef.current = Date.now() + 400;
       const scale = Math.max(interactionScaleRef.current, 0.001);
       const projected = scrollX.get() - info.velocity.x * 0.002 / scale;
       const clamped = clampIndex(Math.round(projected), itemsLengthRef.current);
@@ -502,13 +547,22 @@ export function CoverFlow({
       const dir: Direction = clamped >= prev ? 'right' : 'left';
       setActiveIndex(clamped);
       scrollX.set(clamped);
-      if (clamped !== prev) tick(dir, Math.abs(info.velocity.x));
+      if (clamped !== prev) {
+        tick(dir, Math.abs(info.velocity.x));
+        onUserIndexChangeRef.current?.(clamped);
+      }
     },
     [scrollX, tick]
   );
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      if (flippedRef.current && e.key === 'Escape') {
+        e.preventDefault();
+        onItemClickRef.current?.(items[activeIndexRef.current]!, activeIndexRef.current);
+        return;
+      }
+      if (flippedRef.current) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         jumpToIndex(activeIndexRef.current - 1, 120, 'left');
@@ -518,19 +572,26 @@ export function CoverFlow({
         jumpToIndex(activeIndexRef.current + 1, 120, 'right');
       }
     },
-    [jumpToIndex]
+    [jumpToIndex, items]
   );
 
   if (items.length === 0) return null;
 
   const safeActiveIndex = clampIndex(activeIndex, items.length);
+  const canFlip = enableFlip && !isMobile;
+  const isFlipped = canFlip && flipped;
   const rootClass = [
     styles.coverFlow,
     isDragging ? styles.isDragging : styles.isIdle,
+    isFlipped ? styles.isFlipped : '',
     className ?? ''
   ]
     .filter(Boolean)
     .join(' ');
+
+  const handleActiveCardNode = useCallback((node: HTMLElement | null) => {
+    onActiveCardNodeRef.current?.(node);
+  }, []);
 
   return (
     <>
@@ -581,13 +642,14 @@ export function CoverFlow({
         aria-label="Cover Flow"
         tabIndex={enableClickToSnap || enableScroll ? 0 : -1}
         onKeyDown={onKeyDown}
-        drag={enableClickToSnap || enableScroll ? 'x' : false}
+        // While flipped, keep drag off so tracklist scrolling / controls aren't stolen
+        drag={!isFlipped && (enableClickToSnap || enableScroll) ? 'x' : false}
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0}
         dragMomentum={false}
-        onDragStart={enableClickToSnap || enableScroll ? onDragStart : undefined}
-        onDrag={enableClickToSnap || enableScroll ? onDrag : undefined}
-        onDragEnd={enableClickToSnap || enableScroll ? onDragEnd : undefined}
+        onDragStart={!isFlipped && (enableClickToSnap || enableScroll) ? onDragStart : undefined}
+        onDrag={!isFlipped && (enableClickToSnap || enableScroll) ? onDrag : undefined}
+        onDragEnd={!isFlipped && (enableClickToSnap || enableScroll) ? onDragEnd : undefined}
       >
         <div className={styles.stage} style={{ transformStyle: 'preserve-3d' }}>
           {hasMeasuredSize
@@ -611,6 +673,11 @@ export function CoverFlow({
                   reduceMotion={prefersReducedMotion ?? false}
                   renderImage={renderImage}
                   onCardClick={handleCardClick}
+                  flipped={isFlipped && index === safeActiveIndex}
+                  enableFlip={canFlip}
+                  flipHeightRatio={flipHeightRatio}
+                  flipWidthRatio={flipWidthRatio}
+                  onActiveCardNode={index === safeActiveIndex ? handleActiveCardNode : undefined}
                 />
               ))
             : null}
@@ -658,7 +725,29 @@ interface CardProps {
   reduceMotion: boolean;
   renderImage?: (props: RenderImageProps) => ReactNode;
   onCardClick: (item: CoverFlowItem, index: number) => void;
+  flipped: boolean;
+  enableFlip: boolean;
+  flipHeightRatio: number;
+  flipWidthRatio: number;
+  onActiveCardNode?: (node: HTMLElement | null) => void;
 }
+
+const FLIP_INSTANT = { duration: 0 };
+/** Cover rotates to edge-on; overlay continues from there. */
+const FLIP_HALF_S = 0.28;
+const FLIP_HANDOFF_S = 0.22;
+const FLIP_OPEN_ROTATE = {
+  duration: FLIP_HALF_S,
+  ease: [0.4, 0, 0.2, 1] as const,
+  delay: 0
+};
+const FLIP_CLOSE_ROTATE = {
+  duration: FLIP_HALF_S,
+  ease: [0.4, 0, 0.2, 1] as const,
+  delay: 0.02
+};
+const FLIP_OPEN_FADE = { duration: 0.1, delay: FLIP_HANDOFF_S, ease: 'easeOut' as const };
+const FLIP_CLOSE_FADE = { duration: 0.14, delay: 0.02, ease: 'easeOut' as const };
 
 const CoverFlowItemCard = memo(function CoverFlowItemCard({
   item,
@@ -675,11 +764,18 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
   showReflection,
   reflectionFilterId,
   enableClickToSnap,
-  reduceMotion: _reduceMotion,
+  reduceMotion,
   renderImage,
-  onCardClick
+  onCardClick,
+  flipped,
+  enableFlip,
+  flipHeightRatio: _flipHeightRatio,
+  flipWidthRatio: _flipWidthRatio,
+  onActiveCardNode
 }: CardProps) {
-  const rotateY = useTransform(scrollX, (value) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const fanRotateY = useTransform(scrollX, (value) => {
     // Keep the 3D fan even when motion is reduced — only springs/auto-advance pause
     const pos = index - value;
     const absPos = Math.abs(pos);
@@ -707,13 +803,25 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
     (value) => `brightness(${Math.abs(index - value) < 0.5 ? 1 : 0.5})`
   );
 
+  useEffect(() => {
+    if (!onActiveCardNode) return;
+    onActiveCardNode(cardRef.current);
+    return () => onActiveCardNode(null);
+  }, [onActiveCardNode, isActive, width, height]);
+
   const imageRenderer = renderImage ?? defaultRenderImage;
   const cursorClass =
     isActive || enableClickToSnap ? styles.cursorPointer : styles.cursorGrab;
 
+  // Open: rotate to edge-on then hand off to overlay. Close: reverse from edge-on after overlay hands back.
+  // Stable transition refs — new objects each render can re-trigger Motion and pulse the cover.
+  const rotateTransition = reduceMotion ? FLIP_INSTANT : flipped ? FLIP_OPEN_ROTATE : FLIP_CLOSE_ROTATE;
+  const fadeTransition = reduceMotion ? FLIP_INSTANT : flipped ? FLIP_OPEN_FADE : FLIP_CLOSE_FADE;
+
   return (
     <motion.div
-      className={`${styles.card} ${cursorClass}`}
+      ref={cardRef}
+      className={`${styles.card} ${cursorClass}${flipped ? ` ${styles.cardFlipped}` : ''}`}
       style={{
         width,
         height,
@@ -721,32 +829,47 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
         marginLeft: -width / 2,
         x,
         z,
-        rotateY,
+        rotateY: fanRotateY,
         zIndex,
-        filter: filterStyle,
+        filter: flipped ? 'brightness(1)' : filterStyle,
         pointerEvents: 'auto'
       }}
+      initial={false}
+      animate={{ opacity: flipped ? 0 : 1 }}
+      transition={fadeTransition}
       onClick={() => onCardClick(item, index)}
     >
-      <div className={styles.cardFace}>
-        <div className={styles.cardBorder} />
-        <div className={styles.cardImageWrap}>
-          {imageRenderer({
-            src: item.image,
-            alt: item.title,
-            width,
-            height,
-            className: styles.cardImage,
-            draggable: false,
-            sizes: `${width}px`,
-            priority: isActive,
-            loading: isActive ? 'eager' : 'lazy'
-          })}
-          <div className={styles.cardSheen} />
+      <motion.div
+        className={styles.flipper}
+        initial={false}
+        animate={{ rotateY: flipped ? 90 : 0 }}
+        transition={rotateTransition}
+        style={{ width: '100%', height: '100%' }}
+      >
+        <div className={`${styles.cardFace} ${styles.faceFront}`}>
+          <div className={styles.cardBorder} />
+          <div className={styles.cardImageWrap}>
+            {imageRenderer({
+              src: item.image,
+              alt: item.title,
+              width,
+              height,
+              className: styles.cardImage,
+              draggable: false,
+              sizes: `${width}px`,
+              priority: isActive,
+              loading: isActive ? 'eager' : 'lazy'
+            })}
+            <div className={styles.cardSheen} />
+          </div>
         </div>
-      </div>
 
-      {showReflection ? (
+        {enableFlip ? (
+          <div className={`${styles.cardFace} ${styles.faceBack}`} aria-hidden />
+        ) : null}
+      </motion.div>
+
+      {showReflection && !flipped ? (
         <div
           aria-hidden="true"
           className={styles.reflection}

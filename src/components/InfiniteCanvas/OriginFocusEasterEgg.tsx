@@ -2,7 +2,17 @@
 
 import styles from './VinylListening.module.scss';
 
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from 'react';
+import { createPortal } from 'react-dom';
 
 import cx from 'classnames';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -10,11 +20,23 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { CoverFlow } from './CoverFlow';
 import { CustomCard } from './CustomCard';
 import {
+  clearListeningFlipOverlayRect,
+  getListeningCoverFlipped,
   getListeningCoverIndex,
+  getListeningFlipOverlayRect,
+  getListeningPlaylistClosing,
   getListeningVinylPlaying,
+  type ListeningFlipOverlayRect,
+  requestListeningPlaylistClose,
+  setListeningCoverFlipped,
   setListeningCoverIndex,
+  setListeningFlipOverlayRect,
+  setListeningPlaylistClosing,
   setListeningVinylPlaying,
+  subscribeListeningCoverFlipped,
   subscribeListeningCoverIndex,
+  subscribeListeningFlipOverlayRect,
+  subscribeListeningPlaylistClose,
   subscribeListeningVinylPlaying
 } from './listeningCoverFlowState';
 import {
@@ -52,6 +74,35 @@ const COVER_FLOW_LAYOUT = {
   mobileFitRatio: 0.35
 } as const;
 
+/** Match Cover Flow grow ratios so the overlay sits on the same grown card. */
+const FLIP_WIDTH_RATIO = 1.45;
+const FLIP_HEIGHT_RATIO = 2.25;
+/** Full player needs a roomier panel than the square cover alone. */
+const OVERLAY_MIN_WIDTH = 360;
+const OVERLAY_MIN_HEIGHT = 580;
+
+const computeFlipOverlayRect = (el: HTMLElement): ListeningFlipOverlayRect => {
+  const r = el.getBoundingClientRect();
+  const from = { top: r.top, left: r.left, width: r.width, height: r.height };
+  const width = Math.min(
+    Math.max(r.width * FLIP_WIDTH_RATIO, OVERLAY_MIN_WIDTH),
+    window.innerWidth - 32
+  );
+  const height = Math.min(
+    Math.max(r.height * FLIP_HEIGHT_RATIO, OVERLAY_MIN_HEIGHT),
+    window.innerHeight - 32
+  );
+  const left = Math.min(
+    Math.max(r.left + r.width / 2 - width / 2, 16),
+    window.innerWidth - width - 16
+  );
+  const top = Math.min(
+    Math.max(r.top + r.height / 2 - height / 2, 16),
+    window.innerHeight - height - 16
+  );
+  return { from, to: { left, top, width, height } };
+};
+
 /** Dwell between auto-advances on the grid face (ms). */
 const COVER_FLOW_AUTO_ADVANCE_MS = 16000;
 
@@ -65,6 +116,28 @@ const useListeningVinylPlaying = () => {
   const [playing, setPlaying] = useState(getListeningVinylPlaying);
   useEffect(() => subscribeListeningVinylPlaying(setPlaying), []);
   return playing;
+};
+
+const useListeningCoverFlipped = () => {
+  const [flipped, setFlipped] = useState(getListeningCoverFlipped);
+  useEffect(() => subscribeListeningCoverFlipped(setFlipped), []);
+  return flipped;
+};
+
+const useIsCoverFlowMobile = () => {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(max-width: 480px), (pointer: coarse)').matches;
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mql = window.matchMedia('(max-width: 480px), (pointer: coarse)');
+    const apply = () => setIsMobile(mql.matches);
+    apply();
+    mql.addEventListener?.('change', apply);
+    return () => mql.removeEventListener?.('change', apply);
+  }, []);
+  return isMobile;
 };
 
 /** Metadata for the listening custom card (focus morph uses featured album art) */
@@ -114,7 +187,71 @@ export const ListeningCardFace = ({ onActivate, inFocus }: CustomCardRenderProps
 /** Focus hero — fills the morph card; same fitRatio as grid (no CSS scale — that flattens 3D) */
 export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
   const coverIndex = useListeningCoverIndex();
+  const flipped = useListeningCoverFlipped();
+  const isMobile = useIsCoverFlowMobile();
   const active = COVER_FLOW_ITEMS[coverIndex] ?? COVER_FLOW_ITEMS[0];
+  const activeCardNodeRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // Reset flip when leaving focus (banner unmounts)
+    return () => {
+      setListeningCoverFlipped(false);
+      setListeningPlaylistClosing(false);
+      clearListeningFlipOverlayRect();
+    };
+  }, []);
+
+  const handleActiveCardNode = useCallback((node: HTMLElement | null) => {
+    activeCardNodeRef.current = node;
+  }, []);
+
+  const publishOverlayRect = useCallback(() => {
+    if (getListeningPlaylistClosing()) return;
+    const el = activeCardNodeRef.current;
+    if (!el) return;
+    setListeningFlipOverlayRect(computeFlipOverlayRect(el));
+  }, []);
+
+  // Keep the floating playlist aligned when the window (or page scroll) moves —
+  // ignore scrolls inside the playlist itself (tracklist) so we don't churn rect state.
+  useEffect(() => {
+    if (!flipped || isMobile) return;
+    publishOverlayRect();
+    const onResize = () => publishOverlayRect();
+    const onScroll = (e: Event) => {
+      const target = e.target;
+      if (target instanceof Element && target.closest('[data-listening-playlist-overlay]')) return;
+      publishOverlayRect();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
+    };
+  }, [flipped, isMobile, publishOverlayRect]);
+
+  // Ignore album-nav close requests that arrive in the same gesture as opening
+  // (drag click can open, then onUserIndexChange closes → cover shrink/grow flash)
+  const ignoreCloseUntilRef = useRef(0);
+  const handleItemClick = useCallback(() => {
+    if (isMobile) return;
+    if (getListeningCoverFlipped()) {
+      requestListeningPlaylistClose();
+      return;
+    }
+    const el = activeCardNodeRef.current;
+    // Never flip without a measurable cover — that starts audio with no playlist UI
+    if (!el) return;
+    ignoreCloseUntilRef.current = Date.now() + 450;
+    setListeningFlipOverlayRect(computeFlipOverlayRect(el));
+    setListeningCoverFlipped(true);
+  }, [isMobile]);
+
+  const handleUserIndexChange = useCallback(() => {
+    if (Date.now() < ignoreCloseUntilRef.current) return;
+    requestListeningPlaylistClose();
+  }, []);
 
   return (
     <div className={styles.coverFlowBannerSlot}>
@@ -128,8 +265,13 @@ export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
         enableScroll
         showCaption={false}
         className={styles.coverFlowEmbedded}
+        enableFlip={!isMobile}
+        flipped={flipped && !isMobile}
+        onItemClick={handleItemClick}
+        onUserIndexChange={handleUserIndexChange}
+        onActiveCardNode={handleActiveCardNode}
       />
-      {active ? (
+      {active && !(flipped && !isMobile) ? (
         <div className={styles.coverFlowBannerCaption}>
           <p className={styles.coverFlowBannerTitle}>{active.title}</p>
           {active.subtitle ? <p className={styles.coverFlowBannerSubtitle}>{active.subtitle}</p> : null}
@@ -139,14 +281,241 @@ export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
   );
 };
 
+type VinylPlayerBodyProps = {
+  album: NowListeningAlbum;
+  track: NowListeningTrack;
+  playing: boolean;
+  needsGesture: boolean;
+  reduceMotion: boolean | null;
+  compact?: boolean;
+  /** Full player chrome inside the fixed Cover Flow overlay */
+  overlay?: boolean;
+  onPlayClick: () => void;
+  onAlbumStep: (delta: -1 | 1) => void;
+  onTrackSelect: (track: NowListeningTrack) => void;
+  onInteractPointerDown?: (e: ReactPointerEvent | ReactMouseEvent) => void;
+};
+
+/** Shared player chrome — below-banner panel or Cover Flow overlay. */
+const VinylPlayerBody = ({
+  album,
+  track,
+  playing,
+  needsGesture,
+  reduceMotion,
+  compact = false,
+  overlay = false,
+  onPlayClick,
+  onAlbumStep,
+  onTrackSelect,
+  onInteractPointerDown
+}: VinylPlayerBodyProps) => {
+  const [hovered, setHovered] = useState(false);
+  const appleHref = track.trackViewUrl || album.albumViewUrl;
+  const trackLabel = `${album.artist} - ${track.title}`;
+  const albumTitleShort = album.title.replace(/ \(.*\)$/, '');
+  // Compact mode keeps the sleeve stacked; overlay uses the full vinyl pull like the below panel
+  const vinylOpen = compact ? false : playing || hovered;
+
+  const stop = onInteractPointerDown;
+
+  return (
+    <aside
+      className={cx(styles.lofiPlayer, {
+        [styles.lofiPlayerCompact]: compact,
+        [styles.lofiPlayerOverlay]: overlay
+      })}
+      onPointerDown={stop}
+    >
+      <div className={styles.lofiAccentWash} aria-hidden>
+        <AnimatePresence initial={false}>
+          <motion.div
+            key={album.collectionId}
+            className={styles.lofiAccentWashLayer}
+            style={
+              {
+                '--album-accent': album.accentColor,
+                '--album-accent-2': album.accentColorSecondary ?? album.accentColor,
+                ...(album.washStrength === 'soft'
+                  ? { '--wash-peak': '14%', '--wash-mid': '8%', '--wash-low': '4%' }
+                  : { '--wash-peak': '34%', '--wash-mid': '18%', '--wash-low': '8%' })
+              } as CSSProperties
+            }
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeInOut' }}
+          />
+        </AnimatePresence>
+      </div>
+
+      <div
+        className={styles.lofiStage}
+        data-open={vinylOpen ? 'true' : undefined}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <motion.div
+          className={styles.lofiRig}
+          initial={false}
+          animate={
+            // Playing: shift sleeve left so sleeve + pulled vinyl center as one unit
+            vinylOpen
+              ? { left: '50%', x: 'calc(-50% - 2.75rem)' }
+              : { left: '50%', x: '-50%' }
+          }
+          transition={{ type: 'spring', stiffness: 150, damping: 22 }}
+        >
+          <motion.div
+            className={styles.lofiVinyl}
+            initial={false}
+            animate={{ x: vinylOpen ? '62%' : '6%' }}
+            transition={{ type: 'spring', stiffness: 150, damping: 20 }}
+          >
+            <motion.div
+              className={styles.lofiVinylDisc}
+              animate={{ rotate: playing && !reduceMotion ? 360 : 0 }}
+              transition={
+                playing && !reduceMotion
+                  ? { duration: 4.5, ease: 'linear', repeat: Infinity }
+                  : { duration: 0.45, ease: 'easeOut' }
+              }
+            >
+              <AnimatePresence initial={false}>
+                <motion.img
+                  key={album.collectionId}
+                  className={styles.lofiVinylLabel}
+                  src={album.artworkUrl}
+                  alt=""
+                  draggable={false}
+                  decoding="async"
+                  aria-hidden
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
+                />
+              </AnimatePresence>
+              <div className={styles.lofiVinylHole} aria-hidden />
+            </motion.div>
+            <button
+              type="button"
+              className={styles.lofiPlay}
+              aria-label={playing ? 'Pause preview' : 'Play preview'}
+              onClick={onPlayClick}
+            >
+              {playing ? (
+                <span className={styles.lofiPauseIcon} aria-hidden />
+                ) : (
+                <span className={styles.lofiPlayIcon} aria-hidden />
+              )}
+            </button>
+          </motion.div>
+
+          <div className={styles.lofiSleeve}>
+            <AnimatePresence initial={false}>
+              <motion.img
+                key={album.collectionId}
+                className={styles.lofiSleeveImg}
+                src={album.artworkUrl}
+                alt={`${album.title} cover`}
+                draggable={false}
+                decoding="async"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
+              />
+            </AnimatePresence>
+            <div className={styles.lofiSleeveSheen} aria-hidden />
+          </div>
+        </motion.div>
+      </div>
+
+      <p className={styles.lofiTrack}>{trackLabel}</p>
+
+      {needsGesture ? (
+        <button type="button" className={styles.lofiGesture} onClick={onPlayClick}>
+          [TAP TO PLAY PREVIEW]
+        </button>
+      ) : null}
+
+      <nav className={styles.albumNav} aria-label="Albums">
+        <button
+          type="button"
+          className={styles.albumNavBtn}
+          aria-label="Previous album"
+          onClick={() => onAlbumStep(-1)}
+        >
+          ‹
+        </button>
+        <p className={styles.albumNavTitle}>
+          <AnimatePresence initial={false}>
+            <motion.span
+              key={album.collectionId}
+              className={styles.albumNavTitleText}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}
+            >
+              {albumTitleShort}
+            </motion.span>
+          </AnimatePresence>
+        </p>
+        <button type="button" className={styles.albumNavBtn} aria-label="Next album" onClick={() => onAlbumStep(1)}>
+          ›
+        </button>
+      </nav>
+
+      <ol className={styles.trackList} aria-label={`${album.title} tracklist`}>
+        {album.tracks.map((item) => {
+          const active = item.trackId === track.trackId;
+          return (
+            <li key={item.trackId}>
+              <button
+                type="button"
+                className={cx(styles.trackRow, { [styles.trackRowActive]: active })}
+                onClick={() => onTrackSelect(item)}
+                aria-current={active ? 'true' : undefined}
+              >
+                <span className={styles.trackNum}>{item.trackNumber}</span>
+                <span className={styles.trackName}>{item.title}</span>
+                {active && playing ? (
+                  <span className={styles.trackPlaying} aria-hidden>
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+
+      <a className={styles.appleLink} href={appleHref} target="_blank" rel="noopener noreferrer">
+        LISTEN ON APPLE MUSIC
+      </a>
+    </aside>
+  );
+};
+
 /**
  * Focus easter egg — album stack, tracklist, Apple previews.
+ * On desktop while Cover Flow is flipped, portals a fixed overlay over the grown cover.
  */
 export const VinylFocusPlayer = () => {
   const reduceMotion = useReducedMotion();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeRafRef = useRef<number | null>(null);
   const stopTimerRef = useRef<number | null>(null);
+  const flipped = useListeningCoverFlipped();
+  const isMobile = useIsCoverFlowMobile();
+  const [overlayRect, setOverlayRect] = useState(getListeningFlipOverlayRect);
+
+  useEffect(() => subscribeListeningFlipOverlayRect(setOverlayRect), []);
 
   const startAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
   const startTrack =
@@ -163,7 +532,6 @@ export const VinylFocusPlayer = () => {
   const [track, setTrack] = useState(startTrack);
   const [playing, setPlaying] = useState(false);
   const [needsGesture, setNeedsGesture] = useState(false);
-  const [hovered, setHovered] = useState(false);
 
   const clearFade = () => {
     if (fadeRafRef.current) {
@@ -182,8 +550,9 @@ export const VinylFocusPlayer = () => {
   const fadeTo = useCallback((audio: HTMLAudioElement, target: number, ms: number) => {
     return new Promise<void>((resolve) => {
       clearFade();
-      if (ms <= 0 || Math.abs(audio.volume - target) < 0.01) {
-        audio.volume = target;
+      const clampedTarget = Math.min(1, Math.max(0, target));
+      if (ms <= 0 || Math.abs(audio.volume - clampedTarget) < 0.01) {
+        audio.volume = clampedTarget;
         resolve();
         return;
       }
@@ -191,7 +560,7 @@ export const VinylFocusPlayer = () => {
       const from = audio.volume;
       const tick = (now: number) => {
         const t = Math.min(1, (now - start) / ms);
-        audio.volume = from + (target - from) * t;
+        audio.volume = Math.min(1, Math.max(0, from + (clampedTarget - from) * t));
         if (t < 1) {
           fadeRafRef.current = requestAnimationFrame(tick);
         } else {
@@ -275,8 +644,23 @@ export const VinylFocusPlayer = () => {
 
   playTrackRef.current = playTrack;
 
-  // Auto-start the album currently showing in Cover Flow
+  // Mobile: auto-start when focus opens. Desktop: only play while the playlist overlay is open.
   useEffect(() => {
+    if (!isMobile) {
+      return () => {
+        playGenRef.current += 1;
+        clearStopTimer();
+        clearFade();
+        setListeningVinylPlaying(false);
+        const audio = audioRef.current;
+        if (audio) {
+          audio.pause();
+          audio.src = '';
+        }
+        audioRef.current = null;
+      };
+    }
+
     const coverAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
     const coverTrack =
       coverAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (coverAlbum.tracks[0] ?? defaultTrack);
@@ -294,16 +678,51 @@ export const VinylFocusPlayer = () => {
       audioRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isMobile]);
 
-  // Cover Flow snap / drag → play that album (cover already on this index)
+  // Desktop: start preview once when the playlist opens — not on later overlayRect updates
+  // (resize / page scroll remeasures would otherwise restart track 1 while browsing the list)
+  const desktopStartedForOpenRef = useRef(false);
+  useEffect(() => {
+    if (isMobile || !flipped) {
+      desktopStartedForOpenRef.current = false;
+      return;
+    }
+    if (!overlayRect || desktopStartedForOpenRef.current) return;
+    desktopStartedForOpenRef.current = true;
+    const coverAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
+    const coverTrack =
+      coverAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (coverAlbum.tracks[0] ?? defaultTrack);
+    void playTrackRef.current(coverAlbum, coverTrack);
+  }, [flipped, isMobile, overlayRect]);
+
+  // Cover Flow snap / drag → sync selected album. Never start audio from browsing alone —
+  // only continue playback if something is already playing (e.g. mobile player / open overlay).
   useEffect(() => {
     return subscribeListeningCoverIndex((index) => {
       const next = library[index];
       if (!next || next.collectionId === albumRef.current.collectionId) return;
-      void playTrackRef.current(next, next.tracks[0]!);
+
+      // Desktop with closed overlay: selection only (playback starts when the playlist opens)
+      if (!isMobile && !getListeningCoverFlipped()) {
+        albumRef.current = next;
+        trackRef.current = next.tracks[0]!;
+        setAlbum(next);
+        setTrack(next.tracks[0]!);
+        return;
+      }
+
+      if (getListeningVinylPlaying()) {
+        void playTrackRef.current(next, next.tracks[0]!);
+        return;
+      }
+
+      albumRef.current = next;
+      trackRef.current = next.tracks[0]!;
+      setAlbum(next);
+      setTrack(next.tracks[0]!);
     });
-  }, []);
+  }, [isMobile]);
 
   const handleAlbumStep = (delta: -1 | 1) => {
     const currentIndex = library.findIndex((a) => a.collectionId === album.collectionId);
@@ -334,187 +753,238 @@ export const VinylFocusPlayer = () => {
     void playTrack(album, track);
   };
 
-  const appleHref = track.trackViewUrl || album.albumViewUrl;
-  const artistShort = album.artist;
-  // const trackLabel = `[${artistShort.toUpperCase()} - ${track.title.toUpperCase()}]`;
-  const trackLabel = `${artistShort} - ${track.title}`;
-  const albumTitleShort = album.title.replace(/ \(.*\)$/, '');
-  const vinylOpen = playing || hovered;
+  const stopOverlayBubble = useCallback((e: ReactPointerEvent | ReactMouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    playGenRef.current += 1;
+    clearStopTimer();
+    clearFade();
+    setPlaying(false);
+    setListeningVinylPlaying(false);
+    const audio = audioRef.current;
+    if (!audio) return;
+    void (async () => {
+      await fadeTo(audio, 0, FADE_MS);
+      audio.pause();
+    })();
+  }, [fadeTo]);
+
+  const [isClosing, setIsClosing] = useState(false);
+
+  const beginClose = useCallback(() => {
+    if (isClosing || !getListeningCoverFlipped()) return;
+    stopPlayback();
+    setListeningPlaylistClosing(true);
+    setIsClosing(true);
+  }, [isClosing, stopPlayback]);
+
+  useEffect(() => subscribeListeningPlaylistClose(() => beginClose()), [beginClose]);
+
+  const finishClose = useCallback(() => {
+    setListeningCoverFlipped(false);
+    clearListeningFlipOverlayRect();
+    setListeningPlaylistClosing(false);
+    setIsClosing(false);
+  }, []);
+
+  // Keep cover in the flipped (edge-on / hidden) pose until the overlay finishes closing
+  const showOverlay = !isMobile && overlayRect && (flipped || isClosing);
+
+  const body = (
+    <VinylPlayerBody
+      album={album}
+      track={track}
+      playing={playing}
+      needsGesture={needsGesture}
+      reduceMotion={reduceMotion}
+      overlay={Boolean(showOverlay)}
+      onPlayClick={handlePlayClick}
+      onAlbumStep={handleAlbumStep}
+      onTrackSelect={handleTrackSelect}
+      onInteractPointerDown={showOverlay ? stopOverlayBubble : undefined}
+    />
+  );
+
+  if (showOverlay && overlayRect) {
+    return (
+      <>
+        <div className={styles.lofiPlayerHidden} aria-hidden />
+        {createPortal(
+          <ListeningPlaylistOverlay
+            rect={overlayRect}
+            reduceMotion={reduceMotion}
+            closing={isClosing}
+            onClose={beginClose}
+            onCloseComplete={finishClose}
+          >
+            {body}
+          </ListeningPlaylistOverlay>,
+          document.body
+        )}
+      </>
+    );
+  }
+
+  // Desktop: no below-banner player — playlist only via Cover Flow flip overlay
+  if (!isMobile) {
+    return null;
+  }
+
+  return body;
+};
+
+type ListeningPlaylistOverlayProps = {
+  rect: ListeningFlipOverlayRect;
+  reduceMotion: boolean | null;
+  closing: boolean;
+  onClose: () => void;
+  onCloseComplete: () => void;
+  children: ReactNode;
+};
+
+const ListeningPlaylistOverlay = ({
+  rect,
+  reduceMotion,
+  closing,
+  onClose,
+  onCloseComplete,
+  children
+}: ListeningPlaylistOverlayProps) => {
+  const { from, to } = rect;
+  const closingRef = useRef(closing);
+  const finishedRef = useRef(false);
+  const [settled, setSettled] = useState(Boolean(reduceMotion));
+  closingRef.current = closing;
+
+  useEffect(() => {
+    if (closing) finishedRef.current = false;
+  }, [closing]);
+
+  useEffect(() => {
+    if (closing && reduceMotion) {
+      onCloseComplete();
+    }
+  }, [closing, reduceMotion, onCloseComplete]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const layoutEase = [0.33, 1, 0.68, 1] as const;
+  /** Match Cover Flow half-flip so the overlay continues from edge-on without a gap. */
+  const handoffS = 0.22;
 
   return (
-    <aside className={styles.lofiPlayer}>
-      <div className={styles.lofiAccentWash} aria-hidden>
-        <AnimatePresence initial={false}>
-          <motion.div
-            key={album.collectionId}
-            className={styles.lofiAccentWashLayer}
-            style={
-              {
-                '--album-accent': album.accentColor,
-                '--album-accent-2': album.accentColorSecondary ?? album.accentColor,
-                ...(album.washStrength === 'soft'
-                  ? { '--wash-peak': '14%', '--wash-mid': '8%', '--wash-low': '4%' }
-                  : { '--wash-peak': '34%', '--wash-mid': '18%', '--wash-low': '8%' })
-              } as CSSProperties
-            }
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.45, ease: 'easeInOut' }}
-          />
-        </AnimatePresence>
-      </div>
-
-      {/*<p className={styles.lofiEyebrow}>[CURRENTLY ON REPEAT]</p>*/}
-
-      <div
-        className={styles.lofiStage}
-        data-open={vinylOpen ? 'true' : undefined}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        <motion.div
-          className={styles.lofiRig}
-          initial={false}
-          animate={
-            // Playing: shift sleeve left so sleeve + pulled vinyl center as one unit
-            vinylOpen ? { left: '50%', x: 'calc(-50% - 2.75rem)' } : { left: '50%', x: '-50%' }
-          }
-          transition={{ type: 'spring', stiffness: 150, damping: 22 }}
-        >
-          <motion.div
-            className={styles.lofiVinyl}
-            initial={false}
-            animate={{ x: vinylOpen ? '62%' : '6%' }}
-            transition={{ type: 'spring', stiffness: 150, damping: 20 }}
-          >
-            <motion.div
-              className={styles.lofiVinylDisc}
-              animate={{ rotate: playing && !reduceMotion ? 360 : 0 }}
-              transition={
-                playing && !reduceMotion
-                  ? { duration: 4.5, ease: 'linear', repeat: Infinity }
-                  : { duration: 0.45, ease: 'easeOut' }
+    <>
+      <button
+        type="button"
+        className={styles.playlistOverlayBackdrop}
+        aria-label="Close tracklist"
+        onClick={onClose}
+        disabled={closing}
+      />
+      <motion.div
+        className={styles.playlistOverlay}
+        data-listening-playlist-overlay
+        initial={
+          reduceMotion
+            ? false
+            : {
+                top: from.top,
+                left: from.left,
+                width: from.width,
+                height: from.height,
+                rotateY: 90,
+                opacity: 0
               }
-            >
-              <AnimatePresence initial={false}>
-                <motion.img
-                  key={album.collectionId}
-                  className={styles.lofiVinylLabel}
-                  src={album.artworkUrl}
-                  alt=""
-                  draggable={false}
-                  decoding="async"
-                  aria-hidden
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
-                />
-              </AnimatePresence>
-              <div className={styles.lofiVinylHole} aria-hidden />
-            </motion.div>
-            <button
-              type="button"
-              className={styles.lofiPlay}
-              aria-label={playing ? 'Pause preview' : 'Play preview'}
-              onClick={handlePlayClick}
-            >
-              {playing ? (
-                <span className={styles.lofiPauseIcon} aria-hidden />
-              ) : (
-                <span className={styles.lofiPlayIcon} aria-hidden />
-              )}
-            </button>
-          </motion.div>
-
-          <div className={styles.lofiSleeve}>
-            <AnimatePresence initial={false}>
-              <motion.img
-                key={album.collectionId}
-                className={styles.lofiSleeveImg}
-                src={album.artworkUrl}
-                alt={`${album.title} cover`}
-                draggable={false}
-                decoding="async"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: reduceMotion ? 0 : 0.35, ease: 'easeInOut' }}
-              />
-            </AnimatePresence>
-            <div className={styles.lofiSleeveSheen} aria-hidden />
-          </div>
-        </motion.div>
-      </div>
-
-      <p className={styles.lofiTrack}>{trackLabel}</p>
-
-      {needsGesture ? (
-        <button type="button" className={styles.lofiGesture} onClick={handlePlayClick}>
-          [TAP TO PLAY PREVIEW]
-        </button>
-      ) : null}
-
-      <nav className={styles.albumNav} aria-label="Albums">
+        }
+        animate={
+          closing
+            ? {
+                top: from.top,
+                left: from.left,
+                width: from.width,
+                height: from.height,
+                rotateY: 90,
+                opacity: 0
+              }
+            : {
+                top: to.top,
+                left: to.left,
+                width: to.width,
+                height: to.height,
+                rotateY: 0,
+                opacity: 1
+              }
+        }
+        transition={
+          reduceMotion
+            ? { duration: 0 }
+            : closing
+              ? {
+                  // Reverse of open: shrink first, then flip to edge-on and hand back to the cover
+                  top: { duration: 0.38, ease: layoutEase },
+                  left: { duration: 0.38, ease: layoutEase },
+                  width: { duration: 0.38, ease: layoutEase },
+                  height: { duration: 0.38, ease: layoutEase },
+                  rotateY: { duration: 0.3, delay: 0.16, ease: [0.4, 0, 0.2, 1] },
+                  opacity: { duration: 0.08, delay: 0.4, ease: 'linear' }
+                }
+              : settled
+                ? {
+                    // Follow window resize / scroll without replaying the open flip
+                    top: { duration: 0.18, ease: 'easeOut' },
+                    left: { duration: 0.18, ease: 'easeOut' },
+                    width: { duration: 0.18, ease: 'easeOut' },
+                    height: { duration: 0.18, ease: 'easeOut' },
+                    rotateY: { duration: 0 },
+                    opacity: { duration: 0 }
+                  }
+                : {
+                    // Appear at the cover's edge-on moment, then finish the flip + grow as one move
+                    opacity: { duration: 0.06, delay: handoffS, ease: 'linear' },
+                    rotateY: { duration: 0.4, delay: handoffS, ease: [0.4, 0, 0.2, 1] },
+                    top: { duration: 0.5, delay: handoffS + 0.06, ease: layoutEase },
+                    left: { duration: 0.5, delay: handoffS + 0.06, ease: layoutEase },
+                    width: { duration: 0.5, delay: handoffS + 0.06, ease: layoutEase },
+                    height: { duration: 0.5, delay: handoffS + 0.06, ease: layoutEase }
+                  }
+        }
+        onAnimationComplete={() => {
+          if (closingRef.current) {
+            if (finishedRef.current) return;
+            finishedRef.current = true;
+            onCloseComplete();
+            return;
+          }
+          setSettled(true);
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Album tracklist"
+      >
         <button
           type="button"
-          className={styles.albumNavBtn}
-          aria-label="Previous album"
-          onClick={() => handleAlbumStep(-1)}
+          className={styles.playlistOverlayClose}
+          aria-label="Close playlist"
+          onClick={onClose}
+          disabled={closing}
         >
-          ‹
+          <span className={styles.playlistOverlayCloseIcon} aria-hidden />
         </button>
-        <p className={styles.albumNavTitle}>
-          <AnimatePresence initial={false}>
-            <motion.span
-              key={album.collectionId}
-              className={styles.albumNavTitleText}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: reduceMotion ? 0 : 0.28, ease: 'easeOut' }}
-            >
-              {albumTitleShort}
-            </motion.span>
-          </AnimatePresence>
-        </p>
-        <button type="button" className={styles.albumNavBtn} aria-label="Next album" onClick={() => handleAlbumStep(1)}>
-          ›
-        </button>
-      </nav>
-
-      <ol className={styles.trackList} aria-label={`${album.title} tracklist`}>
-        {album.tracks.map((item) => {
-          const active = item.trackId === track.trackId;
-          return (
-            <li key={item.trackId}>
-              <button
-                type="button"
-                className={cx(styles.trackRow, { [styles.trackRowActive]: active })}
-                onClick={() => handleTrackSelect(item)}
-                aria-current={active ? 'true' : undefined}
-              >
-                <span className={styles.trackNum}>{item.trackNumber}</span>
-                <span className={styles.trackName}>{item.title}</span>
-                {active && playing ? (
-                  <span className={styles.trackPlaying} aria-hidden>
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                ) : null}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
-      <a className={styles.appleLink} href={appleHref} target="_blank" rel="noopener noreferrer">
-        LISTEN ON APPLE MUSIC
-      </a>
-    </aside>
+        <div className={styles.playlistOverlayInner}>{children}</div>
+      </motion.div>
+    </>
   );
 };
 

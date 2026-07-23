@@ -53,6 +53,14 @@
   will-change: transform;
 }
 
+.cardFlipped {
+  z-index: 2000 !important;
+}
+
+.isFlipped {
+  overflow: visible;
+}
+
 .isDragging .card {
   cursor: grabbing !important;
 }
@@ -65,6 +73,14 @@
   cursor: grab;
 }
 
+.flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
 .cardFace {
   position: relative;
   width: 100%;
@@ -72,6 +88,23 @@
   //border-radius: 0.75rem;
   background: #000;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.faceFront {
+  position: absolute;
+  inset: 0;
+}
+
+.faceBack {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  border-radius: 0.65rem;
+  pointer-events: none;
 }
 
 .cardFaceReflect {

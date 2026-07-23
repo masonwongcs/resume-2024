@@ -86,6 +86,228 @@
   }
 }
 
+/* Fixed playlist overlay — portaled to document.body over the grown cover */
+.playlistOverlayBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 11999;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.playlistOverlay {
+  position: fixed;
+  z-index: 12000;
+  perspective: 1200px;
+  pointer-events: auto;
+  transform-style: preserve-3d;
+}
+
+.playlistOverlayClose {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 5;
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.88);
+    transform: scale(1.05);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(0, 0, 0, 0.35);
+    outline-offset: 2px;
+  }
+}
+
+.playlistOverlayCloseIcon {
+  position: relative;
+  width: 0.7rem;
+  height: 0.7rem;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 1.5px;
+    background: #fff;
+    border-radius: 1px;
+  }
+
+  &::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+  }
+
+  &::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+  }
+}
+
+.playlistOverlayInner {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.65rem;
+  background: #fff;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.lofiPlayerHidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Full below-banner design, fitted into the floating overlay card */
+.lofiPlayerOverlay {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  padding: 1.35rem 1rem 1.1rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+
+  .lofiStage {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .lofiTrack,
+  .lofiGesture,
+  .albumNav,
+  .appleLink {
+    flex: 0 0 auto;
+  }
+
+  .trackList {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
+.lofiPlayerCompact {
+  --sleeve-size: 4.75rem;
+
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0.75rem 0.85rem 0.65rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  gap: 0.4rem;
+  overflow: hidden;
+
+  .lofiStage {
+    flex: 0 0 auto;
+    width: min(100%, 9.5rem);
+    /* Tall enough for sleeve + a tucked vinyl peek, clipped so it can't cover copy below */
+    height: calc(var(--sleeve-size) + 0.35rem);
+    margin: 0.15rem auto 0;
+    overflow: hidden;
+  }
+
+  .lofiTrack {
+    flex: 0 0 auto;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    margin-top: 0.15rem;
+    padding: 0 0.35rem;
+  }
+
+  .lofiGesture {
+    flex: 0 0 auto;
+  }
+
+  .albumNav {
+    flex: 0 0 auto;
+    gap: 0.45rem;
+    padding: 0.15rem 0 0.05rem;
+  }
+
+  .albumNavBtn {
+    width: 1.55rem;
+    height: 1.55rem;
+    font-size: 1.2rem;
+  }
+
+  .albumNavTitle {
+    font-size: 0.68rem;
+    max-width: none;
+  }
+
+  .trackList {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    margin-top: 0.15rem;
+    border-top: 1px solid var(--lofi-line);
+  }
+
+  .trackRow {
+    padding: 0.4rem 0.25rem;
+    gap: 0.4rem;
+  }
+
+  .trackNum {
+    font-size: 0.6rem;
+  }
+
+  .trackName {
+    font-size: 0.7rem;
+  }
+
+  .appleLink {
+    flex: 0 0 auto;
+    font-size: 0.58rem;
+    margin-top: 0.15rem;
+  }
+
+  .lofiPlay {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .lofiPlayIcon {
+    border-width: 0.3rem 0 0.3rem 0.5rem;
+  }
+
+  .lofiPauseIcon {
+    width: 0.48rem;
+    height: 0.48rem;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)) 0 0 / 0.15rem 100% no-repeat,
+      linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)) 100% 0 / 0.15rem 100% no-repeat;
+  }
+}
+
 /* Soft album-color fade at the top — stays behind sleeve + tracklist */
 .lofiAccentWash {
   position: absolute;
