@@ -54,6 +54,29 @@ type UseCanvasCameraArgs = {
 
 const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
 
+/** Resistance past min/max while pinching — lower = stiffer wall (matches focus swipe rubberband) */
+const ZOOM_RUBBERBAND_FACTOR = 0.28;
+/** Cap how far past the limit the rubberband can stretch (as a fraction of the limit) */
+const ZOOM_RUBBERBAND_MAX_OVERSHOOT = 0.2;
+/** Lerp rate while settling back from a rubberband overshoot — lower = slower bounce */
+const ZOOM_SNAP_BACK_LERP = 0.08;
+
+/**
+ * iOS-style rubber-band for zoom: allow a little overshoot past min/max with
+ * diminishing returns, then snap back on release.
+ */
+const rubberbandZoom = (zoom: number, min: number, max: number) => {
+  if (zoom >= min && zoom <= max) return zoom;
+  if (zoom > max) {
+    const excess = zoom - max;
+    const banded = max + excess * ZOOM_RUBBERBAND_FACTOR;
+    return Math.min(banded, max * (1 + ZOOM_RUBBERBAND_MAX_OVERSHOOT));
+  }
+  const excess = min - zoom;
+  const banded = min - excess * ZOOM_RUBBERBAND_FACTOR;
+  return Math.max(banded, min * (1 - ZOOM_RUBBERBAND_MAX_OVERSHOOT));
+};
+
 export const useCanvasCamera = ({
   outerContainerRef,
   innerContainerRef,
@@ -104,8 +127,15 @@ export const useCanvasCamera = ({
   const lastCullCommitMsRef = useRef(0);
   const animationFrameRef = useRef<number>(null);
   const lastPosition = useRef({ x: 0, y: 0 });
-  const lastTouchDistance = useRef<number | null>(null);
   const lastPinchMidRef = useRef<Point | null>(null);
+  /** Finger distance at pinch start — scale is measured from this, not frame-to-frame */
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  /** Zoom at pinch start — paired with pinchStartDistanceRef for 1:1 tracking + rubberband */
+  const pinchStartZoomRef = useRef<number | null>(null);
+  /** Last pinch focal point in camera space — used to snap zoom back on release */
+  const lastPinchZoomPointRef = useRef<Point | null>(null);
+  /** True while easing zoom/offset back after a rubberband overshoot */
+  const zoomSnapBackRef = useRef(false);
   /** True only for touch drag — mouse drag keeps wheel lerp */
   const isTouchDrag = useRef(false);
   const dragDistanceRef = useRef(0);
@@ -326,11 +356,13 @@ export const useCanvasCamera = ({
         }
       }
 
-      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast + focus-home use lerpFactor
+      // Touch drag/pinch use touchLerpFactor; rubberband settle is slower; else lerpFactor
       const follow =
-        !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
-          ? touchLerpFactor
-          : lerpFactor;
+        zoomSnapBackRef.current
+          ? ZOOM_SNAP_BACK_LERP
+          : !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
+            ? touchLerpFactor
+            : lerpFactor;
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
       const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
       const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
@@ -351,6 +383,8 @@ export const useCanvasCamera = ({
 
         if (awayFromTarget) {
           cullSettledRef.current = false;
+        } else if (zoomSnapBackRef.current) {
+          zoomSnapBackRef.current = false;
         }
 
         const width = view.width || outerContainerRef.current?.clientWidth || 0;
@@ -361,6 +395,10 @@ export const useCanvasCamera = ({
             Math.abs(newX - targetOffsetRef.current.x) <= 0.01 &&
             Math.abs(newY - targetOffsetRef.current.y) <= 0.01 &&
             Math.abs(newZoom - targetZoomRef.current) <= 0.0001;
+
+          if (settled && zoomSnapBackRef.current) {
+            zoomSnapBackRef.current = false;
+          }
 
           // Touch: throttle cull so edges stay filled without remounting every frame.
           // Mouse/wheel: commit on every cell-window change.
@@ -377,7 +415,11 @@ export const useCanvasCamera = ({
             commitCullPose(newX, newY, newZoom, windowKey, settled);
           }
         }
-      } else if (!cullSettledRef.current) {
+      } else {
+        if (zoomSnapBackRef.current) {
+          zoomSnapBackRef.current = false;
+        }
+        if (!cullSettledRef.current) {
         // Snap cull state to final camera pose once motion stops
         const width = view.width || outerContainerRef.current?.clientWidth || 0;
         const height = view.height || outerContainerRef.current?.clientHeight || 0;
@@ -386,6 +428,7 @@ export const useCanvasCamera = ({
           commitCullPose(view.offsetX, view.offsetY, view.zoom, windowKey, true);
         } else {
           cullSettledRef.current = true;
+        }
         }
       }
     }
@@ -707,7 +750,10 @@ export const useCanvasCamera = ({
         touchInertiaEligibleRef.current = false;
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
-        lastTouchDistance.current = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+        pinchStartDistanceRef.current = distance;
+        pinchStartZoomRef.current = targetZoomRef.current;
+        zoomSnapBackRef.current = false;
         lastPinchMidRef.current = {
           x: (touch1.clientX + touch2.clientX) / 2,
           y: (touch1.clientY + touch2.clientY) / 2
@@ -715,12 +761,14 @@ export const useCanvasCamera = ({
       } else if (e.touches.length === 1) {
         isPinching.current = false;
         isTouchDrag.current = true;
-        lastTouchDistance.current = null;
+        pinchStartDistanceRef.current = null;
+        pinchStartZoomRef.current = null;
+        lastPinchZoomPointRef.current = null;
         lastPinchMidRef.current = null;
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     },
-    [handleStart, isDragging, isPinching, isCoastingRef, panVelocityRef, touchInertiaEligibleRef, viewRef]
+    [handleStart, isDragging, isPinching, isCoastingRef, panVelocityRef, touchInertiaEligibleRef, targetZoomRef, viewRef]
   );
 
   const handleTouchMove = useCallback(
@@ -761,10 +809,18 @@ export const useCanvasCamera = ({
           }
         }
 
-        // Distance-ratio zoom — tracks finger spread 1:1 (old 0.01*delta felt sluggish)
-        if (lastTouchDistance.current !== null && lastTouchDistance.current > 0) {
-          const scale = distance / lastTouchDistance.current;
-          const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * scale));
+        // Distance-ratio zoom from pinch start — tracks finger spread 1:1, with
+        // iOS-style rubberband past min/max (snaps back on release).
+        if (
+          pinchStartDistanceRef.current !== null &&
+          pinchStartDistanceRef.current > 0 &&
+          pinchStartZoomRef.current !== null
+        ) {
+          const scale = distance / pinchStartDistanceRef.current;
+          const proposed = pinchStartZoomRef.current * scale;
+          const newZoom = prefersReducedMotion
+            ? Math.max(minZoom, Math.min(maxZoom, proposed))
+            : rubberbandZoom(proposed, minZoom, maxZoom);
 
           if (newZoom !== targetZoomRef.current) {
             const rect = outerContainerRef.current?.getBoundingClientRect();
@@ -773,12 +829,12 @@ export const useCanvasCamera = ({
                 x: midX - rect.left - window.innerWidth / 2,
                 y: midY - rect.top - window.innerHeight / 2
               };
+              lastPinchZoomPointRef.current = zoomPoint;
               handleZoom(zoomPoint, newZoom);
             }
           }
         }
 
-        lastTouchDistance.current = distance;
         lastPinchMidRef.current = { x: midX, y: midY };
       } else if (e.touches.length === 1) {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
@@ -796,6 +852,7 @@ export const useCanvasCamera = ({
       targetZoomRef,
       minZoom,
       maxZoom,
+      prefersReducedMotion,
       outerContainerRef
     ]
   );
@@ -803,8 +860,25 @@ export const useCanvasCamera = ({
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
       if (e.touches.length < 2) {
+        // Bounce back to min/max if the pinch rubberbanded past the limit
+        const overshot =
+          targetZoomRef.current < minZoom - 0.0001 || targetZoomRef.current > maxZoom + 0.0001;
+        if (overshot && !prefersReducedMotion) {
+          const clamped = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current));
+          const zoomPoint = lastPinchZoomPointRef.current ?? { x: 0, y: 0 };
+          zoomSnapBackRef.current = true;
+          handleZoom(zoomPoint, clamped);
+        } else if (overshot) {
+          zoomSnapBackRef.current = false;
+          targetZoomRef.current = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current));
+        } else {
+          zoomSnapBackRef.current = false;
+        }
+
         isPinching.current = false;
-        lastTouchDistance.current = null;
+        pinchStartDistanceRef.current = null;
+        pinchStartZoomRef.current = null;
+        lastPinchZoomPointRef.current = null;
         lastPinchMidRef.current = null;
       }
       if (e.touches.length === 0) {
@@ -817,7 +891,7 @@ export const useCanvasCamera = ({
         handleStart(e.touches[0].clientX, e.touches[0].clientY);
       }
     },
-    [handleEnd, handleStart, isPinching]
+    [handleEnd, handleStart, handleZoom, isPinching, minZoom, maxZoom, prefersReducedMotion, targetZoomRef]
   );
 
   useEffect(() => {
