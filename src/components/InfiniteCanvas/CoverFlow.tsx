@@ -7,6 +7,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent,
@@ -224,19 +225,27 @@ export function CoverFlow({
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceId = useId().replace(/:/g, 'x');
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(max-width: 480px), (pointer: coarse)').matches;
+  });
   const [isSafari, setIsSafari] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
+  // Measure before paint so scale/perspective never flash at the scale=1 fallback
+  useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    const applyWidth = (width: number) => {
+      setContainerWidth((prev) => (Math.abs(prev - width) < 0.5 ? prev : width));
+    };
+    applyWidth(container.getBoundingClientRect().width);
     const ro = new ResizeObserver(([entry]) => {
       if (!entry) return;
-      setContainerWidth(entry.contentRect.width);
+      applyWidth(entry.contentRect.width);
     });
     ro.observe(container);
     return () => ro.disconnect();
@@ -258,15 +267,20 @@ export function CoverFlow({
   }, []);
 
   const activeFitRatio = isMobile && mobileFitRatio != null ? mobileFitRatio : fitRatio;
+  const hasMeasuredSize = containerWidth > 0;
   // No upper clamp: itemWidth/itemHeight are reference sizes, not resolution caps, so
   // larger containers (e.g. the focus banner) should scale up proportionally just like
   // the grid cell does, keeping the cover fan visually consistent across both contexts.
-  const scale =
-    containerWidth > 0 && itemWidth > 0 ? (containerWidth * activeFitRatio) / itemWidth : 1;
+  const scale = hasMeasuredSize && itemWidth > 0 ? (containerWidth * activeFitRatio) / itemWidth : 0;
   const effectiveWidth = Math.round(itemWidth * scale);
   const effectiveHeight = Math.round(itemHeight * scale);
   const effectiveStackSpacing = Math.round(stackSpacing * scale);
   const effectiveCenterGap = Math.round(centerGap * scale);
+  // Perspective + Z depth must scale with covers — fixed Z (-200/-400) reads as a
+  // zoom-in on the larger focus banner while the grid cell looks correct.
+  const effectivePerspective = Math.max(200, Math.round(1000 * scale));
+  const effectiveZFar = -200 * scale;
+  const effectiveZNear = -400 * scale;
 
   const reflectionFilterId =
     isMounted && enableReflection && !isMobile && !isSafari ? `${instanceId}-rf` : undefined;
@@ -558,7 +572,11 @@ export function CoverFlow({
       <motion.div
         ref={containerRef}
         className={rootClass}
-        style={{ perspective: 1000 }}
+        style={{
+          perspective: hasMeasuredSize ? effectivePerspective : undefined,
+          // Avoid one-frame wrong scale/perspective before measure (focus open / swipe remount)
+          opacity: hasMeasuredSize ? 1 : 0
+        }}
         role="region"
         aria-label="Cover Flow"
         tabIndex={enableClickToSnap || enableScroll ? 0 : -1}
@@ -572,26 +590,30 @@ export function CoverFlow({
         onDragEnd={enableClickToSnap || enableScroll ? onDragEnd : undefined}
       >
         <div className={styles.stage} style={{ transformStyle: 'preserve-3d' }}>
-          {items.map((item, index) => (
-            <CoverFlowItemCard
-              key={item.id}
-              item={item}
-              index={index}
-              scrollX={effectiveScrollX}
-              width={Math.max(effectiveWidth, 1)}
-              height={Math.max(effectiveHeight, 1)}
-              stackSpacing={effectiveStackSpacing}
-              centerGap={Math.max(effectiveCenterGap, 1)}
-              rotation={rotation}
-              isActive={index === safeActiveIndex}
-              showReflection={showReflection}
-              reflectionFilterId={reflectionFilterId}
-              enableClickToSnap={enableClickToSnap}
-              reduceMotion={prefersReducedMotion ?? false}
-              renderImage={renderImage}
-              onCardClick={handleCardClick}
-            />
-          ))}
+          {hasMeasuredSize
+            ? items.map((item, index) => (
+                <CoverFlowItemCard
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  scrollX={effectiveScrollX}
+                  width={Math.max(effectiveWidth, 1)}
+                  height={Math.max(effectiveHeight, 1)}
+                  stackSpacing={effectiveStackSpacing}
+                  centerGap={Math.max(effectiveCenterGap, 1)}
+                  zFar={effectiveZFar}
+                  zNear={effectiveZNear}
+                  rotation={rotation}
+                  isActive={index === safeActiveIndex}
+                  showReflection={showReflection}
+                  reflectionFilterId={reflectionFilterId}
+                  enableClickToSnap={enableClickToSnap}
+                  reduceMotion={prefersReducedMotion ?? false}
+                  renderImage={renderImage}
+                  onCardClick={handleCardClick}
+                />
+              ))
+            : null}
         </div>
 
         {showCaption ? (
@@ -626,6 +648,8 @@ interface CardProps {
   height: number;
   stackSpacing: number;
   centerGap: number;
+  zFar: number;
+  zNear: number;
   rotation: number;
   isActive: boolean;
   showReflection: boolean;
@@ -644,6 +668,8 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
   height,
   stackSpacing,
   centerGap,
+  zFar,
+  zNear,
   rotation,
   isActive,
   showReflection,
@@ -671,7 +697,7 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
 
   const z = useTransform(scrollX, (value) => {
     const absPos = Math.abs(index - value);
-    return absPos > 0.5 ? -200 : absPos * -400;
+    return absPos > 0.5 ? zFar : absPos * zNear;
   });
 
   const zIndex = useTransform(scrollX, (value) => 1000 - Math.abs(index - value) * 10);

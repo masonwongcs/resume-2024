@@ -21,7 +21,7 @@
   background: transparent;
   touch-action: pan-y;
   outline: none;
-  perspective: 1000px;
+  /* Perspective is set inline from CoverFlow so it scales with cover size */
   transform-style: preserve-3d;
   isolation: isolate;
 }
