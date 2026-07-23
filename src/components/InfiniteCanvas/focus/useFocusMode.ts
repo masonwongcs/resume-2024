@@ -7,7 +7,15 @@ import { animate, useMotionValue, useMotionValueEvent } from 'motion/react';
 
 import type { InfiniteCanvasViewState } from '../camera/canvasView';
 import { findHorizontalFocusNeighbor, getWorkKey, parseGridCoords } from '../grid/gridMath';
-import type { CustomCardConfig, FocusPhase, FocusSnapshot, GridItem, OriginCardConfig, Work } from '../types';
+import type {
+  CustomCardConfig,
+  FocusPhase,
+  FocusSnapshot,
+  FocusUrlIntent,
+  GridItem,
+  OriginCardConfig,
+  Work
+} from '../types';
 import { FOCUS_MOBILE_SIDE_PAD, computeFocusLayout, getLiveCellMetrics } from './focusLayout';
 import {
   FOCUS_COPY_SLIDE_TRANSITION,
@@ -61,6 +69,8 @@ type UseFocusModeArgs = {
   panVelocityRef: MutableRefObject<{ x: number; y: number }>;
   touchInertiaEligibleRef: MutableRefObject<boolean>;
   suppressClickRef: MutableRefObject<boolean>;
+  /** Fired on user-gesture open/peek/close — never for URL-driven `applyFocusForWork` calls */
+  onFocusIntent?: (intent: FocusUrlIntent) => void;
 };
 
 export const useFocusMode = ({
@@ -97,7 +107,8 @@ export const useFocusMode = ({
   isCoastingRef,
   panVelocityRef,
   touchInertiaEligibleRef,
-  suppressClickRef
+  suppressClickRef,
+  onFocusIntent
 }: UseFocusModeArgs) => {
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [focusedWork, setFocusedWork] = useState<Work | null>(null);
@@ -392,9 +403,11 @@ export const useFocusMode = ({
     setMorphCardHidden(false);
   }, [focusPhase, focusedIdRef, itemsRef]);
 
-  const requestClose = useCallback(() => {
+  const requestClose = useCallback((options?: { emitIntent?: boolean }) => {
     if (!focusedIdRef.current || !focusPhaseRef.current) return;
     if (focusPhaseRef.current === 'out' || focusPhaseRef.current === 'returning') return;
+
+    if (options?.emitIntent !== false) onFocusIntent?.({ type: 'close' });
 
     if (focusPhaseRef.current === 'settled') {
       // Prefer live card rect (handles scroll). Fall back to snapshot if the slide
@@ -461,6 +474,7 @@ export const useFocusMode = ({
     focusScrollNudgeY,
     getLiveFocusCardNode,
     beginFocusReturn,
+    onFocusIntent,
     focusedIdRef,
     focusPhaseRef,
     viewRef
@@ -536,22 +550,10 @@ export const useFocusMode = ({
     return () => clearTimeout(timeout);
   }, [focusPhase, clearFocus, focusPhaseRef]);
 
-  const handleItemClick = useCallback(
+  /** Shared open logic — used by both the user-gesture click handler and URL-driven apply. */
+  const openFocusCore = useCallback(
     (id: string, work: Work) => {
-      // Pan release synthesizes a click — ignore that one only
-      if (suppressClickRef.current) {
-        suppressClickRef.current = false;
-        return;
-      }
-      // Block while any focus phase is active (including return) — prevents jump-to-overlay
-      if (focusedIdRef.current || focusPhaseRef.current || isIntroPlayingRef.current) return;
-
       const stored = itemsRef.current.get(id);
-      if (stored?.isOriginCard && originCard?.focusable === false) return;
-      if (stored?.customCardId) {
-        const card = customCards?.find((c) => c.id === stored.customCardId);
-        if (card?.focusable === false) return;
-      }
 
       // Stop any fling before locking the camera for focus
       isCoastingRef.current = false;
@@ -559,10 +561,10 @@ export const useFocusMode = ({
       touchInertiaEligibleRef.current = false;
 
       const view = viewRef.current;
-      if (view.width <= 0 || view.height <= 0) return;
+      if (view.width <= 0 || view.height <= 0) return false;
 
       const coords = parseGridCoords(id);
-      if (!coords) return;
+      if (!coords) return false;
       const originX = coords.x * (cellWidth + gapSize) + (stored?.offsetX ?? 0);
       const originY = coords.y * (cellHeight + gapSize) + (stored?.offsetY ?? 0);
       const originCenterX = originX + cellWidth / 2;
@@ -598,6 +600,7 @@ export const useFocusMode = ({
       focusArriveTimeoutRef.current = setTimeout(() => {
         handleFocusArrive(id);
       }, FOCUS_MORPH_FALLBACK_MS);
+      return true;
     },
     [
       cellWidth,
@@ -607,19 +610,81 @@ export const useFocusMode = ({
       resetAllProximity,
       setCanvasFocused,
       handleFocusArrive,
-      originCard,
-      customCards,
-      suppressClickRef,
+      itemsRef,
       focusedIdRef,
       focusPhaseRef,
-      isIntroPlayingRef,
-      itemsRef,
       isCoastingRef,
       panVelocityRef,
       touchInertiaEligibleRef,
       isDragging,
       viewRef
     ]
+  );
+
+  const handleItemClick = useCallback(
+    (id: string, work: Work) => {
+      // Pan release synthesizes a click — ignore that one only
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      // Block while any focus phase is active (including return) — prevents jump-to-overlay
+      if (focusedIdRef.current || focusPhaseRef.current || isIntroPlayingRef.current) return;
+
+      const stored = itemsRef.current.get(id);
+      if (stored?.isOriginCard && originCard?.focusable === false) return;
+      if (stored?.customCardId) {
+        const card = customCards?.find((c) => c.id === stored.customCardId);
+        if (card?.focusable === false) return;
+      }
+
+      if (openFocusCore(id, work)) {
+        onFocusIntent?.({ type: 'open', work });
+      }
+    },
+    [
+      openFocusCore,
+      onFocusIntent,
+      originCard,
+      customCards,
+      suppressClickRef,
+      focusedIdRef,
+      focusPhaseRef,
+      isIntroPlayingRef,
+      itemsRef
+    ]
+  );
+
+  /**
+   * URL-driven apply (cold load / back-forward / manual URL edit) — finds or ensures a seat
+   * elsewhere (InfiniteCanvas) and opens it without emitting a gesture intent (KTD2, KTD7).
+   * Switching directly between two different works skips the return animation (discrete jump).
+   */
+  const applyFocusForWork = useCallback(
+    (targetId: string | null, work: Work | null) => {
+      if (!work || !targetId) {
+        if (focusedIdRef.current) requestClose({ emitIntent: false });
+        return;
+      }
+      if (isIntroPlayingRef.current) return;
+      if (focusedIdRef.current === targetId) return;
+      // Already focused on this work (possibly another grid seat) — don't clear+reopen.
+      // Arrow/peek nav owns the seat; URL sync must not yank to a different tile.
+      const currentWork = focusedIdRef.current
+        ? itemsRef.current.get(focusedIdRef.current)?.work
+        : null;
+      if (
+        currentWork &&
+        getWorkKey(currentWork) === getWorkKey(work) &&
+        focusPhaseRef.current === 'settled'
+      ) {
+        return;
+      }
+      if (focusPhaseRef.current && focusPhaseRef.current !== 'settled') return;
+      if (focusedIdRef.current) clearFocus();
+      openFocusCore(targetId, work);
+    },
+    [requestClose, clearFocus, openFocusCore, focusedIdRef, focusPhaseRef, isIntroPlayingRef, itemsRef]
   );
 
   /** Walk left/right on the grid row — prev = x-1, next = x+1 (skip non-focusable seats) */
@@ -692,6 +757,8 @@ export const useFocusMode = ({
       const isOrigin = Boolean(cell.isOriginCard);
       setMorphCardHidden(!isOrigin);
       setOriginPortraitUp(isOrigin);
+
+      onFocusIntent?.({ type: 'peek', work: nextWork });
     },
     [
       getEnsureNeighborArgs,
@@ -702,6 +769,7 @@ export const useFocusMode = ({
       cellHeight,
       panCameraToItemIdIfOffscreen,
       getGridItemContentCenter,
+      onFocusIntent,
       focusPhaseRef,
       focusedIdRef,
       viewRef
@@ -1035,6 +1103,7 @@ export const useFocusMode = ({
     focusNavPrevIdRef,
     snapFocusLayoutRef,
     handleItemClick,
+    applyFocusForWork,
     handleOriginActivate,
     clearFocus,
     beginFocusReturn,

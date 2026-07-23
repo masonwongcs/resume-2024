@@ -2,7 +2,7 @@
 
 import styles from './InfiniteCanvas.module.scss';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { useReducedMotion } from 'motion/react';
@@ -18,7 +18,7 @@ import { FocusOverlay } from './focus/FocusOverlay';
 import { FocusSwipeParallaxContext } from './focus/FocusSwipeParallaxContext';
 import { FOCUS_SWIPE_GAP_PX } from './focus/focusMotion';
 import { useFocusMode } from './focus/useFocusMode';
-import { getItemPosition, getWorkKey, parseGridCoords } from './grid/gridMath';
+import { ensureSeatForWork, findExistingSeatForWork, getItemPosition, getWorkKey, parseGridCoords } from './grid/gridMath';
 import { useVisibleGridItems } from './grid/useVisibleGridItems';
 import { useIntroSequence } from './intro/useIntroSequence';
 import { InfiniteCanvasItem } from './InfiniteCanvasItem';
@@ -32,9 +32,11 @@ import type {
 } from './types';
 
 export type {
+  CanvasFocusBridge,
   CustomCardConfig,
   CustomCardFocusContentProps,
   CustomCardRenderProps,
+  FocusUrlIntent,
   OriginCardConfig,
   OriginCardRenderProps,
   PeerReturnStagger,
@@ -47,7 +49,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   originCard,
   customCards,
   onRecenterAvailabilityChange,
-  recenterActionRef
+  recenterActionRef,
+  focusBridgeRef,
+  onBridgeReady,
+  onFocusIntent
 }) => {
   const setLoadingProgress = useHomeStore((state) => state.setLoadingProgress);
   const setIsLoaded = useHomeStore((state) => state.setIsLoaded);
@@ -95,6 +100,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const isIntroPlayingRef = useRef(!prefersReducedMotion);
 
   const [introFlush, setIntroFlush] = useState(0);
+  /** Bumped after a deep-link pins a work into a previously-uncached seat (see gridMath) */
+  const [gridVersion, setGridVersion] = useState(0);
   const [originCanvasHost, setOriginCanvasHost] = useState<HTMLDivElement | null>(null);
   const originMarqueeStateRef = useRef<MarqueePersistedState>({
     offset: 0,
@@ -224,7 +231,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     gapSize,
     staggerOffset,
     initialOffsetX,
-    viewportPadding
+    viewportPadding,
+    gridVersion
   });
 
   const focus = useFocusMode({
@@ -261,7 +269,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     isCoastingRef,
     panVelocityRef,
     touchInertiaEligibleRef,
-    suppressClickRef
+    suppressClickRef,
+    onFocusIntent
   });
   // Injected callback — camera's syncViewBounds keeps the focused card in sync on resize
   camera.onViewBoundsChangeRef.current = focus.handleViewportResize;
@@ -364,6 +373,85 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     focusSlideKey,
     syncOriginFocusSwipeNudge
   } = focus;
+
+  // --- Deep-link focus-by-work / origin (URL sync bridge) ------------------------------
+  // Queue the latest requested work until intro is done + the view has been measured
+  // (KTD7). `undefined` = no pending request; a request always supersedes an older one.
+  // Origin focus uses a separate pending flag so `/about` can open Hello without a work seat.
+  const pendingApplyWorkRef = useRef<Work | null | undefined>(undefined);
+  const pendingApplyOriginRef = useRef(false);
+
+  const flushPendingApplyWork = useCallback(() => {
+    if (intro.isIntroPlaying || !camera.introReady) return;
+
+    if (pendingApplyOriginRef.current) {
+      pendingApplyOriginRef.current = false;
+      pendingApplyWorkRef.current = undefined;
+      const originId = originCardIdRef.current;
+      const originItem = originId ? itemsRef.current.get(originId) : null;
+      if (originId && originItem) {
+        focus.applyFocusForWork(originId, originItem.work);
+      }
+      return;
+    }
+
+    if (pendingApplyWorkRef.current === undefined) return;
+
+    const work = pendingApplyWorkRef.current;
+    pendingApplyWorkRef.current = undefined;
+
+    if (!work) {
+      focus.applyFocusForWork(null, null);
+      return;
+    }
+
+    const existing = findExistingSeatForWork(itemsRef.current, work);
+    const seat = existing ?? ensureSeatForWork({ work, items: itemsRef.current, originCardIdRef, staggerOffset });
+    if (!existing) setGridVersion((v) => v + 1);
+
+    focus.applyFocusForWork(seat.id, work);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intro.isIntroPlaying, camera.introReady, focus.applyFocusForWork, staggerOffset]);
+
+  useEffect(() => {
+    flushPendingApplyWork();
+  }, [flushPendingApplyWork]);
+
+  const requestApplyFocusWork = useCallback(
+    (work: Work | null) => {
+      pendingApplyOriginRef.current = false;
+      pendingApplyWorkRef.current = work;
+      flushPendingApplyWork();
+    },
+    [flushPendingApplyWork]
+  );
+
+  const requestApplyFocusOrigin = useCallback(() => {
+    pendingApplyWorkRef.current = undefined;
+    pendingApplyOriginRef.current = true;
+    flushPendingApplyWork();
+  }, [flushPendingApplyWork]);
+
+  // Stable bridge object — the parent holds this ref across the CSR mount race and always
+  // reaches the latest callbacks/state via the closures refreshed on relevant changes.
+  useEffect(() => {
+    if (!focusBridgeRef) return;
+    const isFirstAssign = focusBridgeRef.current === null;
+    focusBridgeRef.current = {
+      getFocusedWork: () => focusedWork,
+      applyFocusWork: requestApplyFocusWork,
+      applyFocusOrigin: requestApplyFocusOrigin
+    };
+    if (isFirstAssign) onBridgeReady?.();
+  }, [focusBridgeRef, focusedWork, requestApplyFocusWork, requestApplyFocusOrigin, onBridgeReady]);
+
+  useEffect(
+    () => () => {
+      if (focusBridgeRef) focusBridgeRef.current = null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const isInteractionLocked = intro.isIntroPlaying || isFocused;
 

@@ -4,143 +4,151 @@ const WORK_HISTORY = [
   {
     name: 'Aquariux',
     url: 'https://www.aquariux.com',
-    image: './images/work/aquariux.jpg',
-    thumbnail: './images/work/aquariux_thumbnail.jpg',
+    image: '/images/work/aquariux.jpg',
+    thumbnail: '/images/work/aquariux_thumbnail.jpg',
     description:
       "Led a comprehensive rebuild of Aquariux's fintech website, focusing on enhancing user experience and modernizing the platform. Implemented responsive design principles and integrated advanced financial tools to provide a seamless experience for users across devices. The revamped site significantly improved load times, security features, and overall functionality, resulting in increased user engagement and conversion rates."
   },
   {
     name: 'ArkStack',
     url: 'https://www.arkstack.io',
-    image: './images/work/arkstack.jpg',
-    thumbnail: './images/work/arkstack_thumbnail.png',
+    image: '/images/work/arkstack.jpg',
+    thumbnail: '/images/work/arkstack_thumbnail.png',
     description:
       "Spearheaded the development of ArkStack's infrastructure website from the ground up. Created a robust, scalable platform that effectively communicates the company's cloud infrastructure solutions. Incorporated interactive diagrams and real-time system status updates to showcase ArkStack's technological capabilities. The new site has become a crucial tool for lead generation and customer education in the competitive cloud services market."
   },
   {
     name: 'Aesop',
     url: 'https://www.aesop.com',
-    image: './images/work/aesop.jpg',
-    thumbnail: './images/work/aesop_thumbnail.jpg',
+    image: '/images/work/aesop.jpg',
+    thumbnail: '/images/work/aesop_thumbnail.jpg',
     description:
-      "Played a key role in maintaining and enhancing Aesop's e-commerce website, ensuring a seamless and luxurious online shopping experience that aligns with the brand's high-end image. Implemented regular updates to improve site performance, optimize product displays, and streamline the checkout process. Collaborated closely with the marketing team to integrate new product launches and promotional campaigns, contributing to increased online sales and customer satisfaction."
+      "Played a key role in maintaining and enhancing Aesop's e-commerce website, ensuring a seamless and luxurious online shopping experience that aligns with the brand's high-end image. Implemented regular updates to improve site performance, optimize product displays, and streamline the checkout process. Collaborated closely with the marketing team to integrate new product launches and promotional campaigns, contributing to increased online sales and customer satisfaction.",
+    handAnnotation: {
+      note: `i used to work here`,
+      srText: 'i used to work here',
+      visibility: 'always',
+      direction: 'sw',
+      anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
+      labelMaxWidth: 170
+    } satisfies WorkHandAnnotation
   },
   {
     name: 'Blonde Boudoir',
     url: 'https://blonde-boudoir-hk.vercel.app',
-    image: './images/work/blondeboudoir.gif',
-    thumbnail: './images/work/blondeboudoir_thumbnail.jpg',
+    image: '/images/work/blondeboudoir.gif',
+    thumbnail: '/images/work/blondeboudoir_thumbnail.jpg',
     description:
       "Orchestrated a complete digital transformation for Blonde Boudoir, a high-end hair salon. The website rebuild focused on showcasing their luxurious services, incorporating an elegant design that reflects the salon's sophisticated atmosphere. Enhanced user experience with intuitive navigation and a sleek appointment booking system, resulting in increased online visibility and client engagement."
   },
   {
     name: 'SL Edu',
     url: 'https://sledu.vercel.app',
-    image: './images/work/sledu.jpg',
-    thumbnail: './images/work/sledu_thumbnail.jpg',
+    image: '/images/work/sledu.jpg',
+    thumbnail: '/images/work/sledu_thumbnail.jpg',
     description:
       "Spearheaded a comprehensive website rebuild for SL Edu, revolutionizing the educational center's digital presence. The new platform features an intuitive course catalog, streamlined student portal, and responsive design optimized for various devices. This overhaul not only improved user experience but also significantly boosted online enrollments and parent engagement."
   },
   {
     name: 'KC Tint',
     // url: 'https://www.kc-windows.com',
-    image: './images/work/kctint.jpg',
-    thumbnail: './images/work/kctint_thumbnail.jpg',
+    image: '/images/work/kctint.jpg',
+    thumbnail: '/images/work/kctint_thumbnail.jpg',
     description:
       'Executed a strategic website redesign for KC Tint, a leading window tinting company. The overhaul focused on showcasing their diverse product range and expertise through an interactive gallery and detailed service pages. Implemented SEO best practices and a user-friendly quote request system, resulting in improved search rankings and increased lead generation.'
   },
   {
     name: 'Jin Investment',
     url: 'https://dev.jininvestment.com',
-    image: './images/work/jin.webp',
-    thumbnail: './images/work/jin_thumbnail.jpg',
+    image: '/images/work/jin.webp',
+    thumbnail: '/images/work/jin_thumbnail.jpg',
     description:
       "Revitalized Jin Investment's online presence with a cutting-edge website redesign. The new platform features a sophisticated, data-driven interface that highlights real-time market insights and portfolio performance. Integrated secure client portals and interactive investment tools, enhancing user engagement and reinforcing the firm's position as a forward-thinking investment partner."
   },
   {
     name: 'CAS Garage',
     url: 'https://www.casgarage.sg',
-    image: './images/work/casgarage.webp',
-    thumbnail: './images/work/casgarage_thumbnail.jpg',
+    image: '/images/work/casgarage.webp',
+    thumbnail: '/images/work/casgarage_thumbnail.jpg',
     description:
       'Engineered a comprehensive digital upgrade for CAS Garage, transforming their online presence in the competitive car services sector. The new website showcases their state-of-the-art facilities and diverse range of services through high-quality imagery and detailed service descriptions. Implemented an easy-to-use booking system and customer review platform, significantly improving customer acquisition and retention rates.'
   },
   {
     name: 'Liv3lynft',
     // url: 'https://liv3lynft.vercel.app',
-    image: './images/work/liv3lynft.png',
-    thumbnail: './images/work/liv3lynft_thumbnail.jpg',
+    image: '/images/work/liv3lynft.png',
+    thumbnail: '/images/work/liv3lynft_thumbnail.jpg',
     description:
       'Developed an innovative NFT platform for Liv3lynft, specializing in the sale of exclusive digital bib numbers. The website features a seamless integration with blockchain technology, allowing for secure transactions and verifiable ownership. Implemented an intuitive user interface with real-time bidding functionality and a showcase of rare, limited-edition bib numbers, catering to both serious collectors and sports enthusiasts.'
   },
   {
     name: 'Seedverse',
     url: 'https://seedverse.vercel.app',
-    image: './images/work/seedverse.png',
-    thumbnail: './images/work/seedverse_thumbnail.jpg',
+    image: '/images/work/seedverse.png',
+    thumbnail: '/images/work/seedverse_thumbnail.jpg',
     description:
       'Designed and launched a dynamic landing page for Seedverse, a cutting-edge blockchain enterprise. The page effectively communicates complex blockchain concepts through engaging visuals and concise content. Incorporated interactive elements to demonstrate the potential applications of their technology, successfully attracting potential investors and partners while establishing Seedverse as a thought leader in the blockchain space.'
   },
   // {
   //   name: 'Aspirasi',
   //   url: 'https://aspirasi.co',
-  //   image: './images/work/aspirasi.png',
+  //   image: '/images/work/aspirasi.png',
   //   description:
   //     "Crafted a compelling landing page for Aspirasi, an innovative insurance company. The design emphasizes trust, security, and accessibility, featuring clear product information and easy-to-use quote tools. Incorporated customer testimonials and a streamlined claims process overview, effectively communicating the company's commitment to customer satisfaction and financial peace of mind."
   // },
   {
     name: 'Bond Capital',
     url: 'https://bond.sg',
-    image: './images/work/bond.jpg',
+    image: '/images/work/bond.jpg',
     description:
       "Developed a sophisticated landing page for Bond Capital, positioning them as a premier investment firm. The design balances professionalism with approachability, featuring sleek data visualizations of market trends and investment performance. Integrated a secure client portal and clear calls-to-action, effectively nurturing leads and reinforcing Bond Capital's reputation for financial expertise and client-focused service."
   },
   {
     name: 'Pacific Light',
     url: 'https://pacificlight.com.sg',
-    image: './images/work/pacificlight.png',
-    thumbnail: './images/work/pacificlight_thumbnail.jpg',
+    image: '/images/work/pacificlight.png',
+    thumbnail: '/images/work/pacificlight_thumbnail.jpg',
     description:
       'Revamped the online presence of Pacific Light, a leading electrical company in Singapore. The new responsive landing page showcases their comprehensive range of services and commitment to sustainable energy solutions. Implemented an intuitive navigation structure and integrated real-time energy-saving calculators, effectively improving user engagement and positioning Pacific Light as an innovative leader in the electrical industry.'
   },
   {
     name: 'Allianz Adventure',
     // url: 'https://www.allianzadventure.com',
-    image: './images/work/allianz.png',
-    thumbnail: './images/work/allianz_thumbnail.jpg',
+    image: '/images/work/allianz.png',
+    thumbnail: '/images/work/allianz_thumbnail.jpg',
     description:
       'Conceptualized and built an engaging game page for Allianz, transforming complex insurance concepts into an interactive adventure. The game educates users about various insurance products through fun, scenario-based challenges. Incorporated leaderboards and shareable results to boost user engagement and viral potential, successfully increasing brand awareness and lead generation for Allianz.'
   },
   {
     name: 'React Simple Marquee',
     url: 'https://react-simple-marquee.surge.sh',
-    image: './images/work/marquee.gif',
-    thumbnail: './images/work/marquee_thumbnail.jpg',
+    image: '/images/work/marquee.gif',
+    thumbnail: '/images/work/marquee_thumbnail.jpg',
     description:
       'Engineered a user-friendly NPM package for creating dynamic marquee components in React applications. The package offers customizable speed, direction, and styling options, allowing developers to easily implement eye-catching scrolling text or image displays. Includes comprehensive documentation and examples, facilitating quick integration and enhancing the visual appeal of React-based websites.'
   },
   {
     name: 'React Simple Flipclock',
     url: 'https://react-simple-flipclock.surge.sh',
-    image: './images/work/flipclock.gif',
-    thumbnail: './images/work/flipclock_thumbnail.jpg',
+    image: '/images/work/flipclock.gif',
+    thumbnail: '/images/work/flipclock_thumbnail.jpg',
     description:
       'Developed a versatile NPM package for integrating stylish flip clock components into React projects. The package features customizable designs, multiple time formats, and countdown functionality. Implemented smooth flip animations and responsive layouts, enabling developers to easily add visually striking time displays to their applications, suitable for various use cases from event countdowns to real-time clocks.'
   },
   {
     name: 'Click to Meow',
     url: 'https://click-to-meow.vercel.app',
-    image: './images/work/clicktomeow.png',
+    image: '/images/work/clicktomeow.png',
     video: '/images/work/clicktomeow.webm',
-    thumbnail: './images/work/clicktomeow_thumbnail.png',
+    thumbnail: '/images/work/clicktomeow_thumbnail.png',
     description:
       "Created a whimsical and interactive web experience that brings joy through the simple act of clicking. Each click triggers a delightful 'meow' sound, accompanied by playful animations. Implemented a variety of cat-themed visual elements and a click counter, providing users with a fun, stress-relieving break in their day and showcasing creative front-end development skills."
   },
   {
     name: 'In My Meow Meow',
     url: 'https://meowmeow-mauve.vercel.app',
-    image: './images/work/meow.png',
-    thumbnail: './images/work/meow_thumbnail.jpg',
+    image: '/images/work/meow.png',
+    thumbnail: '/images/work/meow_thumbnail.jpg',
     description:
       "Developed a charming website that celebrates the internet's favorite animal - cats. The platform fetches and displays a diverse array of cat images on demand, providing users with an endless stream of feline cuteness. Incorporated smooth transitions and lazy loading for optimal performance, creating a seamless and addictive browsing experience for cat enthusiasts.",
     handAnnotation: {
@@ -155,48 +163,56 @@ const WORK_HISTORY = [
   {
     name: 'Photography Portfolio',
     url: 'https://photo.masonwongcs.com',
-    image: './images/work/photography.png',
-    thumbnail: './images/work/photography_thumbnail.jpg',
+    image: '/images/work/photography.png',
+    thumbnail: '/images/work/photography_thumbnail.jpg',
     description:
-      'Designed and implemented a visually stunning photography portfolio to showcase a personal collection of captivating images. The website features a minimalist design that puts the focus squarely on the photographs, with smooth transitions and a responsive gallery layout. Incorporated category filtering and full-screen viewing options, allowing visitors to immerse themselves in the visual storytelling of each captured moment.'
+      'Designed and implemented a visually stunning photography portfolio to showcase a personal collection of captivating images. The website features a minimalist design that puts the focus squarely on the photographs, with smooth transitions and a responsive gallery layout. Incorporated category filtering and full-screen viewing options, allowing visitors to immerse themselves in the visual storytelling of each captured moment.',
+    handAnnotation: {
+      note: `i like to photograph`,
+      srText: 'i like to photograph',
+      visibility: 'always',
+      direction: 'sw',
+      anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
+      labelMaxWidth: 170
+    } satisfies WorkHandAnnotation
   },
   {
     name: 'Qore3',
     url: 'https://www.qore3.com',
-    image: './images/work/qore3.jpg',
-    thumbnail: './images/work/qore3_thumbnail.jpg',
+    image: '/images/work/qore3.jpg',
+    thumbnail: '/images/work/qore3_thumbnail.jpg',
     description:
       'Led the front-end development for Qore3, a Web3 infrastructure company focused on building reliable systems for trading desks, fintechs, and Web2 companies entering the space. The site was crafted to reflect Qore3’s clean, technical ethos — with fast performance, responsive layouts, and a modern design system that communicates trust and capability. I worked closely with the brand and content teams to ensure the experience aligned with the company’s positioning as “the infrastructure layer Web3 should’ve had all along.”'
   },
   {
     name: 'Penguin Swim School',
     url: 'https://www.penguinswimschool.sg',
-    image: './images/work/penguin.jpg',
-    thumbnail: './images/work/penguin.jpg',
+    image: '/images/work/penguin.jpg',
+    thumbnail: '/images/work/penguin.jpg',
     description:
       'Crafted a comprehensive website for Penguin Swim School, transforming their digital presence to better serve students and parents. The platform features an intuitive class schedule, streamlined enrollment system, and detailed course information that makes it easy for families to find and register for swimming lessons. Implemented a responsive design optimized for mobile devices, ensuring parents can easily access class schedules and manage enrollments on the go. The new site significantly improved online registrations and enhanced communication between the school and its community.'
   },
   {
     name: 'Little Penguin Swim School',
     url: 'https://www.littlepenguinswimschool.sg',
-    image: './images/work/littlepenguin.jpg',
-    thumbnail: './images/work/littlepenguin.jpg',
+    image: '/images/work/littlepenguin.jpg',
+    thumbnail: '/images/work/littlepenguin.jpg',
     description:
       "Designed and developed a vibrant, family-friendly website for Little Penguin Swim School, specializing in swimming lessons for young children. The site features an engaging, child-centric design with colorful visuals and easy-to-navigate course offerings tailored for different age groups. Implemented a user-friendly booking system that allows parents to quickly find suitable classes and register their children. The responsive platform ensures seamless access across devices, making it convenient for busy parents to manage their children's swimming lessons while on the move."
   },
   {
     name: 'Liverum',
     url: 'https://www.liverum.com',
-    image: './images/work/liverum.jpg',
-    thumbnail: './images/work/liverum.jpg',
+    image: '/images/work/liverum.jpg',
+    thumbnail: '/images/work/liverum.jpg',
     description:
       "Designed and developed a modern, responsive website for Liverum, creating a polished digital presence that effectively communicates the company's brand and services. Implemented clean, intuitive navigation and optimized performance to ensure fast load times and seamless user experience across all devices. The site features a contemporary design system that balances visual appeal with functional clarity, helping to establish Liverum's professional online identity and improve user engagement."
   },
   {
     name: 'Progressive Performance',
     url: 'https://www.progressiveperformance.sg',
-    image: './images/work/progressiveperformance.jpg',
-    thumbnail: './images/work/progressiveperformance_thumbnail.jpg',
+    image: '/images/work/progressiveperformance.jpg',
+    thumbnail: '/images/work/progressiveperformance_thumbnail.jpg',
     description:
       'Progressive Performance is a Singapore-based performance and fitness company focused on helping individuals achieve their health, strength, and athletic goals through evidence-based coaching, personalised training, and sustainable long-term development. With a results-driven approach, Progressive Performance aims to empower clients to perform at their best, whether for sport, fitness, or everyday life.'
   }

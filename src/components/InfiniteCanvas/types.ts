@@ -98,6 +98,21 @@ export interface OriginCardConfig extends Omit<CustomCardConfig, 'id' | 'render'
   focusable?: boolean;
 }
 
+/** Emitted by user gestures (click open / peek / close) — never by URL-driven apply (KTD2). */
+export type FocusUrlIntent =
+  | { type: 'open'; work: Work }
+  | { type: 'peek'; work: Work | null }
+  | { type: 'close' };
+
+/** Imperative surface consumed by the URL sync bridge — decoupled from slugs on purpose. */
+export interface CanvasFocusBridge {
+  getFocusedWork: () => Work | null;
+  /** Queue (until intro + layout are ready) focusing `work`, or clear focus for `null`. */
+  applyFocusWork: (work: Work | null) => void;
+  /** Queue focusing the Hello / origin card (for `/about`). */
+  applyFocusOrigin: () => void;
+}
+
 export interface InfiniteCanvasProps {
   works: Work[];
   /**
@@ -118,6 +133,12 @@ export interface InfiniteCanvasProps {
   onRecenterAvailabilityChange?: (visible: boolean) => void;
   /** Parent assigns click handler for the external recenter control */
   recenterActionRef?: React.MutableRefObject<(() => void) | null>;
+  /** Filled in by InfiniteCanvas once mounted — imperative focus-by-work for URL sync */
+  focusBridgeRef?: React.MutableRefObject<CanvasFocusBridge | null>;
+  /** Fired once the focus bridge above is populated (mount race guard for CSR-loaded canvas) */
+  onBridgeReady?: () => void;
+  /** Fired on user-gesture focus open/peek/close — used to drive push/replace/back */
+  onFocusIntent?: (intent: FocusUrlIntent) => void;
 }
 
 export interface FocusSnapshot {

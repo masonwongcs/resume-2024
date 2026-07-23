@@ -21,13 +21,13 @@ const fadeTransition = {
   ease: [0.22, 1, 0.36, 1] as const
 };
 
-const getImageSource = (work: PortfolioWork) => (work.thumbnail ?? work.image).replace('.', '');
+const getImageSource = (work: PortfolioWork) => work.thumbnail ?? work.image;
 
 const toFlyoutWork = (work: PortfolioWork) => ({
   name: work.name,
   url: work.url,
-  image: work.image.replace('.', ''),
-  video: work.video?.replace('.', ''),
+  image: work.image,
+  video: work.video,
   description: work.description,
   type: 'work' as const
 });
