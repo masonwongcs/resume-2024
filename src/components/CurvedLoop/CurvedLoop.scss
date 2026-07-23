@@ -4,6 +4,7 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent);
 }
 
 .curved-loop-svg {

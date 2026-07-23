@@ -17,14 +17,14 @@ export const metadata: Metadata = {
     title,
     description,
     url: canonical,
-    images: `${BASE_URL}/images/work/me.png`,
+    images: `${BASE_URL}/images/work/me.webp`,
     type: 'profile'
   },
   twitter: {
     card: 'summary_large_image',
     title,
     description,
-    images: `${BASE_URL}/images/work/me.png`
+    images: `${BASE_URL}/images/work/me.webp`
   }
 };
 
@@ -42,7 +42,7 @@ export default function AboutPage() {
         <p key={paragraph.slice(0, 24)}>{paragraph}</p>
       ))}
       {/* eslint-disable-next-line @next/next/no-img-element -- static crawl companion */}
-      <img src="/images/work/me.png" alt="Mason Wong" />
+      <img src="/images/work/me.webp" alt="Mason Wong" />
       <ProjectIndex />
     </article>
   );
