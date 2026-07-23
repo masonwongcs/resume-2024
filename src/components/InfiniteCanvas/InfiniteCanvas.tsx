@@ -15,6 +15,8 @@ import { useCanvasCamera } from './camera/useCanvasCamera';
 import { useCanvasRecenter } from './camera/useCanvasRecenter';
 import { computeItemFocusProps } from './focus/computeItemFocusProps';
 import { FocusOverlay } from './focus/FocusOverlay';
+import { FocusSwipeParallaxContext } from './focus/FocusSwipeParallaxContext';
+import { FOCUS_SWIPE_GAP_PX } from './focus/focusMotion';
 import { useFocusMode } from './focus/useFocusMode';
 import { getItemPosition, getWorkKey, parseGridCoords } from './grid/gridMath';
 import { useVisibleGridItems } from './grid/useVisibleGridItems';
@@ -511,7 +513,17 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     [cellWidth, cellHeight, gapSize]
   );
 
+  const focusSwipeParallax = useMemo(
+    () => ({
+      dragX: focusSwipeDragX,
+      panelStride: (focusSnapshot?.detailWidth ?? 0) + FOCUS_SWIPE_GAP_PX,
+      active: useFocusSwipeGallery && isFocusSettled
+    }),
+    [focusSwipeDragX, focusSnapshot?.detailWidth, useFocusSwipeGallery, isFocusSettled]
+  );
+
   return (
+    <FocusSwipeParallaxContext.Provider value={focusSwipeParallax}>
     <div
       ref={outerContainerRef}
       className={styles.infiniteCanvas}
@@ -724,6 +736,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
         focusScrollRef={focusScrollRef}
       />
     </div>
+    </FocusSwipeParallaxContext.Provider>
   );
 };
 

@@ -6,12 +6,19 @@ import {
   type CSSProperties,
   type RefObject,
   useEffect,
+  useRef,
   useState
 } from 'react';
 import { createPortal } from 'react-dom';
 
 import cx from 'classnames';
 import { useReducedMotion } from 'motion/react';
+
+import {
+  FOCUS_COPY_SWIPE_PARALLAX,
+  focusSwipeSeatProgress
+} from './focus/focusMotion';
+import { useFocusSwipeParallax } from './focus/FocusSwipeParallaxContext';
 
 /** neat-annotations direction — arrow points this way toward the target */
 export type HandAnnotationDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
@@ -65,6 +72,11 @@ export type HandAnnotationProps = {
   zIndex?: number;
   /** Recompute anchor when this changes (e.g. carousel index) */
   trackKey?: string | number;
+  /**
+   * Focus-gallery seat for swipe parallax (defaults to `current`).
+   * Matches FocusSwipeCopy’s Apple-style offset + fade.
+   */
+  swipeSide?: 'prev' | 'current' | 'next';
 };
 
 /** Declarative tip config — attach to a `Work` so focus cards can opt in */
@@ -117,9 +129,19 @@ const useIsHandAnnMobile = () => {
   return isMobile;
 };
 
+const copyParallaxX = (side: 'prev' | 'current' | 'next', dragX: number, stride: number) => {
+  const w = stride || 1;
+  if (side === 'current') return dragX * FOCUS_COPY_SWIPE_PARALLAX;
+  if (side === 'next') return (dragX + w) * FOCUS_COPY_SWIPE_PARALLAX;
+  return (dragX - w) * FOCUS_COPY_SWIPE_PARALLAX;
+};
+
 /**
  * Reusable neat-annotations tip — portals beside a target, draws in on open,
  * fades out on close. Pair with `@/styles/neat-annotations.css`.
+ *
+ * On mobile focus swipe, follows the card and applies the same copy parallax
+ * as `FocusSwipeCopy` when `FocusSwipeParallaxContext` is active.
  *
  * @see https://github.com/syabro/neat-annotations
  */
@@ -139,10 +161,13 @@ export const HandAnnotation = ({
   srText,
   className,
   zIndex = 11050,
-  trackKey
+  trackKey,
+  swipeSide = 'current'
 }: HandAnnotationProps) => {
   const reduceMotion = useReducedMotion();
   const isMobile = useIsHandAnnMobile();
+  const swipe = useFocusSwipeParallax();
+  const portalRef = useRef<HTMLSpanElement | null>(null);
   const resolvedVisibility: HandAnnotationVisibility = desktopOnly
     ? 'desktop'
     : (visibility ?? 'desktop');
@@ -176,30 +201,59 @@ export const HandAnnotation = ({
     return () => window.clearTimeout(id);
   }, [phase, show, reduceMotion]);
 
+  // Track target every frame so tips follow swipe transforms; add copy parallax on mobile
   useEffect(() => {
     if (!show) return;
 
-    const update = () => {
+    let raf = 0;
+    let entered = false;
+    let enterTimer = 0;
+
+    const apply = () => {
       const el = targetRef.current;
-      if (!el) return;
+      if (!el) {
+        raf = requestAnimationFrame(apply);
+        return;
+      }
       const r = el.getBoundingClientRect();
-      if (r.width < 8 || r.height < 8) return;
+      if (r.width < 8 || r.height < 8) {
+        raf = requestAnimationFrame(apply);
+        return;
+      }
       const x = resolveAxis(activeAnchor.x, r.width, { left: 0, center: 0.5, right: 1 });
       const y = resolveAxis(activeAnchor.y, r.height, { top: 0, center: 0.5, bottom: 1 });
-      setPos({
-        top: r.top + y + (activeAnchor.offsetY ?? 0),
-        left: r.left + x + (activeAnchor.offsetX ?? 0)
-      });
+      let top = r.top + y + (activeAnchor.offsetY ?? 0);
+      let left = r.left + x + (activeAnchor.offsetX ?? 0);
+      let opacity = 1;
+
+      const useSwipeParallax = Boolean(isMobile && swipe?.active && !reduceMotion);
+      if (useSwipeParallax && swipe) {
+        const drag = swipe.dragX.get();
+        left += copyParallaxX(swipeSide, drag, swipe.panelStride);
+        opacity = focusSwipeSeatProgress(swipeSide, drag, swipe.panelStride);
+      }
+
+      const node = portalRef.current;
+      if (node) {
+        node.style.top = `${top}px`;
+        node.style.left = `${left}px`;
+        node.style.opacity = String(opacity);
+      } else {
+        setPos({ top, left });
+      }
+
+      if (!entered) {
+        entered = true;
+        enterTimer = window.setTimeout(() => setPhase('entered'), reduceMotion ? 0 : 40);
+      }
+
+      raf = requestAnimationFrame(apply);
     };
 
-    update();
-    const enterId = window.setTimeout(() => setPhase('entered'), reduceMotion ? 0 : 40);
-    window.addEventListener('resize', update);
-    window.addEventListener('scroll', update, true);
+    raf = requestAnimationFrame(apply);
     return () => {
-      window.clearTimeout(enterId);
-      window.removeEventListener('resize', update);
-      window.removeEventListener('scroll', update, true);
+      cancelAnimationFrame(raf);
+      window.clearTimeout(enterTimer);
     };
   }, [
     show,
@@ -210,7 +264,9 @@ export const HandAnnotation = ({
     activeAnchor.offsetY,
     trackKey,
     reduceMotion,
-    isMobile
+    isMobile,
+    swipe,
+    swipeSide
   ]);
 
   const visible = show || phase === 'leaving';
@@ -223,6 +279,7 @@ export const HandAnnotation = ({
       {a11y ? <span className={styles.srOnly}>{a11y}</span> : null}
       {createPortal(
         <span
+          ref={portalRef}
           className={cx(
             'ann',
             `ann-${activeDirection}`,
