@@ -444,32 +444,32 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     (work: Work) => {
       const key = getWorkKey(work);
       if (originCard?.renderFocusContent && originCardKey && key === originCardKey) {
-        return originCard.renderFocusContent({ work });
+        return originCard.renderFocusContent({ work, isFocusSettled });
       }
       for (const card of customCards ?? []) {
         if (!card.renderFocusContent) continue;
         if (getWorkKey(card.work) !== key) continue;
-        return card.renderFocusContent({ work });
+        return card.renderFocusContent({ work, isFocusSettled });
       }
       return null;
     },
-    [originCard, originCardKey, customCards]
+    [originCard, originCardKey, customCards, isFocusSettled]
   );
 
   const getFocusBannerForWork = useCallback(
     (work: Work) => {
       const key = getWorkKey(work);
       if (originCard?.renderFocusBanner && originCardKey && key === originCardKey) {
-        return originCard.renderFocusBanner({ work });
+        return originCard.renderFocusBanner({ work, isFocusSettled });
       }
       for (const card of customCards ?? []) {
         if (!card.renderFocusBanner) continue;
         if (getWorkKey(card.work) !== key) continue;
-        return card.renderFocusBanner({ work });
+        return card.renderFocusBanner({ work, isFocusSettled });
       }
       return null;
     },
-    [originCard, originCardKey, customCards]
+    [originCard, originCardKey, customCards, isFocusSettled]
   );
 
   const focusedFocusExtra = useMemo(() => {

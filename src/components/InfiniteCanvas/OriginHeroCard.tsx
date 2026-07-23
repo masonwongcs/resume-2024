@@ -2,9 +2,12 @@
 
 import styles from './OriginHeroCard.module.scss';
 
+import { useEffect, useRef, useState } from 'react';
+
 import { CurvedLoop } from '@/components/CurvedLoop';
 import { CODING_START_DATE, calculateYearDifference } from '@/utils/calculateYearDifference';
 
+import { HandAnnotation } from './HandAnnotation';
 import type { OriginCardRenderProps, Work } from './types';
 
 const MARQUEE_TEXT =
@@ -16,8 +19,25 @@ const yearsCoding = calculateYearDifference(CODING_START_DATE);
  * One-shot center card face — curved multilingual hello marquee.
  */
 export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocus = false }: OriginCardRenderProps) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hintOpen, setHintOpen] = useState(false);
+  const wasInFocusRef = useRef(false);
+
+  useEffect(() => {
+    const justEntered = inFocus && !wasInFocusRef.current;
+    wasInFocusRef.current = inFocus;
+    if (!inFocus) {
+      setHintOpen(false);
+      return;
+    }
+    if (!justEntered) return;
+    // Wait for the portrait to rise before the tip draws in
+    const id = window.setTimeout(() => setHintOpen(true), 480);
+    return () => window.clearTimeout(id);
+  }, [inFocus]);
+
   return (
-    <div className={styles.originHeroCard} onPointerDown={(e) => e.stopPropagation()}>
+    <div ref={cardRef} className={styles.originHeroCard} onPointerDown={(e) => e.stopPropagation()}>
       <CurvedLoop
         marqueeText={MARQUEE_TEXT}
         speed={2}
@@ -34,6 +54,18 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocu
       <div className={styles.portraitWrap} data-in-focus={inFocus ? 'true' : undefined} aria-hidden>
         <img className={styles.portrait} src="/images/work/me.png" alt="" draggable={false} />
       </div>
+      <HandAnnotation
+        targetRef={cardRef}
+        note="that's not the actual me that's my Memoji"
+        srText="That's not the actual me that's my Memoji."
+        open={hintOpen}
+        direction="sw"
+        desktopOnly
+        color="#5c5346"
+        anchor={{ x: 'right', y: 'top', offsetX: -28, offsetY: -18 }}
+        rotate={-8}
+        labelMaxWidth={200}
+      />
     </div>
   );
 };

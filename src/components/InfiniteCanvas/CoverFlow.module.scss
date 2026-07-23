@@ -90,6 +90,7 @@
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transform: translateZ(0.1px);
 }
 
 .faceFront {
@@ -100,7 +101,7 @@
 .faceBack {
   position: absolute;
   inset: 0;
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(0.1px);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
   border-radius: 0.65rem;
@@ -155,8 +156,12 @@
   pointer-events: none;
   overflow: hidden;
   transform-origin: top center;
+  /* Keep reflection in the same 3D space as the flipping cover */
   transform: rotateX(12deg) translateZ(0);
+  transform-style: preserve-3d;
   will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .reflectionFlip {

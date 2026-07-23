@@ -5,8 +5,8 @@ import styles from './VinylListening.module.scss';
 import {
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
+  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useRef,
@@ -19,14 +19,15 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 import { CoverFlow } from './CoverFlow';
 import { CustomCard } from './CustomCard';
+import { HandAnnotation } from './HandAnnotation';
 import {
+  type ListeningFlipOverlayRect,
   clearListeningFlipOverlayRect,
   getListeningCoverFlipped,
   getListeningCoverIndex,
   getListeningFlipOverlayRect,
   getListeningPlaylistClosing,
   getListeningVinylPlaying,
-  type ListeningFlipOverlayRect,
   requestListeningPlaylistClose,
   setListeningCoverFlipped,
   setListeningCoverIndex,
@@ -84,22 +85,10 @@ const OVERLAY_MIN_HEIGHT = 580;
 const computeFlipOverlayRect = (el: HTMLElement): ListeningFlipOverlayRect => {
   const r = el.getBoundingClientRect();
   const from = { top: r.top, left: r.left, width: r.width, height: r.height };
-  const width = Math.min(
-    Math.max(r.width * FLIP_WIDTH_RATIO, OVERLAY_MIN_WIDTH),
-    window.innerWidth - 32
-  );
-  const height = Math.min(
-    Math.max(r.height * FLIP_HEIGHT_RATIO, OVERLAY_MIN_HEIGHT),
-    window.innerHeight - 32
-  );
-  const left = Math.min(
-    Math.max(r.left + r.width / 2 - width / 2, 16),
-    window.innerWidth - width - 16
-  );
-  const top = Math.min(
-    Math.max(r.top + r.height / 2 - height / 2, 16),
-    window.innerHeight - height - 16
-  );
+  const width = Math.min(Math.max(r.width * FLIP_WIDTH_RATIO, OVERLAY_MIN_WIDTH), window.innerWidth - 32);
+  const height = Math.min(Math.max(r.height * FLIP_HEIGHT_RATIO, OVERLAY_MIN_HEIGHT), window.innerHeight - 32);
+  const left = Math.min(Math.max(r.left + r.width / 2 - width / 2, 16), window.innerWidth - width - 16);
+  const top = Math.min(Math.max(r.top + r.height / 2 - height / 2, 16), window.innerHeight - height - 16);
   return { from, to: { left, top, width, height } };
 };
 
@@ -152,7 +141,6 @@ export const LISTENING_CUSTOM_WORK: Work = {
       back to.
     </p>
   )
-  // description: <p>A small shelf of records — {library.map((a) => a.title.replace(/ \(.*\)$/, '')).join(', ')}.</p>
 };
 
 /** Grid face — compact Cover Flow fan (non-interactive; card click opens focus) */
@@ -185,12 +173,13 @@ export const ListeningCardFace = ({ onActivate, inFocus }: CustomCardRenderProps
 };
 
 /** Focus hero — fills the morph card; same fitRatio as grid (no CSS scale — that flattens 3D) */
-export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
+export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocusContentProps) => {
   const coverIndex = useListeningCoverIndex();
   const flipped = useListeningCoverFlipped();
   const isMobile = useIsCoverFlowMobile();
   const active = COVER_FLOW_ITEMS[coverIndex] ?? COVER_FLOW_ITEMS[0];
   const activeCardNodeRef = useRef<HTMLElement | null>(null);
+  const wasFocusSettledRef = useRef(false);
 
   useEffect(() => {
     // Reset flip when leaving focus (banner unmounts)
@@ -234,8 +223,16 @@ export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
   // Ignore album-nav close requests that arrive in the same gesture as opening
   // (drag click can open, then onUserIndexChange closes → cover shrink/grow flash)
   const ignoreCloseUntilRef = useRef(0);
+  const [hintOpen, setHintOpen] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  const dismissCoverFlowAnn = useCallback(() => {
+    setHintOpen(false);
+  }, []);
+
   const handleItemClick = useCallback(() => {
     if (isMobile) return;
+    dismissCoverFlowAnn();
     if (getListeningCoverFlipped()) {
       requestListeningPlaylistClose();
       return;
@@ -246,15 +243,27 @@ export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
     ignoreCloseUntilRef.current = Date.now() + 450;
     setListeningFlipOverlayRect(computeFlipOverlayRect(el));
     setListeningCoverFlipped(true);
-  }, [isMobile]);
+  }, [dismissCoverFlowAnn, isMobile]);
 
   const handleUserIndexChange = useCallback(() => {
+    dismissCoverFlowAnn();
     if (Date.now() < ignoreCloseUntilRef.current) return;
     requestListeningPlaylistClose();
-  }, []);
+  }, [dismissCoverFlowAnn]);
+
+  // Show handwritten tip when focus settles; dismiss on swipe/click; again on next focus entry
+  useEffect(() => {
+    const justSettled = Boolean(isFocusSettled) && !wasFocusSettledRef.current;
+    wasFocusSettledRef.current = Boolean(isFocusSettled);
+    if (!isFocusSettled) {
+      setHintOpen(false);
+      return;
+    }
+    if (justSettled && !isMobile) setHintOpen(true);
+  }, [isFocusSettled, isMobile]);
 
   return (
-    <div className={styles.coverFlowBannerSlot}>
+    <div ref={bannerRef} className={styles.coverFlowBannerSlot}>
       <CoverFlow
         items={COVER_FLOW_ITEMS}
         {...COVER_FLOW_LAYOUT}
@@ -270,6 +279,16 @@ export const ListeningFocusBanner = (_props: CustomCardFocusContentProps) => {
         onItemClick={handleItemClick}
         onUserIndexChange={handleUserIndexChange}
         onActiveCardNode={handleActiveCardNode}
+      />
+      <HandAnnotation
+        targetRef={bannerRef}
+        note="swipe to browse · click center to play"
+        srText="Swipe Cover Flow to browse albums, then click the center cover to play."
+        open={hintOpen}
+        direction="sw"
+        desktopOnly
+        trackKey={coverIndex}
+        anchor={{ x: 'right', y: 'top', offsetX: -28, offsetY: -18 }}
       />
       {active && !(flipped && !isMobile) ? (
         <div className={styles.coverFlowBannerCaption}>
@@ -360,9 +379,7 @@ const VinylPlayerBody = ({
           initial={false}
           animate={
             // Playing: shift sleeve left so sleeve + pulled vinyl center as one unit
-            vinylOpen
-              ? { left: '50%', x: 'calc(-50% - 2.75rem)' }
-              : { left: '50%', x: '-50%' }
+            vinylOpen ? { left: '50%', x: 'calc(-50% - 2.75rem)' } : { left: '50%', x: '-50%' }
           }
           transition={{ type: 'spring', stiffness: 150, damping: 22 }}
         >
@@ -406,7 +423,7 @@ const VinylPlayerBody = ({
             >
               {playing ? (
                 <span className={styles.lofiPauseIcon} aria-hidden />
-                ) : (
+              ) : (
                 <span className={styles.lofiPlayIcon} aria-hidden />
               )}
             </button>
@@ -881,7 +898,7 @@ const ListeningPlaylistOverlay = ({
 
   const layoutEase = [0.33, 1, 0.68, 1] as const;
   /** Match Cover Flow half-flip so the overlay continues from edge-on without a gap. */
-  const handoffS = 0.22;
+  const handoffS = 0.34;
 
   return (
     <>

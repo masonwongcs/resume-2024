@@ -385,6 +385,11 @@
         margin-bottom: 1em;
       }
     }
+
+    /* Shared FocusInfoBox sits inside description copy */
+    aside {
+      line-height: 1.45;
+    }
   }
 
   .infiniteCanvasFocusLink {

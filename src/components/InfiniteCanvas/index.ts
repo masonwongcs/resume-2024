@@ -1,6 +1,9 @@
 export * from './InfiniteCanvas';
 export * from './OriginHeroCard';
 export { CustomCard, CustomCardFocusSlot } from './CustomCard';
+export { FocusInfoBox } from './FocusInfoBox';
+export { HandAnnotation } from './HandAnnotation';
+export type { HandAnnotationAnchor, HandAnnotationDirection, HandAnnotationProps } from './HandAnnotation';
 export {
   LISTENING_CUSTOM_WORK,
   ListeningCardFace,

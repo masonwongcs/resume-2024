@@ -1,0 +1,97 @@
+.portal {
+  position: fixed !important;
+  z-index: 11050;
+  width: 0.75rem;
+  height: 0.75rem;
+  display: block !important;
+  pointer-events: none;
+  line-height: 1;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+
+  &::before,
+  &::after {
+    opacity: 0;
+  }
+}
+
+.entered {
+  &::before {
+    animation: handAnnArrowDraw 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  &::after {
+    animation: handAnnLabelIn 0.45s ease-out 0.32s both;
+  }
+}
+
+.leaving {
+  &::before,
+  &::after {
+    animation: handAnnFadeOut 0.28s ease-in both !important;
+  }
+}
+
+.reduceMotion {
+  &::before,
+  &::after {
+    animation: none !important;
+    opacity: 0.9 !important;
+  }
+
+  &.leaving::before,
+  &.leaving::after {
+    opacity: 0 !important;
+  }
+}
+
+.desktopOnly {
+  @media (max-width: 480px), (pointer: coarse) {
+    display: none !important;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes handAnnArrowDraw {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+  }
+  18% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.9;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes handAnnLabelIn {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+  }
+  to {
+    opacity: 0.9;
+    filter: blur(0);
+  }
+}
+
+@keyframes handAnnFadeOut {
+  to {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}

@@ -41,6 +41,8 @@ export type CustomCardRenderProps = {
 
 export type CustomCardFocusContentProps = {
   work: Work;
+  /** True once the focus morph has settled — use for enter-only tips / animations */
+  isFocusSettled?: boolean;
 };
 
 /**

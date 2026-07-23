@@ -733,21 +733,19 @@ interface CardProps {
 }
 
 const FLIP_INSTANT = { duration: 0 };
-/** Cover rotates to edge-on; overlay continues from there. */
-const FLIP_HALF_S = 0.28;
-const FLIP_HANDOFF_S = 0.22;
+/** Cover rotates to edge-on with a visible 3D turn; overlay continues from there. */
+const FLIP_HALF_S = 0.42;
+const FLIP_HANDOFF_S = 0.34;
 const FLIP_OPEN_ROTATE = {
-  duration: FLIP_HALF_S,
-  ease: [0.4, 0, 0.2, 1] as const,
-  delay: 0
+  rotateY: { duration: FLIP_HALF_S, ease: [0.33, 0.1, 0.25, 1] as const, delay: 0 },
+  z: { duration: FLIP_HALF_S * 0.55, ease: [0.22, 1, 0.36, 1] as const, delay: 0 }
 };
 const FLIP_CLOSE_ROTATE = {
-  duration: FLIP_HALF_S,
-  ease: [0.4, 0, 0.2, 1] as const,
-  delay: 0.02
+  rotateY: { duration: FLIP_HALF_S, ease: [0.4, 0, 0.2, 1] as const, delay: 0.02 },
+  z: { duration: FLIP_HALF_S * 0.45, ease: [0.4, 0, 0.2, 1] as const, delay: 0.08 }
 };
-const FLIP_OPEN_FADE = { duration: 0.1, delay: FLIP_HANDOFF_S, ease: 'easeOut' as const };
-const FLIP_CLOSE_FADE = { duration: 0.14, delay: 0.02, ease: 'easeOut' as const };
+const FLIP_OPEN_FADE = { duration: 0.12, delay: FLIP_HANDOFF_S, ease: 'easeOut' as const };
+const FLIP_CLOSE_FADE = { duration: 0.16, delay: 0.02, ease: 'easeOut' as const };
 
 const CoverFlowItemCard = memo(function CoverFlowItemCard({
   item,
@@ -817,6 +815,7 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
   // Stable transition refs — new objects each render can re-trigger Motion and pulse the cover.
   const rotateTransition = reduceMotion ? FLIP_INSTANT : flipped ? FLIP_OPEN_ROTATE : FLIP_CLOSE_ROTATE;
   const fadeTransition = reduceMotion ? FLIP_INSTANT : flipped ? FLIP_OPEN_FADE : FLIP_CLOSE_FADE;
+  const flipPerspective = Math.max(720, Math.round(width * 4.2));
 
   return (
     <motion.div
@@ -842,9 +841,19 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
       <motion.div
         className={styles.flipper}
         initial={false}
-        animate={{ rotateY: flipped ? 90 : 0 }}
+        animate={
+          reduceMotion
+            ? { rotateY: flipped ? 90 : 0, z: 0 }
+            : { rotateY: flipped ? 90 : 0, z: flipped ? Math.round(width * 0.42) : 0 }
+        }
         transition={rotateTransition}
-        style={{ width: '100%', height: '100%' }}
+        style={{
+          width: '100%',
+          height: '100%',
+          transformPerspective: flipPerspective,
+          transformStyle: 'preserve-3d',
+          transformOrigin: '50% 50%'
+        }}
       >
         <div className={`${styles.cardFace} ${styles.faceFront}`}>
           <div className={styles.cardBorder} />
@@ -867,46 +876,47 @@ const CoverFlowItemCard = memo(function CoverFlowItemCard({
         {enableFlip ? (
           <div className={`${styles.cardFace} ${styles.faceBack}`} aria-hidden />
         ) : null}
-      </motion.div>
 
-      {showReflection && !flipped ? (
-        <div
-          aria-hidden="true"
-          className={styles.reflection}
-          style={{
-            width,
-            height: height * 0.42
-          }}
-        >
+        {/* Inside the flipper so the floor reflection turns with the cover */}
+        {showReflection ? (
           <div
-            className={styles.reflectionFlip}
+            aria-hidden="true"
+            className={styles.reflection}
             style={{
-              filter: reflectionFilterId ? `url(#${reflectionFilterId})` : undefined,
-              mixBlendMode: reflectionFilterId ? 'screen' : undefined,
-              opacity: reflectionFilterId ? 0.55 : 0.4
+              width,
+              height: height * 0.42
             }}
           >
             <div
-              className={`${styles.cardFace} ${reflectionFilterId ? styles.cardFaceReflect : ''}`}
+              className={styles.reflectionFlip}
+              style={{
+                filter: reflectionFilterId ? `url(#${reflectionFilterId})` : undefined,
+                mixBlendMode: reflectionFilterId ? 'screen' : undefined,
+                opacity: reflectionFilterId ? 0.55 : 0.4
+              }}
             >
-              <div className={styles.cardBorder} />
-              <div className={styles.cardImageWrap}>
-                {imageRenderer({
-                  src: item.image,
-                  alt: '',
-                  width,
-                  height,
-                  className: styles.cardImage,
-                  draggable: false,
-                  sizes: `${width}px`,
-                  loading: 'lazy'
-                })}
+              <div
+                className={`${styles.cardFace} ${reflectionFilterId ? styles.cardFaceReflect : ''}`}
+              >
+                <div className={styles.cardBorder} />
+                <div className={styles.cardImageWrap}>
+                  {imageRenderer({
+                    src: item.image,
+                    alt: '',
+                    width,
+                    height,
+                    className: styles.cardImage,
+                    draggable: false,
+                    sizes: `${width}px`,
+                    loading: 'lazy'
+                  })}
+                </div>
               </div>
             </div>
+            <div className={styles.reflectionFade} />
           </div>
-          <div className={styles.reflectionFade} />
-        </div>
-      ) : null}
+        ) : null}
+      </motion.div>
     </motion.div>
   );
 });
