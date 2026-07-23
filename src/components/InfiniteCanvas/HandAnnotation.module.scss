@@ -46,12 +46,6 @@
   }
 }
 
-.desktopOnly {
-  @media (max-width: 480px), (pointer: coarse) {
-    display: none !important;
-  }
-}
-
 .srOnly {
   position: absolute;
   width: 1px;

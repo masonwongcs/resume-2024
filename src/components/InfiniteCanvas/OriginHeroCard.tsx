@@ -60,7 +60,7 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocu
         srText="That's not the actual me that's my Memoji."
         open={hintOpen}
         direction="sw"
-        desktopOnly
+        visibility="always"
         color="#5c5346"
         anchor={{ x: 'right', y: 'top', offsetX: -28, offsetY: -18 }}
         rotate={-8}

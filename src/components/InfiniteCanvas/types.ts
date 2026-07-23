@@ -2,6 +2,8 @@ import type { MutableRefObject, ReactNode } from 'react';
 
 import type { MarqueePersistedState } from '@/components/CurvedLoop';
 
+import type { WorkHandAnnotation } from './HandAnnotation';
+
 export interface Work {
   name: string;
   url?: string;
@@ -9,6 +11,8 @@ export interface Work {
   video?: string;
   thumbnail?: string;
   description: ReactNode;
+  /** Optional handwritten tip on the focus hero (image cards) */
+  handAnnotation?: WorkHandAnnotation;
 }
 
 export interface GridItem {

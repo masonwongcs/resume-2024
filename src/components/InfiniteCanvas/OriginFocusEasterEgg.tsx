@@ -259,8 +259,8 @@ export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocus
       setHintOpen(false);
       return;
     }
-    if (justSettled && !isMobile) setHintOpen(true);
-  }, [isFocusSettled, isMobile]);
+    if (justSettled) setHintOpen(true);
+  }, [isFocusSettled]);
 
   return (
     <div ref={bannerRef} className={styles.coverFlowBannerSlot}>
@@ -282,13 +282,14 @@ export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocus
       />
       <HandAnnotation
         targetRef={bannerRef}
-        note="swipe to browse · click center to play"
+        note="swipe to browse click center to play"
         srText="Swipe Cover Flow to browse albums, then click the center cover to play."
         open={hintOpen}
         direction="sw"
-        desktopOnly
+        visibility="desktop"
         trackKey={coverIndex}
         anchor={{ x: 'right', y: 'top', offsetX: -28, offsetY: -18 }}
+        labelMaxWidth={170}
       />
       {active && !(flipped && !isMobile) ? (
         <div className={styles.coverFlowBannerCaption}>

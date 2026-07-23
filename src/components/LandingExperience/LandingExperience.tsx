@@ -11,7 +11,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Background, Blob } from '@/components/Background';
 import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponent';
 import { Header } from '@/components/Header';
-import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard, listeningCustomCard } from '@/components/InfiniteCanvas';
+import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard, type WorkHandAnnotation, listeningCustomCard } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { usePortfolioViewStore } from '@/store';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
@@ -25,6 +25,7 @@ export interface PortfolioWork {
   video?: string;
   thumbnail?: string;
   description: string;
+  handAnnotation?: WorkHandAnnotation;
 }
 
 interface LandingExperienceProps {

@@ -140,7 +140,15 @@ const WORK_HISTORY = [
     image: './images/work/meow.png',
     thumbnail: './images/work/meow_thumbnail.jpg',
     description:
-      "Developed a charming website that celebrates the internet's favorite animal - cats. The platform fetches and displays a diverse array of cat images on demand, providing users with an endless stream of feline cuteness. Incorporated smooth transitions and lazy loading for optimal performance, creating a seamless and addictive browsing experience for cat enthusiasts."
+      "Developed a charming website that celebrates the internet's favorite animal - cats. The platform fetches and displays a diverse array of cat images on demand, providing users with an endless stream of feline cuteness. Incorporated smooth transitions and lazy loading for optimal performance, creating a seamless and addictive browsing experience for cat enthusiasts.",
+    handAnnotation: {
+      note: `it's my neighbour's cat`,
+      srText: "it's my neighbour's cat",
+      visibility: 'always',
+      direction: 'sw',
+      anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
+      labelMaxWidth: 190
+    }
   },
   {
     name: 'Photography Portfolio',

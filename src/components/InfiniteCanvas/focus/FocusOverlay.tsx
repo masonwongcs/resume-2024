@@ -2,12 +2,13 @@
 
 import styles from '../InfiniteCanvas.module.scss';
 
-import React from 'react';
+import React, { useCallback, useRef } from 'react';
 
 import { AnimatePresence, motion, type MotionValue } from 'motion/react';
 
 import { markImageLoaded } from '@/hooks/useImageLoad';
 
+import { HandAnnotation } from '../HandAnnotation';
 import type { FocusSnapshot, Work } from '../types';
 import { FocusSwipeCard } from './FocusSwipeCard';
 import { FOCUS_LINK_ARROW, FocusSwipeCopy, formatUrl } from './FocusSwipeCopy';
@@ -111,7 +112,21 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
   setFocusImageNode,
   focusScrollShellRef,
   focusScrollRef
-}) => (
+}) => {
+  const annotateRef = useRef<HTMLDivElement | null>(null);
+  const bindFocusCardNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      annotateRef.current = node;
+      setFocusCardNode(node);
+    },
+    [setFocusCardNode]
+  );
+
+  const tip = focusedWork?.handAnnotation;
+  const showWorkTip =
+    Boolean(tip) && isFocusSettled && !focusedIsOriginCard && !focusedFocusBanner;
+
+  return (
   <>
     <AnimatePresence>
       {showFocusScrim && (
@@ -237,7 +252,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                             panelSrc={panelSrc}
                             workName={work.name}
                             banner={panelBanner}
-                            setFocusCardNode={isCurrent ? setFocusCardNode : undefined}
+                            setFocusCardNode={isCurrent ? bindFocusCardNode : undefined}
                             setFocusImageNode={isCurrent ? setFocusImageNode : undefined}
                           />
                           {isFocusSettled ? (
@@ -271,7 +286,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                               transition={focusCardSlide.transition}
                             >
                               <div
-                                ref={setFocusCardNode}
+                                ref={bindFocusCardNode}
                                 className={styles.infiniteCanvasFocusCard}
                                 data-origin={focusedIsOriginCard ? 'true' : undefined}
                                 style={{
@@ -308,7 +323,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                         ) : (
                           <div className={styles.infiniteCanvasFocusSlide}>
                             <div
-                              ref={setFocusCardNode}
+                              ref={bindFocusCardNode}
                               className={styles.infiniteCanvasFocusCard}
                               data-origin={focusedIsOriginCard ? 'true' : undefined}
                               style={{
@@ -470,5 +485,23 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
         </>
       )}
     </AnimatePresence>
+    {tip ? (
+      <HandAnnotation
+        targetRef={annotateRef}
+        note={tip.note}
+        srText={tip.srText}
+        open={showWorkTip}
+        direction={tip.direction ?? 'sw'}
+        mobileDirection={tip.mobileDirection}
+        visibility={tip.visibility ?? 'desktop'}
+        anchor={tip.anchor ?? { x: 'right', y: 'top', offsetX: -28, offsetY: -18 }}
+        mobileAnchor={tip.mobileAnchor}
+        color={tip.color}
+        rotate={tip.rotate}
+        labelMaxWidth={tip.labelMaxWidth}
+        trackKey={focusWorkKey}
+      />
+    ) : null}
   </>
-);
+  );
+};
