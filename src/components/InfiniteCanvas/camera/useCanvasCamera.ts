@@ -58,6 +58,8 @@ const lerp = (start: number, end: number, factor: number) => start + (end - star
 const ZOOM_RUBBERBAND_FACTOR = 0.28;
 /** Cap how far past the limit the rubberband can stretch (as a fraction of the limit) */
 const ZOOM_RUBBERBAND_MAX_OVERSHOOT = 0.2;
+/** Lerp rate while settling back from a rubberband overshoot — lower = slower bounce */
+const ZOOM_SNAP_BACK_LERP = 0.08;
 
 /**
  * iOS-style rubber-band for zoom: allow a little overshoot past min/max with
@@ -132,6 +134,8 @@ export const useCanvasCamera = ({
   const pinchStartZoomRef = useRef<number | null>(null);
   /** Last pinch focal point in camera space — used to snap zoom back on release */
   const lastPinchZoomPointRef = useRef<Point | null>(null);
+  /** True while easing zoom/offset back after a rubberband overshoot */
+  const zoomSnapBackRef = useRef(false);
   /** True only for touch drag — mouse drag keeps wheel lerp */
   const isTouchDrag = useRef(false);
   const dragDistanceRef = useRef(0);
@@ -352,11 +356,13 @@ export const useCanvasCamera = ({
         }
       }
 
-      // Touch drag/pinch use touchLerpFactor; mouse drag + wheel + coast + focus-home use lerpFactor
+      // Touch drag/pinch use touchLerpFactor; rubberband settle is slower; else lerpFactor
       const follow =
-        !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
-          ? touchLerpFactor
-          : lerpFactor;
+        zoomSnapBackRef.current
+          ? ZOOM_SNAP_BACK_LERP
+          : !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
+            ? touchLerpFactor
+            : lerpFactor;
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
       const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
       const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
@@ -377,6 +383,8 @@ export const useCanvasCamera = ({
 
         if (awayFromTarget) {
           cullSettledRef.current = false;
+        } else if (zoomSnapBackRef.current) {
+          zoomSnapBackRef.current = false;
         }
 
         const width = view.width || outerContainerRef.current?.clientWidth || 0;
@@ -387,6 +395,10 @@ export const useCanvasCamera = ({
             Math.abs(newX - targetOffsetRef.current.x) <= 0.01 &&
             Math.abs(newY - targetOffsetRef.current.y) <= 0.01 &&
             Math.abs(newZoom - targetZoomRef.current) <= 0.0001;
+
+          if (settled && zoomSnapBackRef.current) {
+            zoomSnapBackRef.current = false;
+          }
 
           // Touch: throttle cull so edges stay filled without remounting every frame.
           // Mouse/wheel: commit on every cell-window change.
@@ -403,7 +415,11 @@ export const useCanvasCamera = ({
             commitCullPose(newX, newY, newZoom, windowKey, settled);
           }
         }
-      } else if (!cullSettledRef.current) {
+      } else {
+        if (zoomSnapBackRef.current) {
+          zoomSnapBackRef.current = false;
+        }
+        if (!cullSettledRef.current) {
         // Snap cull state to final camera pose once motion stops
         const width = view.width || outerContainerRef.current?.clientWidth || 0;
         const height = view.height || outerContainerRef.current?.clientHeight || 0;
@@ -412,6 +428,7 @@ export const useCanvasCamera = ({
           commitCullPose(view.offsetX, view.offsetY, view.zoom, windowKey, true);
         } else {
           cullSettledRef.current = true;
+        }
         }
       }
     }
@@ -736,6 +753,7 @@ export const useCanvasCamera = ({
         const distance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
         pinchStartDistanceRef.current = distance;
         pinchStartZoomRef.current = targetZoomRef.current;
+        zoomSnapBackRef.current = false;
         lastPinchMidRef.current = {
           x: (touch1.clientX + touch2.clientX) / 2,
           y: (touch1.clientY + touch2.clientY) / 2
@@ -848,9 +866,13 @@ export const useCanvasCamera = ({
         if (overshot && !prefersReducedMotion) {
           const clamped = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current));
           const zoomPoint = lastPinchZoomPointRef.current ?? { x: 0, y: 0 };
+          zoomSnapBackRef.current = true;
           handleZoom(zoomPoint, clamped);
         } else if (overshot) {
+          zoomSnapBackRef.current = false;
           targetZoomRef.current = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current));
+        } else {
+          zoomSnapBackRef.current = false;
         }
 
         isPinching.current = false;
