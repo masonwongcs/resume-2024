@@ -29,7 +29,8 @@
     position: absolute;
     inset: 0;
     touch-action: none;
-    perspective: 1000px;
+    // No perspective here — a viewport-wide vanishing point warps card tilt.
+    // Each item owns its own local perspective (React Bits Tilted Card pattern).
     z-index: 2;
   }
 

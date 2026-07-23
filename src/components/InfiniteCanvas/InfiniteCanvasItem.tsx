@@ -147,7 +147,9 @@ const peerReturnSpring = {
   mass: 0.9
 };
 
-const ROTATE_AMPLITUDE = 8;
+const ROTATE_AMPLITUDE = 9;
+/** Same local depth as React Bits Tilted Card — applied via transformPerspective */
+const TILT_PERSPECTIVE = 800;
 const SCALE_ON_PROXIMITY = 1.1;
 const PROXIMITY_RADIUS_FACTOR = 2.1;
 const MAGNET_STRENGTH = 10;
@@ -395,12 +397,16 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       // Unit vector from center → pointer (stable when dx≈0, unlike atan2 flips)
       const dist = Math.max(distance, 1);
       const pull = nextProximity * MAGNET_STRENGTH;
-      const nextMagnetX = (dx / dist) * pull;
-      const nextMagnetY = (dy / dist) * pull;
-      magnetX.set(nextMagnetX);
-      magnetY.set(nextMagnetY);
+      // While hovering, magnet fights the tilt (React Bits is rotate+scale only)
+      if (isPointerOverRef.current) {
+        magnetX.set(0);
+        magnetY.set(0);
+      } else {
+        magnetX.set((dx / dist) * pull);
+        magnetY.set((dy / dist) * pull);
+      }
 
-      shadowX.set(nextMagnetX * 0.2);
+      shadowX.set(isPointerOverRef.current ? 0 : (dx / dist) * pull * 0.2);
       shadowY.set(SHADOW_REST_Y + nextProximity * 3);
       shadowOpacity.set(SHADOW_REST_OPACITY + nextProximity * (SHADOW_MAX_OPACITY - SHADOW_REST_OPACITY));
       shadowScale.set(SHADOW_REST_SCALE + nextProximity * (SHADOW_MAX_SCALE - SHADOW_REST_SCALE));
@@ -517,52 +523,35 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (isFocusing || isClusteredRef.current || !proximityEnabledRef.current) return;
+      const el = itemRef.current;
+      if (!el) return;
 
-      const layout = layoutRef.current;
-      const view = viewRef.current;
-      let screenW = layout.width;
-      let screenH = layout.height;
-      let centerX: number;
-      let centerY: number;
-
-      if (view && view.width > 0) {
-        const center = contentToClient(layout.x + layout.width / 2, layout.y + layout.height / 2, view);
-        centerX = center.x;
-        centerY = center.y;
-        screenW = layout.width * view.zoom;
-        screenH = layout.height * view.zoom;
-      } else if (itemRef.current) {
-        const rect = itemRef.current.getBoundingClientRect();
-        centerX = rect.left + rect.width / 2;
-        centerY = rect.top + rect.height / 2;
-        screenW = rect.width;
-        screenH = rect.height;
-      } else {
-        return;
-      }
-
-      const offsetX = e.clientX - centerX;
-      const offsetY = e.clientY - centerY;
-      const halfW = screenW / 2 || 1;
-      const halfH = screenH / 2 || 1;
+      // Visual box (same as React Bits) — not layout math, which drifts under canvas zoom
+      const rect = el.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left - rect.width / 2;
+      const offsetY = e.clientY - rect.top - rect.height / 2;
+      const halfW = rect.width / 2 || 1;
+      const halfH = rect.height / 2 || 1;
 
       rotateX.set((offsetY / halfH) * -ROTATE_AMPLITUDE);
       rotateY.set((offsetX / halfW) * ROTATE_AMPLITUDE);
-      angle.set((Math.atan2(e.clientX - centerX, -(e.clientY - centerY)) * 180) / Math.PI);
-      shineX.set(((e.clientX - (centerX - halfW)) / screenW) * 100);
-      shineY.set(((e.clientY - (centerY - halfH)) / screenH) * 100);
+      angle.set((Math.atan2(offsetX, -offsetY) * 180) / Math.PI);
+      shineX.set(((e.clientX - rect.left) / rect.width) * 100);
+      shineY.set(((e.clientY - rect.top) / rect.height) * 100);
       imageX.set((offsetX / halfW) * -IMAGE_PARALLAX);
       imageY.set((offsetY / halfH) * -IMAGE_PARALLAX);
     },
-    [rotateX, rotateY, angle, shineX, shineY, imageX, imageY, viewRef, isFocusing]
+    [rotateX, rotateY, angle, shineX, shineY, imageX, imageY, isFocusing]
   );
 
   const handleMouseEnter = useCallback(() => {
     if (isFocusing || isClusteredRef.current || !proximityEnabledRef.current) return;
     isPointerOverRef.current = true;
+    magnetX.set(0);
+    magnetY.set(0);
     shineOpacity.set(1);
     zIndex.set(baseZIndexRef.current + 50);
-  }, [shineOpacity, isFocusing, zIndex]);
+  }, [shineOpacity, isFocusing, zIndex, magnetX, magnetY]);
 
   const handleMouseLeave = useCallback(() => {
     isPointerOverRef.current = false;
@@ -751,6 +740,16 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           position: 'relative'
         }}
       >
+      {/* Magnet pull stays in 2D — tilt layer only rotates/scales (React Bits pattern) */}
+      <motion.div
+        style={{
+          x: isTouchUi ? 0 : magnetX,
+          y: isTouchUi ? 0 : magnetY,
+          width: '100%',
+          height: '100%',
+          position: 'relative'
+        }}
+      >
       <div
         className={styles.infiniteCanvasItemBackground}
         style={{
@@ -776,8 +775,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       <motion.div
         className={styles.infiniteCanvasItemInner}
         style={{
-          x: isTouchUi ? 0 : magnetX,
-          y: isTouchUi ? 0 : magnetY,
+          // Perspective in the same transform as rotate — stable under canvas pan/zoom
+          // https://www.reactbits.dev/components/tilted-card
+          transformPerspective: isTouchUi ? undefined : TILT_PERSPECTIVE,
           rotateX: isTouchUi ? 0 : rotateX,
           rotateY: isTouchUi ? 0 : rotateY,
           scale: isFocusing || isTouchUi ? 1 : scale,
@@ -825,6 +825,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
             }}
           />
         )}
+      </motion.div>
       </motion.div>
       </motion.div>
     </motion.div>

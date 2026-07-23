@@ -4,14 +4,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  perspective: 1000px;
-  // paint containment flattens 3D — keep layout/style only so tilt perspective works
+  // Perspective lives on the tilt layer via Motion `transformPerspective`
+  // (CSS perspective breaks inside the canvas pan/zoom transform).
   contain: layout style;
   -webkit-tap-highlight-color: transparent;
-
-  @media (hover: none), (pointer: coarse) {
-    perspective: none;
-  }
 
   .infiniteCanvasItemBackground {
     position: absolute;
