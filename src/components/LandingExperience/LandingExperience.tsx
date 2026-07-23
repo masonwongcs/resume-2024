@@ -7,16 +7,25 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import cx from 'classnames';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { usePathname } from 'next/navigation';
 
 import { Background, Blob } from '@/components/Background';
 import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponent';
 import { Header } from '@/components/Header';
-import { ORIGIN_HERO_WORK, type OriginCardConfig, OriginHeroCard, type WorkHandAnnotation, listeningCustomCard } from '@/components/InfiniteCanvas';
+import {
+  type CanvasFocusBridge,
+  ORIGIN_HERO_WORK,
+  type OriginCardConfig,
+  OriginHeroCard,
+  type WorkHandAnnotation,
+  listeningCustomCard
+} from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { usePortfolioViewStore } from '@/store';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
 
 import { ReadingPortfolio } from './ReadingPortfolio';
+import { useWorkUrlSync } from './workUrlSync';
 
 export interface PortfolioWork {
   name: string;
@@ -49,13 +58,24 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
   const reduceMotion = useReducedMotion();
   const [showRecenter, setShowRecenter] = useState(false);
   const recenterActionRef = useRef<(() => void) | null>(null);
+  const pathname = usePathname();
+
+  const canvasFocusBridgeRef = useRef<CanvasFocusBridge | null>(null);
+  const [bridgeVersion, setBridgeVersion] = useState(0);
+  const handleBridgeReady = useCallback(() => setBridgeVersion((v) => v + 1), []);
+  const { handleFocusIntent } = useWorkUrlSync(canvasFocusBridgeRef, bridgeVersion);
 
   const handleRecenterAvailabilityChange = useCallback((visible: boolean) => {
     setShowRecenter(visible);
   }, []);
 
   useEffect(() => {
-    hydrate();
+    // Cold load into /about, /work, or /work/[slug] always forces canvas — captured once at
+    // mount so a later soft toggle to reading isn't fought by this effect re-firing.
+    const isPortfolioEntry =
+      pathname === '/about' || pathname === '/work' || pathname.startsWith('/work/');
+    hydrate(isPortfolioEntry);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrate]);
 
   useEffect(() => {
@@ -94,6 +114,9 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
                 customCards={customCards}
                 onRecenterAvailabilityChange={handleRecenterAvailabilityChange}
                 recenterActionRef={recenterActionRef}
+                focusBridgeRef={canvasFocusBridgeRef}
+                onBridgeReady={handleBridgeReady}
+                onFocusIntent={handleFocusIntent}
               />
               {/* Outside InfiniteCanvas so the mobile edge mask doesn't fade it */}
               <AnimatePresence>

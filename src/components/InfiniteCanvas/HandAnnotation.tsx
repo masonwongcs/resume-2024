@@ -2,23 +2,14 @@
 
 import styles from './HandAnnotation.module.scss';
 
-import {
-  type CSSProperties,
-  type RefObject,
-  useEffect,
-  useRef,
-  useState
-} from 'react';
+import { type CSSProperties, type RefObject, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import cx from 'classnames';
 import { useReducedMotion } from 'motion/react';
 
-import {
-  FOCUS_COPY_SWIPE_PARALLAX,
-  focusSwipeSeatProgress
-} from './focus/focusMotion';
 import { useFocusSwipeParallax } from './focus/FocusSwipeParallaxContext';
+import { FOCUS_COPY_SWIPE_PARALLAX, focusSwipeSeatProgress } from './focus/focusMotion';
 
 /** neat-annotations direction — arrow points this way toward the target */
 export type HandAnnotationDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
@@ -99,7 +90,7 @@ const MOBILE_MQ = '(max-width: 480px), (pointer: coarse)';
 export const HAND_ANNOTATION_MOBILE_ANCHOR: HandAnnotationAnchor = {
   x: 'center',
   y: 'top',
-  offsetX: -50,
+  offsetX: -30,
   offsetY: 10
 };
 
@@ -168,9 +159,7 @@ export const HandAnnotation = ({
   const isMobile = useIsHandAnnMobile();
   const swipe = useFocusSwipeParallax();
   const portalRef = useRef<HTMLSpanElement | null>(null);
-  const resolvedVisibility: HandAnnotationVisibility = desktopOnly
-    ? 'desktop'
-    : (visibility ?? 'desktop');
+  const resolvedVisibility: HandAnnotationVisibility = desktopOnly ? 'desktop' : (visibility ?? 'desktop');
   const allowed =
     resolvedVisibility === 'always' ||
     (resolvedVisibility === 'desktop' && !isMobile) ||

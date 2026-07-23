@@ -5,7 +5,7 @@ import styles from './OriginHeroCard.module.scss';
 import { useEffect, useRef, useState } from 'react';
 
 import { CurvedLoop } from '@/components/CurvedLoop';
-import { CODING_START_DATE, calculateYearDifference } from '@/utils/calculateYearDifference';
+import { getAboutParagraphs } from '@/lib/aboutContent';
 
 import { HandAnnotation } from './HandAnnotation';
 import type { OriginCardRenderProps, Work } from './types';
@@ -13,7 +13,6 @@ import type { OriginCardRenderProps, Work } from './types';
 const MARQUEE_TEXT =
   'Hi · Hello · 你好 · こんにちは · 안녕 · สวัสดี · Xin chào · Halo · नमस्ते · வணக்கம் · مرحبًا · שלום · Merhaba · Γεια σας · Привет · Cześć · Salut · Hallo · Hej · Olá · Ciao · Aloha · Jambo · ';
 
-const yearsCoding = calculateYearDifference(CODING_START_DATE);
 
 /**
  * One-shot center card face — curved multilingual hello marquee.
@@ -76,18 +75,9 @@ export const ORIGIN_HERO_WORK: Work = {
   image: '/images/work/me.png',
   description: (
     <>
-      <p>
-        I&apos;m Mason Wong, a UI enthusiast and front-end engineer based in Singapore, with over {yearsCoding} years of
-        experience crafting thoughtful interfaces for web and mobile. What started as a self-taught design practice grew
-        into a career building products people enjoy using.
-      </p>
-      <p>
-        These days I work as a Full Stack Engineer at L&apos;Oréal, where I help shape internal data tools and GenAI
-        features with a strong focus on UI/UX. Before that, I was a Front-end Engineer at Aesop, delivering campaigns
-        and experiences across Aesop.com and its digital properties.
-      </p>
-      <p>Feel free to wander the grid, open a project, or say hello.</p>
-      <p>Welcome to my corner of the web. I&apos;m glad you&apos;re here.</p>
+      {getAboutParagraphs().map((paragraph) => (
+        <p key={paragraph.slice(0, 24)}>{paragraph}</p>
+      ))}
     </>
   )
 };

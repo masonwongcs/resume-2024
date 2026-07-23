@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+import { ALL_WORK_SLUGS } from '@/lib/workSlug';
+
 const BASE_URL = 'https://masonwongcs.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -11,6 +13,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: 'monthly',
       priority: 1
-    }
+    },
+    {
+      url: `${BASE_URL}/about`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.9
+    },
+    {
+      url: `${BASE_URL}/work`,
+      lastModified,
+      changeFrequency: 'monthly',
+      priority: 0.8
+    },
+    ...ALL_WORK_SLUGS.map((slug) => ({
+      url: `${BASE_URL}/work/${slug}`,
+      lastModified,
+      changeFrequency: 'monthly' as const,
+      priority: 0.6
+    }))
   ];
 }

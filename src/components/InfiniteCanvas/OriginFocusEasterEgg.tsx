@@ -282,8 +282,8 @@ export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocus
       />
       <HandAnnotation
         targetRef={bannerRef}
-        note="swipe to browse click cover to play"
-        srText="Swipe Cover Flow to browse albums, then click the center cover to play."
+        note="swipe to browse and click cover to select"
+        srText="Swipe Cover Flow to browse albums, then click the center cover to select."
         open={hintOpen}
         direction="sw"
         visibility="desktop"
@@ -662,7 +662,7 @@ export const VinylFocusPlayer = () => {
 
   playTrackRef.current = playTrack;
 
-  // Mobile: auto-start when focus opens. Desktop: only play while the playlist overlay is open.
+  // Mobile: auto-start when focus opens. Desktop: open playlist only — user starts playback.
   useEffect(() => {
     if (!isMobile) {
       return () => {
@@ -698,22 +698,6 @@ export const VinylFocusPlayer = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile]);
 
-  // Desktop: start preview once when the playlist opens — not on later overlayRect updates
-  // (resize / page scroll remeasures would otherwise restart track 1 while browsing the list)
-  const desktopStartedForOpenRef = useRef(false);
-  useEffect(() => {
-    if (isMobile || !flipped) {
-      desktopStartedForOpenRef.current = false;
-      return;
-    }
-    if (!overlayRect || desktopStartedForOpenRef.current) return;
-    desktopStartedForOpenRef.current = true;
-    const coverAlbum = library[getListeningCoverIndex()] ?? defaultAlbum;
-    const coverTrack =
-      coverAlbum.collectionId === defaultAlbum.collectionId ? defaultTrack : (coverAlbum.tracks[0] ?? defaultTrack);
-    void playTrackRef.current(coverAlbum, coverTrack);
-  }, [flipped, isMobile, overlayRect]);
-
   // Cover Flow snap / drag → sync selected album. Never start audio from browsing alone —
   // only continue playback if something is already playing (e.g. mobile player / open overlay).
   useEffect(() => {
@@ -721,7 +705,7 @@ export const VinylFocusPlayer = () => {
       const next = library[index];
       if (!next || next.collectionId === albumRef.current.collectionId) return;
 
-      // Desktop with closed overlay: selection only (playback starts when the playlist opens)
+      // Desktop with closed overlay: selection only — playback is user-initiated in the playlist
       if (!isMobile && !getListeningCoverFlipped()) {
         albumRef.current = next;
         trackRef.current = next.tracks[0]!;
