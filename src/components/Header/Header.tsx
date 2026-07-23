@@ -225,6 +225,7 @@ const Header = () => {
                 handleOpenChange(nextOpen);
               }}
               size={24}
+              label={isOpen ? 'Close menu' : 'Open menu'}
             />
           </div>
         </GlassSurface>

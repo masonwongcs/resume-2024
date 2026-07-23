@@ -12,8 +12,8 @@ const WORK_HISTORY = [
   {
     name: 'ArkStack',
     url: 'https://www.arkstack.io',
-    image: './images/work/arkstack.jpg',
-    thumbnail: './images/work/arkstack_thumbnail.png',
+    image: '/images/work/arkstack.jpg',
+    thumbnail: '/images/work/arkstack_thumbnail.jpg',
     description:
       "Spearheaded the development of ArkStack's infrastructure website from the ground up. Created a robust, scalable platform that effectively communicates the company's cloud infrastructure solutions. Incorporated interactive diagrams and real-time system status updates to showcase ArkStack's technological capabilities. The new site has become a crucial tool for lead generation and customer education in the competitive cloud services market."
   },
@@ -76,8 +76,8 @@ const WORK_HISTORY = [
   {
     name: 'Seedverse',
     url: 'https://seedverse.vercel.app',
-    image: './images/work/seedverse.png',
-    thumbnail: './images/work/seedverse_thumbnail.jpg',
+    image: '/images/work/seedverse.png',
+    thumbnail: '/images/work/seedverse_thumbnail.webp',
     description:
       'Designed and launched a dynamic landing page for Seedverse, a cutting-edge blockchain enterprise. The page effectively communicates complex blockchain concepts through engaging visuals and concise content. Incorporated interactive elements to demonstrate the potential applications of their technology, successfully attracting potential investors and partners while establishing Seedverse as a thought leader in the blockchain space.'
   },
@@ -132,7 +132,7 @@ const WORK_HISTORY = [
     url: 'https://click-to-meow.vercel.app',
     image: './images/work/clicktomeow.png',
     video: '/images/work/clicktomeow.webm',
-    thumbnail: './images/work/clicktomeow_thumbnail.png',
+    thumbnail: '/images/work/clicktomeow_thumbnail.jpg',
     description:
       "Created a whimsical and interactive web experience that brings joy through the simple act of clicking. Each click triggers a delightful 'meow' sound, accompanied by playful animations. Implemented a variety of cat-themed visual elements and a click counter, providing users with a fun, stress-relieving break in their day and showcasing creative front-end development skills."
   },

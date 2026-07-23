@@ -52,7 +52,7 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocu
         className={`custom-text-style ${styles.marqueeText}`}
       />
       <div className={styles.portraitWrap} data-in-focus={inFocus ? 'true' : undefined} aria-hidden>
-        <img className={styles.portrait} src="/images/work/me.png" alt="" draggable={false} />
+        <img className={styles.portrait} src="/images/work/me.webp" alt="" draggable={false} />
       </div>
       <HandAnnotation
         targetRef={cardRef}
@@ -73,7 +73,7 @@ export const OriginHeroCard = ({ active = true, onActivate, marqueeState, inFocu
 /** Metadata for the origin card focus overlay */
 export const ORIGIN_HERO_WORK: Work = {
   name: 'Hello',
-  image: '/images/work/me.png',
+  image: '/images/work/me.webp',
   description: (
     <>
       <p>

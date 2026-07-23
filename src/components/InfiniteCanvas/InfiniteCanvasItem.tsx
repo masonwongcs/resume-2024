@@ -790,9 +790,14 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         }}
       >
         {customContentHostRef ? (
-          <div ref={customContentHostRef} className={styles.infiniteCanvasItemCustom} aria-label={work.name} />
+          <div
+            ref={customContentHostRef}
+            className={styles.infiniteCanvasItemCustom}
+            role="group"
+            aria-label={work.name}
+          />
         ) : hasCustomContent ? (
-          <div className={styles.infiniteCanvasItemCustom} aria-label={work.name}>
+          <div className={styles.infiniteCanvasItemCustom} role="group" aria-label={work.name}>
             {customContent}
           </div>
         ) : (

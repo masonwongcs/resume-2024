@@ -33,7 +33,8 @@ export const CustomCard = ({
       aria-label={ariaLabel}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onActivate}
-      role={onActivate ? 'button' : undefined}
+      // Named faces need a non-generic role — bare `div` + `aria-label` fails a11y audits
+      role={onActivate ? 'button' : ariaLabel ? 'group' : undefined}
       tabIndex={onActivate ? 0 : undefined}
       onKeyDown={
         onActivate
