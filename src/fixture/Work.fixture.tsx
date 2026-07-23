@@ -1,3 +1,5 @@
+import type { WorkHandAnnotation } from '@/components/InfiniteCanvas';
+
 const WORK_HISTORY = [
   {
     name: 'Aquariux',
@@ -148,7 +150,7 @@ const WORK_HISTORY = [
       direction: 'sw',
       anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
       labelMaxWidth: 190
-    }
+    } satisfies WorkHandAnnotation
   },
   {
     name: 'Photography Portfolio',
