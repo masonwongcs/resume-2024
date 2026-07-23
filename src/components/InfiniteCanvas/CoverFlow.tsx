@@ -375,7 +375,7 @@ export function CoverFlow({
       const prev = activeIndexRef.current;
       if (clamped === prev) return;
       const dir: Direction = direction ?? (clamped > prev ? 'right' : 'left');
-      // Browsing must not synthesize a center-cover click (opens playlist / autoplay)
+      // Browsing must not synthesize a center-cover click (opens playlist)
       suppressClickUntilRef.current = Date.now() + 320;
       setActiveIndex(clamped);
       scrollX.set(clamped);

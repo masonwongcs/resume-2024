@@ -30,6 +30,8 @@ type UseVisibleGridItemsArgs = {
   staggerOffset: number;
   initialOffsetX: number;
   viewportPadding: number;
+  /** Bump to force a recompute after a deep-link directly mutates `itemsRef` (see gridMath). */
+  gridVersion?: number;
 };
 
 export const useVisibleGridItems = ({
@@ -51,7 +53,8 @@ export const useVisibleGridItems = ({
   gapSize,
   staggerOffset,
   initialOffsetX,
-  viewportPadding
+  viewportPadding,
+  gridVersion
 }: UseVisibleGridItemsArgs) => {
   const metrics = { cellWidth, cellHeight, gapSize, staggerOffset };
 
@@ -168,6 +171,7 @@ export const useVisibleGridItems = ({
     gapSize,
     staggerOffset,
     viewportPadding,
+    gridVersion,
     findCenterGridSeat,
     outerContainerRef,
     itemsRef,

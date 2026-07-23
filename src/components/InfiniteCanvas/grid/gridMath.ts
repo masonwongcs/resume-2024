@@ -376,6 +376,89 @@ export const ensureGridItemAt = ({
   return { ...item, x, y };
 };
 
+/** Directly place a specific work at a seat, overwriting any procedural occupant. */
+export const pinWorkAt = ({
+  gx,
+  gy,
+  work,
+  items,
+  staggerOffset
+}: {
+  gx: number;
+  gy: number;
+  work: Work;
+  items: Map<string, GridItem>;
+  staggerOffset: number;
+}): GridItem & { x: number; y: number } => {
+  const id = generateItemId(gx, gy);
+  const item: GridItem = {
+    id,
+    work,
+    offsetX: 0,
+    offsetY: gx % 2 === 0 ? 0 : staggerOffset
+  };
+  items.set(id, item);
+  return { ...item, x: gx, y: gy };
+};
+
+/** Find an already-generated, non-special seat currently showing `work` (matched by name). */
+export const findExistingSeatForWork = (
+  items: Map<string, GridItem>,
+  work: Work
+): (GridItem & { x: number; y: number }) | null => {
+  for (const [id, item] of items) {
+    if (item.isOriginCard || item.customCardId) continue;
+    if (item.work.name !== work.name) continue;
+    const coords = parseGridCoords(id);
+    if (!coords) continue;
+    return { ...item, ...coords };
+  }
+  return null;
+};
+
+/**
+ * Find (or force) a focusable seat for `work` — used by deep-link focus-by-slug.
+ * Prefers an already-generated seat; otherwise pins the work into a nearby ring around
+ * the origin card, overwriting whatever procedural work currently occupies it (never
+ * displacing the origin seat itself or a pinned custom card).
+ */
+export const ensureSeatForWork = ({
+  work,
+  items,
+  originCardIdRef,
+  staggerOffset
+}: {
+  work: Work;
+  items: Map<string, GridItem>;
+  originCardIdRef?: { current: string | null };
+  staggerOffset: number;
+}): GridItem & { x: number; y: number } => {
+  const existing = findExistingSeatForWork(items, work);
+  if (existing) return existing;
+
+  const originId = originCardIdRef?.current ?? null;
+  const originCoords = originId ? parseGridCoords(originId) : null;
+  const baseGX = originCoords?.x ?? 0;
+  const baseGY = originCoords?.y ?? 0;
+
+  const maxRadius = 12;
+  for (let radius = 1; radius <= maxRadius; radius++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== radius) continue;
+        const gx = baseGX + dx;
+        const gy = baseGY + dy;
+        const id = generateItemId(gx, gy);
+        if (id === originId) continue;
+        if (items.get(id)?.customCardId != null) continue;
+        return pinWorkAt({ gx, gy, work, items, staggerOffset });
+      }
+    }
+  }
+  // Fallback — should not happen given the generous search radius
+  return pinWorkAt({ gx: baseGX + maxRadius + 1, gy: baseGY, work, items, staggerOffset });
+};
+
 /**
  * Walk horizontally from a focused seat (±x, same y) until a focusable neighbor is found.
  * Prefers a different work than the current seat so the overlay always advances.
