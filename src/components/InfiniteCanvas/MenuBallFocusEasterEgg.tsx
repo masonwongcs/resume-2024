@@ -9,7 +9,7 @@ import { useReducedMotion } from 'motion/react';
 
 import type { CustomCardConfig, CustomCardFocusContentProps } from './types';
 
-const BALL_EMOJI = '🎾';
+const BALL_SRC = '/images/work/tennis.webp';
 
 /** Particles including pinned anchor (first) and heavy ball (last). */
 const POINT_COUNT = 14;
@@ -25,7 +25,7 @@ const THROW_SCALE = 1.05;
 const ROPE_INV_MASS = 1 / 0.35;
 const BALL_INV_MASS = 1 / 10;
 
-const getBallRadius = () => (window.matchMedia('(max-width: 767px)').matches ? 25 : 30);
+const getBallRadius = () => (window.matchMedia('(max-width: 767px)').matches ? 26 : 38);
 
 type Particle = {
   x: number;
@@ -47,6 +47,8 @@ type SimState = {
   retracting: boolean;
   /** 0 → 1 over the retract animation */
   retractT: number;
+  /** Smoothed ball facing (degrees). Avoids sudden 180° flips when the rope folds. */
+  ballRotateDeg: number | null;
 };
 
 const getAnchor = () => {
@@ -183,6 +185,44 @@ const pathFromPoints = (points: Particle[]) => {
   return d;
 };
 
+/** Shortest signed delta between two angles in degrees (−180…180). */
+const shortestAngleDelta = (fromDeg: number, toDeg: number) => {
+  let d = ((toDeg - fromDeg) % 360) + 360;
+  d %= 360;
+  if (d > 180) d -= 360;
+  return d;
+};
+
+/**
+ * Target facing so the ball's top aims up the rope.
+ * Uses a point a few segments above the ball so a local tangle doesn't invert it.
+ */
+const getBallTargetRotationDeg = (points: Particle[]): number | null => {
+  const ball = points[points.length - 1];
+  if (!ball) return null;
+  const guide = points[Math.max(0, points.length - 4)] ?? points[points.length - 2];
+  if (!guide) return null;
+  const dx = guide.x - ball.x;
+  const dy = guide.y - ball.y;
+  if (Math.hypot(dx, dy) < 8) return null;
+  return (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+};
+
+const updateBallRotation = (sim: SimState, dt: number) => {
+  const target = getBallTargetRotationDeg(sim.points);
+  if (target == null) return;
+  if (sim.ballRotateDeg == null) {
+    sim.ballRotateDeg = target;
+    return;
+  }
+  const delta = shortestAngleDelta(sim.ballRotateDeg, target);
+  const follow = 1 - Math.exp(-dt * 12);
+  let step = delta * follow;
+  const maxStep = 380 * dt; // deg/s cap — blocks split-second flips
+  if (Math.abs(step) > maxStep) step = Math.sign(step) * maxStep;
+  sim.ballRotateDeg += step;
+};
+
 const RETRACT_DURATION = 0.48;
 
 const MenuBallToy = ({
@@ -202,14 +242,21 @@ const MenuBallToy = ({
   const onCompleteRef = useRef(onRetractComplete);
   onCompleteRef.current = onRetractComplete;
 
-  const paint = (points: Particle[]) => {
+  const paint = (points: Particle[], rotateDeg: number) => {
     const ball = points[points.length - 1];
     if (!ball) return;
 
     const el = ballRef.current;
     const path = pathRef.current;
-    if (el) el.style.transform = `translate3d(${ball.x}px, ${ball.y}px, 0)`;
+    if (el) {
+      el.style.transform = `translate3d(${ball.x}px, ${ball.y}px, 0) rotate(${rotateDeg}deg)`;
+    }
     if (path) path.setAttribute('d', pathFromPoints(points));
+  };
+
+  const paintSim = (sim: SimState, dt = 1 / 60) => {
+    updateBallRotation(sim, dt);
+    paint(sim.points, sim.ballRotateDeg ?? 0);
   };
 
   useEffect(() => {
@@ -249,13 +296,14 @@ const MenuBallToy = ({
       throwVx: 0,
       throwVy: 0,
       retracting: false,
-      retractT: 0
+      retractT: 0,
+      ballRotateDeg: null
     };
 
     pinAnchor(points, anchor.x, anchor.y);
     solveConstraints(points);
     pinAnchor(points, anchor.x, anchor.y);
-    paint(points);
+    paintSim(simRef.current, 1 / 60);
 
     const step = (ts: number) => {
       const sim = simRef.current;
@@ -310,7 +358,7 @@ const MenuBallToy = ({
           layerRef.current.style.opacity = String(1 - ease);
         }
 
-        paint(sim.points);
+        paintSim(sim, dt);
 
         const dist = Math.hypot(ball.x - a.x, ball.y - a.y);
         if (sim.retractT >= 1 || dist < 10) {
@@ -365,7 +413,7 @@ const MenuBallToy = ({
         ball.py = ball.y;
       }
 
-      paint(sim.points);
+      paintSim(sim, dt);
       rafRef.current = requestAnimationFrame(step);
     };
 
@@ -377,7 +425,7 @@ const MenuBallToy = ({
       const a = getAnchor();
       pinAnchor(sim.points, a.x, a.y);
       solveConstraints(sim.points);
-      paint(sim.points);
+      paintSim(sim);
     };
     window.addEventListener('resize', onResize);
 
@@ -411,7 +459,7 @@ const MenuBallToy = ({
     ball.px = ball.x;
     ball.py = ball.y;
 
-    paint(sim.points);
+    paintSim(sim);
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -441,7 +489,7 @@ const MenuBallToy = ({
     ball.y = event.clientY;
     ball.px = ball.x;
     ball.py = ball.y;
-    paint(sim.points);
+    paintSim(sim, Math.min(dt, 0.033));
   };
 
   const endDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -487,7 +535,7 @@ const MenuBallToy = ({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
       >
-        <span aria-hidden>{BALL_EMOJI}</span>
+        <img className={styles.ballImage} src={BALL_SRC} alt="" draggable={false} />
       </button>
     </div>
   );
