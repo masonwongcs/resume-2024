@@ -12,6 +12,7 @@ type StickerItem = {
 type WorkItem = {
   name?: string;
   url?: string;
+  linkLabel?: string;
   image?: string;
   video?: string;
   description?: string;

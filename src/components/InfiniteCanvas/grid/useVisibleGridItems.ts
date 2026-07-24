@@ -95,7 +95,7 @@ export const useVisibleGridItems = ({
       for (const id of customCardIdsRef.current.values()) occupied.add(id);
 
       customCards.forEach((card, cardIndex) => {
-        if (card.placement === 'origin') return;
+        if (card.placement === 'origin' || card.placement === 'none') return;
         if (customCardIdsRef.current.has(card.id)) return;
         const { gx, gy } = pickRandomCustomCardSeat({
           originGX,

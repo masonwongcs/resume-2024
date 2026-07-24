@@ -215,6 +215,23 @@ const WORK_HISTORY = [
     thumbnail: '/images/work/progressiveperformance_thumbnail.jpg',
     description:
       'Progressive Performance is a Singapore-based performance and fitness company focused on helping individuals achieve their health, strength, and athletic goals through evidence-based coaching, personalised training, and sustainable long-term development. With a results-driven approach, Progressive Performance aims to empower clients to perform at their best, whether for sport, fitness, or everyday life.'
+  },
+  {
+    name: 'MenuBall',
+    url: 'https://apps.apple.com/us/app/menuball/id6759548000',
+    linkLabel: 'Get it on the App Store',
+    image: '/images/work/menuball.webp',
+    thumbnail: '/images/work/menuball.webp',
+    description:
+      'A tiny macOS menu bar app for those moments when you just need something to fidget with. Click once and a physics ball drops onto your desktop. Drag it, toss it, bounce it around. Free on the Mac App Store.',
+    handAnnotation: {
+      note: `great for boring meetings`,
+      srText: 'great for boring meetings',
+      visibility: 'always',
+      direction: 'sw',
+      anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
+      labelMaxWidth: 200
+    } satisfies WorkHandAnnotation
   }
 ];
 

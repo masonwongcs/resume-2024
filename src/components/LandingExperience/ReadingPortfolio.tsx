@@ -26,6 +26,7 @@ const getImageSource = (work: PortfolioWork) => work.thumbnail ?? work.image;
 const toFlyoutWork = (work: PortfolioWork) => ({
   name: work.name,
   url: work.url,
+  linkLabel: work.linkLabel,
   image: work.image,
   video: work.video,
   description: work.description,

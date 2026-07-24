@@ -18,7 +18,8 @@ import {
   type OriginCardConfig,
   OriginHeroCard,
   type WorkHandAnnotation,
-  listeningCustomCard
+  listeningCustomCard,
+  menuBallCustomCard
 } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { usePortfolioViewStore } from '@/store';
@@ -30,6 +31,7 @@ import { useWorkUrlSync } from './workUrlSync';
 export interface PortfolioWork {
   name: string;
   url?: string;
+  linkLabel?: string;
   image: string;
   video?: string;
   thumbnail?: string;
@@ -49,7 +51,7 @@ const originCard: OriginCardConfig = {
   focusable: true
 };
 
-const customCards = [listeningCustomCard];
+const customCards = [listeningCustomCard, menuBallCustomCard];
 
 const LandingExperience = ({ works }: LandingExperienceProps) => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);

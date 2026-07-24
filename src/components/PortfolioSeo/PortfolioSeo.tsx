@@ -85,7 +85,7 @@ export function WorkCaseArticle({ slug }: WorkCaseArticleProps) {
       {work.url ? (
         <p>
           <a href={work.url} rel="noopener noreferrer">
-            Visit {work.name}
+            {work.linkLabel ?? `Visit ${work.name}`}
           </a>
         </p>
       ) : null}

@@ -17,6 +17,7 @@ export {
   VinylFocusPlayer,
   listeningCustomCard
 } from './OriginFocusEasterEgg';
+export { MenuBallFocusEasterEgg, menuBallCustomCard } from './MenuBallFocusEasterEgg';
 export {
   FEATURED_ALBUM,
   NOW_LISTENING_LIBRARY,

@@ -7,6 +7,8 @@ import type { WorkHandAnnotation } from './HandAnnotation';
 export interface Work {
   name: string;
   url?: string;
+  /** Optional CTA label; falls back to a cleaned URL when omitted */
+  linkLabel?: string;
   image: string;
   video?: string;
   thumbnail?: string;
@@ -77,8 +79,9 @@ export interface CustomCardConfig {
    * Pin strategy.
    * - `random` (default) — stable seeded seat away from origin
    * - `origin` — reserved for the Hello card via `originCard` prop
+   * - `none` — no grid seat; match by work key for focus extras only
    */
-  placement?: 'random' | 'origin';
+  placement?: 'random' | 'origin' | 'none';
 }
 
 export type OriginCardRenderProps = CustomCardRenderProps & {

@@ -266,7 +266,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                 isCurrent && focusNavDirection === 0 && !focusNavInstant
                               }
                               reducedMotion={Boolean(prefersReducedMotion)}
-                              focusExtra={getFocusExtraForWork?.(work)}
+                              focusExtra={isCurrent ? getFocusExtraForWork?.(work) : null}
                             />
                           ) : null}
                         </div>
@@ -383,7 +383,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                   >
-                                    {formatUrl(focusedWork.url)}
+                                    {focusedWork.linkLabel ?? formatUrl(focusedWork.url)}
                                     {FOCUS_LINK_ARROW}
                                   </a>
                                 ) : null}
@@ -419,7 +419,7 @@ export const FocusOverlay: React.FC<FocusOverlayProps> = ({
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
-                                  {formatUrl(focusedWork.url)}
+                                  {focusedWork.linkLabel ?? formatUrl(focusedWork.url)}
                                   {FOCUS_LINK_ARROW}
                                 </a>
                               ) : null}

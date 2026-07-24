@@ -54,6 +54,8 @@ export const FocusSwipeCopy: React.FC<{
     return focusSwipeSeatProgress(side, x, panelStride);
   });
 
+  const linkText = work.linkLabel ?? formatUrl(work.url);
+
   const link = work.url ? (
     isCurrent ? (
       <a
@@ -62,12 +64,12 @@ export const FocusSwipeCopy: React.FC<{
         target="_blank"
         rel="noopener noreferrer"
       >
-        {formatUrl(work.url)}
+        {linkText}
         {FOCUS_LINK_ARROW}
       </a>
     ) : (
       <span className={styles.infiniteCanvasFocusLink}>
-        {formatUrl(work.url)}
+        {linkText}
         {FOCUS_LINK_ARROW}
       </span>
     )

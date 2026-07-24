@@ -493,7 +493,7 @@ export const useIntroSequence = ({
 
       // Fold custom cards into the intro stack so they peel with the rest
       for (const card of customCards ?? []) {
-        if (card.placement === 'origin') continue;
+        if (card.placement === 'origin' || card.placement === 'none') continue;
         const key = getWorkKey(card.work);
         const alreadyInStack = viewportItems.some((item) => getWorkKey(item.work) === key);
         if (alreadyInStack) continue;
