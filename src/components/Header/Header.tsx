@@ -122,12 +122,24 @@ const Header = () => {
     [beginDrawerOpen, closeSearch, trigger]
   );
 
+  const focusSearchInput = useCallback(() => {
+    const input = searchInputRef.current;
+    if (!input) return;
+    // Unlock before focus so the click/key gesture can start editing (esp. mobile Safari)
+    input.readOnly = false;
+    input.tabIndex = 0;
+    input.focus({ preventScroll: true });
+  }, []);
+
   const openSearchUi = useCallback(() => {
     if (isOpenRef.current) {
       handleOpenChange(false);
     }
     openSearch();
-  }, [handleOpenChange, openSearch]);
+    // Focus in the same turn as the user gesture when possible
+    focusSearchInput();
+    requestAnimationFrame(() => focusSearchInput());
+  }, [focusSearchInput, handleOpenChange, openSearch]);
 
   const handleSearchToggle = useCallback(() => {
     if (searchOpen) {
@@ -140,17 +152,17 @@ const Header = () => {
 
   const handleSearchClear = useCallback(() => {
     setSearchQuery('');
-    searchInputRef.current?.focus();
-  }, [setSearchQuery]);
+    focusSearchInput();
+  }, [focusSearchInput, setSearchQuery]);
 
   // Focus when opening; blur when closing so typing can't leak into a hidden field
   useEffect(() => {
     if (searchOpen) {
-      const id = requestAnimationFrame(() => searchInputRef.current?.focus());
+      const id = requestAnimationFrame(() => focusSearchInput());
       return () => cancelAnimationFrame(id);
     }
     searchInputRef.current?.blur();
-  }, [searchOpen]);
+  }, [focusSearchInput, searchOpen]);
 
   // Cmd/Ctrl+K opens search; Escape clears + closes when search is open
   useEffect(() => {
@@ -162,7 +174,7 @@ const Header = () => {
         }
         if (searchOpen) {
           event.preventDefault();
-          searchInputRef.current?.focus();
+          focusSearchInput();
           return;
         }
         if (!introComplete || canvasFocused) return;
@@ -179,7 +191,7 @@ const Header = () => {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canvasFocused, clearSearch, introComplete, openSearchUi, searchOpen]);
+  }, [canvasFocused, clearSearch, focusSearchInput, introComplete, openSearchUi, searchOpen]);
 
   // Check if device is mobile
   useEffect(() => {
