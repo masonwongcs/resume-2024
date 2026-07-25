@@ -8,7 +8,8 @@ import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'motion/react';
 
 import type { MarqueePersistedState } from '@/components/CurvedLoop';
-import { useHomeStore } from '@/store';
+import { getMatchingWorkKeys, isWorkSearchMatch } from '@/lib/workSearch';
+import { useHomeStore, useSearchStore } from '@/store';
 
 import { createCanvasViewState } from './camera/canvasView';
 import { useCanvasCamera } from './camera/useCanvasCamera';
@@ -61,6 +62,10 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const setCanvasFocused = useHomeStore((state) => state.setCanvasFocused);
   const loaded = useHomeStore((state) => state.loaded);
   const introComplete = useHomeStore((state) => state.introComplete);
+  const canvasFocused = useHomeStore((state) => state.canvasFocused);
+  const searchQuery = useSearchStore((state) => state.query);
+  const matchingWorkKeys = useMemo(() => getMatchingWorkKeys(works, searchQuery), [works, searchQuery]);
+  const searchFilterActive = searchQuery.trim().length > 0 && !canvasFocused;
 
   const prefersReducedMotion = useReducedMotion();
 
@@ -767,6 +772,9 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 focusReturnDelay={focusReturnDelay}
                 focusScrollNudgeY={item.isOriginCard ? focus.focusScrollNudgeY : undefined}
                 focusScrollNudgeX={item.isOriginCard ? focus.focusScrollNudgeX : undefined}
+                searchDimmed={
+                  searchFilterActive && !isWorkSearchMatch(item.work, matchingWorkKeys, searchQuery)
+                }
                 registerProximity={camera.registerProximity}
                 unregisterProximity={camera.unregisterProximity}
                 onStackEnterComplete={introConfig && intro.isClusterHold ? intro.handleStackEnterComplete : undefined}

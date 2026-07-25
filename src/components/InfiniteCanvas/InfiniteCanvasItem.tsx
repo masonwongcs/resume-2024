@@ -102,7 +102,12 @@ interface InfiniteCanvasItemProps {
   onFocusArrive?: (id: string) => void;
   /** Fired once when the focus card has sprung back to its grid home */
   onFocusReturnComplete?: (id: string) => void;
+  /** Dim non-matching cards while canvas search is active (idle only) */
+  searchDimmed?: boolean;
 }
+
+const SEARCH_DIM_OPACITY = 0.22;
+const SEARCH_DIM_OPACITY_DURATION = 0.7;
 
 const springValues: SpringOptions = {
   damping: 30,
@@ -227,6 +232,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusReturnDelay = 0,
   focusScrollNudgeY,
   focusScrollNudgeX,
+  searchDimmed = false,
   registerProximity,
   unregisterProximity,
   onSelect,
@@ -267,6 +273,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const prevFocusModeRef = useRef(focusMode);
   const peerReturnActiveRef = useRef(false);
   const peerReturnDelayRef = useRef(0);
+  const [searchOpacityTween, setSearchOpacityTween] = useState(false);
   const layoutRef = useRef({ x, y, width, height });
   const baseZIndex = intro?.zIndex ?? 0;
   const baseZIndexRef = useRef(baseZIndex);
@@ -597,6 +604,19 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   }
   prevFocusModeRef.current = focusMode;
 
+  // Only apply search dim while idle so focus/intro springs own opacity otherwise
+  const idleOpacity = searchDimmed && focusMode === 'idle' ? SEARCH_DIM_OPACITY : 1;
+  // Keep slow opacity transition through the full undim (don't drop duration mid-tween)
+  useEffect(() => {
+    if (searchDimmed) {
+      setSearchOpacityTween(true);
+      return;
+    }
+    const id = window.setTimeout(() => setSearchOpacityTween(false), SEARCH_DIM_OPACITY_DURATION * 1000);
+    return () => window.clearTimeout(id);
+  }, [searchDimmed]);
+  const useSearchOpacityTween = searchDimmed || searchOpacityTween;
+
   const animateState = (() => {
     if (isAwaitingStack && intro) {
       return getPillApproachPose(intro, viewRef.current);
@@ -613,7 +633,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         opacity: focusOpacity
       };
     }
-    return { x, y, rotate: 0, scale: 1, opacity: 1 };
+    return { x, y, rotate: 0, scale: 1, opacity: idleOpacity };
   })();
 
   const transition =
@@ -651,7 +671,11 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
                   : {
                       // Soft opacity enter when culled cards remount; keep spring for transform
                       ...focusSpring,
-                      opacity: { type: 'tween' as const, duration: 0.28, ease: [0.22, 1, 0.36, 1] }
+                      opacity: {
+                        type: 'tween' as const,
+                        duration: useSearchOpacityTween ? SEARCH_DIM_OPACITY_DURATION : 0.28,
+                        ease: [0.22, 1, 0.36, 1]
+                      }
                     };
 
   return (

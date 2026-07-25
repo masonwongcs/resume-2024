@@ -11,7 +11,27 @@ import { useWebHaptics } from 'web-haptics/react';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
 import GlassSurface from '@/components/GlassSurface/GlassSurface';
-import { useHomeStore, usePortfolioViewStore, useWorkStore } from '@/store';
+import { useHomeStore, usePortfolioViewStore, useSearchStore, useWorkStore } from '@/store';
+
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+};
+
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.75" />
+    <path d="M16.2 16.2L20.5 20.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+  </svg>
+);
+
+const ClearIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <path d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+);
 
 const Header = () => {
   const { trigger } = useWebHaptics();
@@ -27,6 +47,12 @@ const Header = () => {
   const setViewMode = usePortfolioViewStore((state) => state.setViewMode);
   const canvasFocused = useHomeStore((state) => state.canvasFocused);
   const introComplete = useHomeStore((state) => state.introComplete);
+  const searchOpen = useSearchStore((state) => state.isOpen);
+  const searchQuery = useSearchStore((state) => state.query);
+  const openSearch = useSearchStore((state) => state.open);
+  const closeSearch = useSearchStore((state) => state.close);
+  const setSearchQuery = useSearchStore((state) => state.setQuery);
+  const clearSearch = useSearchStore((state) => state.clear);
 
   // Drag progress is kept in a ref (not state) so dragging the drawer doesn't
   // re-render Header / the expensive GlassSurface subtree on every frame.
@@ -34,6 +60,7 @@ const Header = () => {
   const rafRef = useRef<number | null>(null);
   const pendingOpenAnimationRef = useRef(false);
   const isOpenRef = useRef(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const handleHamburgerHover = useCallback(() => {
     setShouldMountDrawer(true);
@@ -79,6 +106,7 @@ const Header = () => {
       if (open === isOpenRef.current) return;
 
       if (open) {
+        closeSearch();
         setShouldMountDrawer(true);
         setIsAnimating(true);
         beginDrawerOpen();
@@ -91,8 +119,67 @@ const Header = () => {
       setOpen(open);
       trigger();
     },
-    [beginDrawerOpen, trigger]
+    [beginDrawerOpen, closeSearch, trigger]
   );
+
+  const openSearchUi = useCallback(() => {
+    if (isOpenRef.current) {
+      handleOpenChange(false);
+    }
+    openSearch();
+  }, [handleOpenChange, openSearch]);
+
+  const handleSearchToggle = useCallback(() => {
+    if (searchOpen) {
+      clearSearch();
+      return;
+    }
+    trigger('success');
+    openSearchUi();
+  }, [clearSearch, openSearchUi, searchOpen, trigger]);
+
+  const handleSearchClear = useCallback(() => {
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  }, [setSearchQuery]);
+
+  // Focus when opening; blur when closing so typing can't leak into a hidden field
+  useEffect(() => {
+    if (searchOpen) {
+      const id = requestAnimationFrame(() => searchInputRef.current?.focus());
+      return () => cancelAnimationFrame(id);
+    }
+    searchInputRef.current?.blur();
+  }, [searchOpen]);
+
+  // Cmd/Ctrl+K opens search; Escape clears + closes when search is open
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isModK = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      if (isModK) {
+        if (isEditableTarget(event.target) && event.target !== searchInputRef.current) {
+          return;
+        }
+        if (searchOpen) {
+          event.preventDefault();
+          searchInputRef.current?.focus();
+          return;
+        }
+        if (!introComplete || canvasFocused) return;
+        event.preventDefault();
+        openSearchUi();
+        return;
+      }
+
+      if (event.key === 'Escape' && searchOpen) {
+        event.preventDefault();
+        clearSearch();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canvasFocused, clearSearch, introComplete, openSearchUi, searchOpen]);
 
   // Check if device is mobile
   useEffect(() => {
@@ -201,32 +288,79 @@ const Header = () => {
       >
         <GlassSurface
           className={cx(styles.headerWrapper, {
-            [styles.hidden]: isOpen || canvasFocused || !introComplete
+            [styles.hidden]: isOpen || canvasFocused || !introComplete,
+            [styles.searchExpanded]: searchOpen
           })}
           borderRadius={50}
           style={isDragging ? { transition: 'none' } : undefined}
         >
           {/*<img className={styles.logo} src="/apple-touch-icon.png" alt="I'm Mason" />*/}
-          <div className={styles.name}>
-            Hi, I'm Mason <span>Wong</span>
+          <div className={styles.lead}>
+            <div className={cx(styles.name, { [styles.nameCollapsed]: searchOpen })} aria-hidden={searchOpen}>
+              Hi, I'm Mason <span>Wong</span>
+            </div>
+
+            <div className={cx(styles.searchField, { [styles.searchFieldVisible]: searchOpen })}>
+              <input
+                ref={searchInputRef}
+                className={styles.searchInput}
+                type="search"
+                value={searchQuery}
+                onChange={(event) => {
+                  if (!searchOpen) return;
+                  setSearchQuery(event.target.value);
+                }}
+                placeholder="Search work…"
+                aria-label="Search work"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                tabIndex={searchOpen ? 0 : -1}
+                readOnly={!searchOpen}
+                aria-hidden={!searchOpen}
+              />
+              <button
+                type="button"
+                className={cx(styles.searchClear, {
+                  [styles.searchClearVisible]: searchOpen && Boolean(searchQuery)
+                })}
+                onClick={handleSearchClear}
+                aria-label="Clear search"
+                tabIndex={searchOpen && searchQuery ? 0 : -1}
+              >
+                <ClearIcon />
+              </button>
+            </div>
           </div>
 
-          <div
-            className={styles.hamburger}
-            onMouseEnter={handleHamburgerHover}
-            onFocus={handleHamburgerHover}
-            onTouchStart={handleHamburgerHover}
-          >
-            <Hamburger
-              toggled={isOpen}
-              toggle={(openToggle) => {
-                trigger('success');
-                const nextOpen = typeof openToggle === 'function' ? openToggle(isOpenRef.current) : openToggle;
-                handleOpenChange(nextOpen);
-              }}
-              size={24}
-              label={isOpen ? 'Close menu' : 'Open menu'}
-            />
+          <div className={styles.controls}>
+            <button
+              type="button"
+              className={cx(styles.searchToggle, { [styles.searchToggleActive]: searchOpen })}
+              onClick={handleSearchToggle}
+              aria-label={searchOpen ? 'Close search' : 'Open search'}
+              aria-expanded={searchOpen}
+            >
+              <SearchIcon />
+            </button>
+
+            <div
+              className={styles.hamburger}
+              onMouseEnter={handleHamburgerHover}
+              onFocus={handleHamburgerHover}
+              onTouchStart={handleHamburgerHover}
+            >
+              <Hamburger
+                toggled={isOpen}
+                toggle={(openToggle) => {
+                  trigger('success');
+                  const nextOpen = typeof openToggle === 'function' ? openToggle(isOpenRef.current) : openToggle;
+                  handleOpenChange(nextOpen);
+                }}
+                size={24}
+                label={isOpen ? 'Close menu' : 'Open menu'}
+              />
+            </div>
           </div>
         </GlassSurface>
 
