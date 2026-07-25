@@ -1,0 +1,54 @@
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 75% 70% at 50% 42%,
+    transparent 0%,
+    transparent 32%,
+    rgba(20, 8, 28, 0.4) 68%,
+    rgba(8, 2, 14, 0.68) 100%
+  );
+}
+
+// Soft dancefloor wash so bouncing cards feel lit from below
+.floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48%;
+  background: radial-gradient(
+    ellipse 85% 75% at 50% 100%,
+    rgba(255, 160, 80, 0.38) 0%,
+    rgba(220, 60, 140, 0.22) 35%,
+    transparent 72%
+  );
+  mix-blend-mode: screen;
+  animation: discoFloorPulse 0.48s ease-in-out infinite;
+  transform-origin: center bottom;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+@keyframes discoFloorPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scaleY(1) scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.12) scaleX(1.04);
+  }
+}

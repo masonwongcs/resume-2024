@@ -18,6 +18,7 @@ export {
   listeningCustomCard
 } from './OriginFocusEasterEgg';
 export { MenuBallFocusEasterEgg, menuBallCustomCard } from './MenuBallFocusEasterEgg';
+export { DiscoAtmosphere } from './DiscoAtmosphere';
 export {
   FEATURED_ALBUM,
   NOW_LISTENING_LIBRARY,

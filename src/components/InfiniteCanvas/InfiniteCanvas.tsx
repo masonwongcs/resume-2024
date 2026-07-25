@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import { useReducedMotion } from 'motion/react';
 
 import type { MarqueePersistedState } from '@/components/CurvedLoop';
-import { getMatchingWorkKeys, isWorkSearchMatch } from '@/lib/workSearch';
+import { getMatchingWorkKeys, isDiscoQuery, isWorkSearchMatch } from '@/lib/workSearch';
 import { useHomeStore, useSearchStore } from '@/store';
 
 import { createCanvasViewState } from './camera/canvasView';
@@ -64,8 +64,29 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
   const introComplete = useHomeStore((state) => state.introComplete);
   const canvasFocused = useHomeStore((state) => state.canvasFocused);
   const searchQuery = useSearchStore((state) => state.query);
+  const discoMode = isDiscoQuery(searchQuery);
+  const discoModeRef = useRef(discoMode);
+  discoModeRef.current = discoMode;
+  // Keep card dance mounted briefly so it can ease to rest instead of hard-cutting
+  const [discoDanceActive, setDiscoDanceActive] = useState(discoMode);
+  const [discoDanceExiting, setDiscoDanceExiting] = useState(false);
+  useEffect(() => {
+    if (discoMode) {
+      setDiscoDanceActive(true);
+      setDiscoDanceExiting(false);
+      return;
+    }
+    if (!discoDanceActive) return;
+    setDiscoDanceExiting(true);
+    const id = window.setTimeout(() => {
+      setDiscoDanceActive(false);
+      setDiscoDanceExiting(false);
+    }, 550);
+    return () => window.clearTimeout(id);
+  }, [discoMode, discoDanceActive]);
   const matchingWorkKeys = useMemo(() => getMatchingWorkKeys(works, searchQuery), [works, searchQuery]);
-  const searchFilterActive = searchQuery.trim().length > 0 && !canvasFocused;
+  // Disco is a hidden mode, not a work filter — keep the grid lit
+  const searchFilterActive = searchQuery.trim().length > 0 && !canvasFocused && !discoMode;
 
   const prefersReducedMotion = useReducedMotion();
 
@@ -214,7 +235,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     maxZoom,
     clickDragThresholdPx,
     prefersReducedMotion,
-    introFlush
+    introFlush,
+    discoModeRef
   });
 
   const visibleItems = useVisibleGridItems({
@@ -775,6 +797,8 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
                 searchDimmed={
                   searchFilterActive && !isWorkSearchMatch(item.work, matchingWorkKeys, searchQuery)
                 }
+                discoMode={discoDanceActive}
+                discoExiting={discoDanceExiting}
                 registerProximity={camera.registerProximity}
                 unregisterProximity={camera.unregisterProximity}
                 onStackEnterComplete={introConfig && intro.isClusterHold ? intro.handleStackEnterComplete : undefined}

@@ -104,10 +104,23 @@ interface InfiniteCanvasItemProps {
   onFocusReturnComplete?: (id: string) => void;
   /** Dim non-matching cards while canvas search is active (idle only) */
   searchDimmed?: boolean;
+  /** Search easter egg — staggered dance bounce while idle */
+  discoMode?: boolean;
+  /** Ease dance back to rest when disco ends */
+  discoExiting?: boolean;
 }
 
 const SEARCH_DIM_OPACITY = 0.22;
 const SEARCH_DIM_OPACITY_DURATION = 0.7;
+
+/** Stable 0–1 phase from item id so dance bounces aren't lockstep */
+const discoStaggerFromId = (itemId: string) => {
+  let hash = 0;
+  for (let i = 0; i < itemId.length; i++) {
+    hash = (hash * 31 + itemId.charCodeAt(i)) >>> 0;
+  }
+  return (hash % 1000) / 1000;
+};
 
 const springValues: SpringOptions = {
   damping: 30,
@@ -233,6 +246,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   focusScrollNudgeY,
   focusScrollNudgeX,
   searchDimmed = false,
+  discoMode = false,
+  discoExiting = false,
   registerProximity,
   unregisterProximity,
   onSelect,
@@ -678,6 +693,14 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
                       }
                     };
 
+  const discoActive = discoMode && focusMode === 'idle';
+  const discoStagger = discoStaggerFromId(id);
+  const discoDanceClass = !discoActive
+    ? undefined
+    : discoExiting
+      ? styles.discoDanceExit
+      : styles.discoDance;
+
   return (
     <motion.div
       ref={itemRef}
@@ -774,6 +797,23 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           position: 'relative'
         }}
       >
+      {/* Disco dance lives here so it doesn't fight Motion layout/focus transforms */}
+      <div
+        className={discoDanceClass}
+        style={
+          discoActive
+            ? ({
+                ['--disco-stagger' as string]: `${discoStagger * 0.48}s`,
+                ['--disco-duration' as string]: `${0.44 + discoStagger * 0.12}s`,
+                // Alternate lean left/right so the crowd doesn't sway in unison
+                ['--disco-tilt' as string]: `${discoStagger > 0.5 ? -3.2 : 3.2}deg`,
+                width: '100%',
+                height: '100%',
+                position: 'relative'
+              } as React.CSSProperties)
+            : { width: '100%', height: '100%', position: 'relative' }
+        }
+      >
       <div
         className={styles.infiniteCanvasItemBackground}
         style={{
@@ -855,6 +895,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
           />
         )}
       </motion.div>
+      </div>
       </motion.div>
       </motion.div>
     </motion.div>

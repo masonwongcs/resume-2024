@@ -9,6 +9,29 @@
   contain: layout style;
   -webkit-tap-highlight-color: transparent;
 
+  .discoDance {
+    --disco-tilt: 2.8deg;
+    transform-origin: center bottom;
+    animation: discoDance var(--disco-duration, 0.48s) ease-in-out infinite;
+    animation-delay: var(--disco-stagger, 0s);
+    will-change: transform;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation-duration: 1.4s;
+      animation-timing-function: ease-in-out;
+    }
+  }
+
+  .discoDanceExit {
+    transform-origin: center bottom;
+    animation: discoDanceExit 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    will-change: transform;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation-duration: 0.2s;
+    }
+  }
+
   .infiniteCanvasItemBackground {
     position: absolute;
     top: 0;
@@ -140,5 +163,24 @@
     @media (hover: none), (pointer: coarse) {
       display: none;
     }
+  }
+}
+
+@keyframes discoDance {
+  0%,
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-18%) scale(1.1) rotate(var(--disco-tilt, 2.8deg));
+  }
+}
+
+@keyframes discoDanceExit {
+  from {
+    transform: translateY(-8%) scale(1.04) rotate(var(--disco-tilt, 2.8deg));
+  }
+  to {
+    transform: translateY(0) scale(1) rotate(0deg);
   }
 }

@@ -14,6 +14,7 @@ import { FlyoutCSR, InfiniteCanvasCSR } from '@/components/ClientDynamicComponen
 import { Header } from '@/components/Header';
 import {
   type CanvasFocusBridge,
+  DiscoAtmosphere,
   ORIGIN_HERO_WORK,
   type OriginCardConfig,
   OriginHeroCard,
@@ -91,6 +92,7 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
       <Loader />
       <Background />
       <Header />
+      <DiscoAtmosphere />
 
       <main className={cx(pageStyles.main, { [pageStyles.readingMode]: hasHydrated && viewMode === 'reading' })}>
         <AnimatePresence mode="wait" initial={false}>

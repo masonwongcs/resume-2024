@@ -50,6 +50,8 @@ type UseCanvasCameraArgs = {
   clickDragThresholdPx: number;
   prefersReducedMotion: boolean | null;
   introFlush: number;
+  /** Search easter egg — pulse real camera zoom like scroll in/out */
+  discoModeRef?: RefObject<boolean>;
 };
 
 const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
@@ -113,7 +115,8 @@ export const useCanvasCamera = ({
   maxZoom,
   clickDragThresholdPx,
   prefersReducedMotion,
-  introFlush
+  introFlush,
+  discoModeRef
 }: UseCanvasCameraArgs) => {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -127,6 +130,12 @@ export const useCanvasCamera = ({
   const lastCullCommitMsRef = useRef(0);
   const animationFrameRef = useRef<number>(null);
   const lastPosition = useRef({ x: 0, y: 0 });
+  /** Resting zoom while disco boombox pulses around it */
+  const discoBaseZoomRef = useRef<number | null>(null);
+  /** Last zoom we wrote for the pulse — used to detect user scroll/pinch */
+  const discoLastPulseZoomRef = useRef<number | null>(null);
+  /** Ease camera back to rest when disco ends */
+  const discoExitRef = useRef<{ start: number; fromZoom: number; baseZoom: number } | null>(null);
   const lastPinchMidRef = useRef<Point | null>(null);
   /** Finger distance at pinch start — scale is measured from this, not frame-to-frame */
   const pinchStartDistanceRef = useRef<number | null>(null);
@@ -334,6 +343,77 @@ export const useCanvasCamera = ({
     if (cameraFollowAllowed) {
       const view = viewRef.current;
 
+      // Disco boombox: literally scroll-zoom in/out toward viewport center
+      const discoOn =
+        Boolean(discoModeRef?.current) && !focusedIdRef.current && !isIntroPlayingRef.current;
+      const applyCenteredZoom = (newZoom: number) => {
+        const rect = outerContainerRef.current?.getBoundingClientRect();
+        if (!rect) {
+          targetZoomRef.current = newZoom;
+          return;
+        }
+        const zoomPoint = {
+          x: rect.width / 2 - window.innerWidth / 2,
+          y: rect.height / 2 - window.innerHeight / 2
+        };
+        const z0 = Math.max(targetZoomRef.current, 0.001);
+        const contentPointX = (zoomPoint.x - targetOffsetRef.current.x) / z0;
+        const contentPointY = (zoomPoint.y - targetOffsetRef.current.y) / z0;
+        const z = Math.max(minZoom, Math.min(maxZoom, newZoom));
+        targetZoomRef.current = z;
+        targetOffsetRef.current = {
+          x: zoomPoint.x - contentPointX * z,
+          y: zoomPoint.y - contentPointY * z
+        };
+      };
+
+      if (discoOn) {
+        discoExitRef.current = null;
+        if (isPinching.current) {
+          discoBaseZoomRef.current = targetZoomRef.current;
+          discoLastPulseZoomRef.current = targetZoomRef.current;
+        } else if (!prefersReducedMotion) {
+          if (discoBaseZoomRef.current == null) {
+            discoBaseZoomRef.current = targetZoomRef.current;
+          } else if (
+            discoLastPulseZoomRef.current != null &&
+            Math.abs(targetZoomRef.current - discoLastPulseZoomRef.current) > 0.02
+          ) {
+            // User wheeled — new rest zoom
+            discoBaseZoomRef.current = targetZoomRef.current;
+          }
+
+          const wave = Math.sin((performance.now() / 520) * Math.PI * 2);
+          const amp = 0.14;
+          const newZoom = discoBaseZoomRef.current * (1 + wave * amp);
+          if (Math.abs(newZoom - targetZoomRef.current) > 0.00005) {
+            applyCenteredZoom(newZoom);
+            discoLastPulseZoomRef.current = targetZoomRef.current;
+          }
+        }
+      } else if (discoBaseZoomRef.current != null && !isPinching.current) {
+        // Ease back to rest instead of snapping off mid-thump
+        if (!discoExitRef.current) {
+          discoExitRef.current = {
+            start: performance.now(),
+            fromZoom: targetZoomRef.current,
+            baseZoom: discoBaseZoomRef.current
+          };
+        }
+        const EXIT_MS = prefersReducedMotion ? 120 : 700;
+        const t = Math.min(1, (performance.now() - discoExitRef.current.start) / EXIT_MS);
+        const eased = 1 - (1 - t) ** 3;
+        const z =
+          discoExitRef.current.fromZoom +
+          (discoExitRef.current.baseZoom - discoExitRef.current.fromZoom) * eased;
+        applyCenteredZoom(z);
+        if (t >= 1) {
+          discoExitRef.current = null;
+          discoBaseZoomRef.current = null;
+          discoLastPulseZoomRef.current = null;
+        }
+      }
+
       // Coast only when not in a focus morph — return just lerps to target
       if (
         !focusedIdRef.current &&
@@ -456,7 +536,11 @@ export const useCanvasCamera = ({
     touchLerpFactor,
     lerpFactor,
     outerContainerRef,
-    viewRef
+    viewRef,
+    discoModeRef,
+    isIntroPlayingRef,
+    minZoom,
+    maxZoom
   ]);
 
   const syncViewBounds = useCallback(() => {

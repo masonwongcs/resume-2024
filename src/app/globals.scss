@@ -66,6 +66,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
+  transition: background-color 650ms var(--material-cubic-bezier);
+
+  // Disco easter egg — slightly night-club wash under the dancing cards
+  &.disco-mode {
+    background: #1a1224;
+  }
 
   &:before {
     content: '';
