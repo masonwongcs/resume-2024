@@ -10,6 +10,7 @@ import { useReducedMotion } from 'motion/react';
 
 import { useFocusSwipeParallax } from './focus/FocusSwipeParallaxContext';
 import { FOCUS_COPY_SWIPE_PARALLAX, focusSwipeSeatProgress } from './focus/focusMotion';
+import { useIsCoverFlowCompact } from './useCoverFlowCompact';
 
 /** neat-annotations direction — arrow points this way toward the target */
 export type HandAnnotationDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw';
@@ -84,8 +85,6 @@ export type WorkHandAnnotation = {
   labelMaxWidth?: number;
 };
 
-const MOBILE_MQ = '(max-width: 480px), (pointer: coarse)';
-
 /** Default mobile placement — centered on the top edge, tip sits just above the card */
 export const HAND_ANNOTATION_MOBILE_ANCHOR: HandAnnotationAnchor = {
   x: 'center',
@@ -102,22 +101,6 @@ const resolveAxis = (
   if (value == null) return size * 0.5;
   if (typeof value === 'number') return size * value;
   return size * (named[value] ?? 0.5);
-};
-
-const useIsHandAnnMobile = () => {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia(MOBILE_MQ).matches;
-  });
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mql = window.matchMedia(MOBILE_MQ);
-    const apply = () => setIsMobile(mql.matches);
-    apply();
-    mql.addEventListener?.('change', apply);
-    return () => mql.removeEventListener?.('change', apply);
-  }, []);
-  return isMobile;
 };
 
 const copyParallaxX = (side: 'prev' | 'current' | 'next', dragX: number, stride: number) => {
@@ -156,7 +139,7 @@ export const HandAnnotation = ({
   swipeSide = 'current'
 }: HandAnnotationProps) => {
   const reduceMotion = useReducedMotion();
-  const isMobile = useIsHandAnnMobile();
+  const isMobile = useIsCoverFlowCompact();
   const swipe = useFocusSwipeParallax();
   const portalRef = useRef<HTMLSpanElement | null>(null);
   const resolvedVisibility: HandAnnotationVisibility = desktopOnly ? 'desktop' : (visibility ?? 'desktop');

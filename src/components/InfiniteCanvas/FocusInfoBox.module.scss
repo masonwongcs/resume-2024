@@ -19,7 +19,9 @@
 }
 
 .desktopOnly {
-  @media (max-width: 480px), (pointer: coarse) {
+  // Match COVER_FLOW_COMPACT_MQ — hide only on phones / portrait tablets
+  @media (max-width: 480px), ((pointer: coarse) and (orientation: portrait)),
+    ((pointer: coarse) and (max-height: 600px)) {
     display: none;
   }
 }

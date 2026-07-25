@@ -25,6 +25,8 @@ import {
   type PanInfo
 } from 'motion/react';
 
+import { useIsCoverFlowCompact } from './useCoverFlowCompact';
+
 type Direction = 'left' | 'right';
 
 const AudioCtx: typeof AudioContext | null =
@@ -252,10 +254,7 @@ export function CoverFlow({
   const containerRef = useRef<HTMLDivElement>(null);
   const instanceId = useId().replace(/:/g, 'x');
   const [isMounted, setIsMounted] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia('(max-width: 480px), (pointer: coarse)').matches;
-  });
+  const isMobile = useIsCoverFlowCompact();
   const [isSafari, setIsSafari] = useState(false);
   const [containerWidth, setContainerWidth] = useState(0);
   useEffect(() => {
@@ -276,16 +275,6 @@ export function CoverFlow({
     });
     ro.observe(container);
     return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    // Match InfiniteCanvas mobile breakpoint (cell metrics use 480)
-    const mql = window.matchMedia('(max-width: 480px), (pointer: coarse)');
-    const apply = () => setIsMobile(mql.matches);
-    apply();
-    mql.addEventListener?.('change', apply);
-    return () => mql.removeEventListener?.('change', apply);
   }, []);
 
   useEffect(() => {

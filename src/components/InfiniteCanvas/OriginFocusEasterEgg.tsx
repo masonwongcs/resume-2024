@@ -40,6 +40,7 @@ import {
   subscribeListeningPlaylistClose,
   subscribeListeningVinylPlaying
 } from './listeningCoverFlowState';
+import { useIsCoverFlowCompact } from './useCoverFlowCompact';
 import {
   FEATURED_ALBUM,
   NOW_LISTENING_LIBRARY,
@@ -113,22 +114,6 @@ const useListeningCoverFlipped = () => {
   return flipped;
 };
 
-const useIsCoverFlowMobile = () => {
-  const [isMobile, setIsMobile] = useState(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return false;
-    return window.matchMedia('(max-width: 480px), (pointer: coarse)').matches;
-  });
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mql = window.matchMedia('(max-width: 480px), (pointer: coarse)');
-    const apply = () => setIsMobile(mql.matches);
-    apply();
-    mql.addEventListener?.('change', apply);
-    return () => mql.removeEventListener?.('change', apply);
-  }, []);
-  return isMobile;
-};
-
 /** Metadata for the listening custom card (focus morph uses featured album art) */
 export const LISTENING_CUSTOM_WORK: Work = {
   name: 'Now listening',
@@ -176,7 +161,7 @@ export const ListeningCardFace = ({ onActivate, inFocus }: CustomCardRenderProps
 export const ListeningFocusBanner = ({ isFocusSettled = false }: CustomCardFocusContentProps) => {
   const coverIndex = useListeningCoverIndex();
   const flipped = useListeningCoverFlipped();
-  const isMobile = useIsCoverFlowMobile();
+  const isMobile = useIsCoverFlowCompact();
   const active = COVER_FLOW_ITEMS[coverIndex] ?? COVER_FLOW_ITEMS[0];
   const activeCardNodeRef = useRef<HTMLElement | null>(null);
   const wasFocusSettledRef = useRef(false);
@@ -530,7 +515,7 @@ export const VinylFocusPlayer = () => {
   const fadeRafRef = useRef<number | null>(null);
   const stopTimerRef = useRef<number | null>(null);
   const flipped = useListeningCoverFlipped();
-  const isMobile = useIsCoverFlowMobile();
+  const isMobile = useIsCoverFlowCompact();
   const [overlayRect, setOverlayRect] = useState(getListeningFlipOverlayRect);
 
   useEffect(() => subscribeListeningFlipOverlayRect(setOverlayRect), []);
