@@ -135,37 +135,55 @@ const integrate = (points: Particle[], dt: number, skipBall: boolean) => {
 /**
  * Distance constraints with inverse-mass weighting.
  * String only resists stretch (can go slack). Heavy ball barely moves; rope is pulled to it.
+ *
+ * Each iteration sweeps forward then backward so pin tension reaches the ball on longer
+ * chains (POINT_COUNT 28). One-way Gauss–Seidel alone left too much stretch on the drop.
  */
+const solveSegment = (
+  a: Particle,
+  b: Particle,
+  rest: number,
+  maxLen: number
+) => {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dist = Math.hypot(dx, dy) || 0.0001;
+
+  if (dist <= rest) return;
+
+  const desired = dist > maxLen ? maxLen : rest;
+  const inv = a.invMass + b.invMass;
+  if (inv <= 0) return;
+
+  const corr = (dist - desired) / dist;
+  const ox = dx * corr;
+  const oy = dy * corr;
+  const aShare = a.invMass / inv;
+  const bShare = b.invMass / inv;
+
+  a.x += ox * aShare;
+  a.y += oy * aShare;
+  b.x -= ox * bShare;
+  b.y -= oy * bShare;
+};
+
 const solveConstraints = (points: Particle[], lengthScale = 1) => {
   const rest = (ROPE_LENGTH * lengthScale) / (POINT_COUNT - 1);
   const maxLen = rest * MAX_STRETCH;
+  const lastSeg = points.length - 2;
 
   for (let iter = 0; iter < ITERATIONS; iter++) {
-    for (let i = 0; i < points.length - 1; i++) {
+    for (let i = 0; i <= lastSeg; i++) {
       const a = points[i];
       const b = points[i + 1];
       if (!a || !b) continue;
-
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const dist = Math.hypot(dx, dy) || 0.0001;
-
-      if (dist <= rest) continue;
-
-      const desired = dist > maxLen ? maxLen : rest;
-      const inv = a.invMass + b.invMass;
-      if (inv <= 0) continue;
-
-      const corr = (dist - desired) / dist;
-      const ox = dx * corr;
-      const oy = dy * corr;
-      const aShare = a.invMass / inv;
-      const bShare = b.invMass / inv;
-
-      a.x += ox * aShare;
-      a.y += oy * aShare;
-      b.x -= ox * bShare;
-      b.y -= oy * bShare;
+      solveSegment(a, b, rest, maxLen);
+    }
+    for (let i = lastSeg; i >= 0; i--) {
+      const a = points[i];
+      const b = points[i + 1];
+      if (!a || !b) continue;
+      solveSegment(a, b, rest, maxLen);
     }
   }
 };
