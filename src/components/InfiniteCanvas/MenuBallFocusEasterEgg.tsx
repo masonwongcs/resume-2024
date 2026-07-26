@@ -12,12 +12,12 @@ import type { CustomCardConfig, CustomCardFocusContentProps } from './types';
 const BALL_SRC = '/images/work/tennis.webp';
 
 /** Particles including pinned anchor (first) and heavy ball (last). */
-const POINT_COUNT = 14;
+const POINT_COUNT = 28;
 /** Rest length anchor → ball center. */
 const ROPE_LENGTH = 190;
 const GRAVITY = 2600;
 const DAMPING = 0.995;
-const ITERATIONS = 30;
+const ITERATIONS = 60;
 const MAX_STRETCH = 1.5;
 const THROW_SCALE = 1.05;
 
