@@ -4,7 +4,7 @@ import styles from './Background.module.scss';
 
 import { useEffect, useRef, useState } from 'react';
 
-import { isDiscoQuery } from '@/lib/workSearch';
+import { isDiscoModeActive } from '@/lib/workSearch';
 import { useSearchStore } from '@/store';
 
 const lerp = (start: number, end: number, t: number) => {
@@ -61,7 +61,8 @@ const Blob = () => {
   const isMobileRef = useRef(false);
   const timeRef = useRef(0);
   const searchQuery = useSearchStore((state) => state.query);
-  const discoMode = isDiscoQuery(searchQuery);
+  const discoEnabled = useSearchStore((state) => state.discoEnabled);
+  const discoMode = isDiscoModeActive(searchQuery, discoEnabled);
   const discoModeRef = useRef(discoMode);
   const reduceMotionRef = useRef(false);
 

@@ -7,6 +7,17 @@
   }
 }
 
+@keyframes loaderPillExit {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.94) translateY(10px);
+  }
+}
+
 @keyframes clipPathAnimation {
   from {
     clip-path: inset(0% round 0px);
@@ -45,10 +56,28 @@
   //  }
   //}
   &.loaded {
-    transform-origin: bottom right;
-    animation:
-      clipPathAnimation 1s 400ms var(--material-cubic-bezier) forwards,
-      loaded 200ms 1.4s var(--material-cubic-bezier) forwards;
+    // Overlay is transparent now — don't clip-path to the top header (that hard-cuts
+    // the bottom progress pill). Fade the pill itself, then the root for unmount.
+    animation: loaded 180ms 0.52s var(--material-cubic-bezier) forwards;
+
+    .roundedRectangleWrapper {
+      animation: loaderPillExit 0.55s var(--material-cubic-bezier) forwards;
+    }
+
+    .progressWrapper,
+    .pillsWrapper {
+      animation: loaded 0.45s var(--material-cubic-bezier) forwards;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: loaded 1ms linear forwards;
+
+      .roundedRectangleWrapper,
+      .progressWrapper,
+      .pillsWrapper {
+        animation: loaded 1ms linear forwards;
+      }
+    }
   }
   .progressWrapper {
     width: 250px;

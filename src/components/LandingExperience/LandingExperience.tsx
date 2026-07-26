@@ -23,7 +23,8 @@ import {
   menuBallCustomCard
 } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
-import { usePortfolioViewStore } from '@/store';
+import { isDiscoQuery } from '@/lib/workSearch';
+import { usePortfolioViewStore, useSearchStore } from '@/store';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
 
 import { ReadingPortfolio } from './ReadingPortfolio';
@@ -58,6 +59,9 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
   const hasHydrated = usePortfolioViewStore((state) => state.hasHydrated);
   const hydrate = usePortfolioViewStore((state) => state.hydrate);
+  const searchQuery = useSearchStore((state) => state.query);
+  const discoEnabled = useSearchStore((state) => state.discoEnabled);
+  const discoPromptVisible = isDiscoQuery(searchQuery) && !discoEnabled;
   const reduceMotion = useReducedMotion();
   const [showRecenter, setShowRecenter] = useState(false);
   const recenterActionRef = useRef<(() => void) | null>(null);
@@ -124,7 +128,7 @@ const LandingExperience = ({ works }: LandingExperienceProps) => {
               />
               {/* Outside InfiniteCanvas so the mobile edge mask doesn't fade it */}
               <AnimatePresence>
-                {showRecenter ? (
+                {showRecenter && !discoPromptVisible ? (
                   <motion.div
                     key="recenter"
                     className={styles.recenterWrap}
