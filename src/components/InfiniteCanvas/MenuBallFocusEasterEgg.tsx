@@ -104,13 +104,16 @@ const pinAnchor = (points: Particle[], ax: number, ay: number) => {
 /** Attach point = ball surface along the last rope segment (always on the ball). */
 const getAttachPoint = (ball: Particle, prev: Particle) => {
   const r = getBallRadius();
+  // Keep the rope tip slightly under the ball edge to avoid a visible
+  // anti-aliased stroke sliver during fast drag/release frames.
+  const visualRadius = Math.max(0, r - 2);
   const dx = prev.x - ball.x;
   const dy = prev.y - ball.y;
   const dist = Math.hypot(dx, dy);
-  if (dist < 0.0001) return { x: ball.x, y: ball.y - r };
+  if (dist < 0.0001) return { x: ball.x, y: ball.y - visualRadius };
   return {
-    x: ball.x + (dx / dist) * r,
-    y: ball.y + (dy / dist) * r
+    x: ball.x + (dx / dist) * visualRadius,
+    y: ball.y + (dy / dist) * visualRadius
   };
 };
 
