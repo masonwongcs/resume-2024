@@ -5,9 +5,8 @@ import {
   getWorkMetaDescription,
   workCreativeWorkJsonLd
 } from '@/components/PortfolioSeo/PortfolioSeo';
+import { BASE_URL } from '@/lib/site';
 import { ALL_WORK_SLUGS, getWorkBySlug } from '@/lib/workSlug';
-
-const BASE_URL = 'https://masonwongcs.com';
 
 interface WorkSlugPageParams {
   slug: string;

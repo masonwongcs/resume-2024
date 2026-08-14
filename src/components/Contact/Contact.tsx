@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import cx from 'classnames';
 
 import { GitHubCard } from '@/components/GitHubCard';
+import { BASE_URL } from '@/lib/site';
 import { useHomeStore, useWorkStore } from '@/store';
 
 import { INFO } from './Contact.fixture';
@@ -115,7 +116,7 @@ const Contact = () => {
               <div className={styles.contactItem}>
                 <a
                   className={styles.contactItemCta}
-                  href="https://masonwongcs.com/resume.pdf"
+                  href={`${BASE_URL}/resume.pdf`}
                   target="_blank"
                   rel="noreferrer"
                 >

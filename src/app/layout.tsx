@@ -11,6 +11,7 @@ import { Background, Blob } from '@/components/Background';
 import { Header } from '@/components/Header';
 import { Loader } from '@/components/Loader';
 import { Navigation } from '@/components/Navigation';
+import { BASE_URL } from '@/lib/site';
 import { calculateYearDifference } from '@/utils/calculateYearDifference';
 
 //
@@ -49,7 +50,6 @@ const poppins = Poppins({
 
 const years = calculateYearDifference('2017-01-01');
 
-const BASE_URL = 'https://masonwongcs.com';
 const title = 'Mason Wong | Front-End Engineer in Singapore';
 const description = `Front-end engineer based in Singapore with over ${years} years of experience, specializing in UI and UX design for web and mobile applications, drawing on my background as a self-taught graphic and UI designer.`;
 export const metadata: Metadata = {

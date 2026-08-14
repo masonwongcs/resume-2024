@@ -11,6 +11,7 @@ import { useWebHaptics } from 'web-haptics/react';
 
 import { INFO } from '@/components/Contact/Contact.fixture';
 import GlassSurface from '@/components/GlassSurface/GlassSurface';
+import { BASE_URL } from '@/lib/site';
 import { useHomeStore, usePortfolioViewStore, useSearchStore, useWorkStore } from '@/store';
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -436,7 +437,7 @@ const Header = () => {
                   <div className={styles.contactItem}>
                     <a
                       className={styles.contactItemCta}
-                      href="https://masonwongcs.com/resume.pdf"
+                      href={`${BASE_URL}/resume.pdf`}
                       target="_blank"
                       rel="noreferrer"
                     >

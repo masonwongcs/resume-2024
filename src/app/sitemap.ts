@@ -1,8 +1,7 @@
 import type { MetadataRoute } from 'next';
 
+import { BASE_URL } from '@/lib/site';
 import { ALL_WORK_SLUGS } from '@/lib/workSlug';
-
-const BASE_URL = 'https://masonwongcs.com';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
