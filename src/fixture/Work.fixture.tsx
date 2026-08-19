@@ -232,6 +232,15 @@ const WORK_HISTORY = [
       anchor: { x: 'right', y: 'top', offsetX: -24, offsetY: -16 },
       labelMaxWidth: 200
     } satisfies WorkHandAnnotation
+  },
+  {
+    name: 'Pulse',
+    url: 'https://apps.apple.com/app/pulse-alarm/id6795580583',
+    linkLabel: 'Get it on the App Store',
+    image: '/images/work/pulse.jpg',
+    thumbnail: '/images/work/pulse.jpg',
+    description:
+      'A personal safety alarm for iPhone. When it fires, Pulse asks if you are okay. Miss the check-in and your Safety Circle of trusted contacts gets a private push. No location tracking. Not an emergency service. Free on the App Store.'
   }
 ];
 

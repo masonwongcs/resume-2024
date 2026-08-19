@@ -18,6 +18,7 @@ export {
   listeningCustomCard
 } from './OriginFocusEasterEgg';
 export { MenuBallFocusEasterEgg, menuBallCustomCard } from './MenuBallFocusEasterEgg';
+export { PulseFocusEasterEgg, pulseCustomCard } from './PulseFocusEasterEgg';
 export { DiscoAtmosphere } from './DiscoAtmosphere';
 export {
   FEATURED_ALBUM,

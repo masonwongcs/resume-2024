@@ -20,7 +20,8 @@ import {
   OriginHeroCard,
   type WorkHandAnnotation,
   listeningCustomCard,
-  menuBallCustomCard
+  menuBallCustomCard,
+  pulseCustomCard
 } from '@/components/InfiniteCanvas';
 import { Loader } from '@/components/Loader';
 import { isDiscoQuery } from '@/lib/workSearch';
@@ -53,7 +54,7 @@ const originCard: OriginCardConfig = {
   focusable: true
 };
 
-const customCards = [listeningCustomCard, menuBallCustomCard];
+const customCards = [listeningCustomCard, menuBallCustomCard, pulseCustomCard];
 
 const LandingExperience = ({ works }: LandingExperienceProps) => {
   const viewMode = usePortfolioViewStore((state) => state.viewMode);
