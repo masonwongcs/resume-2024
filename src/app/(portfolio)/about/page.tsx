@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 
 import { ProjectIndex } from '@/components/PortfolioSeo/PortfolioSeo';
 import { ABOUT_PAGE_PATH, getAboutMetaDescription, getAboutParagraphs } from '@/lib/aboutContent';
-
-const BASE_URL = 'https://masonwongcs.com';
+import { BASE_URL } from '@/lib/site';
 
 const title = 'About Mason Wong — Front-End Engineer in Singapore';
 const description = getAboutMetaDescription();

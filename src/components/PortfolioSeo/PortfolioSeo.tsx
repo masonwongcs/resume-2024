@@ -1,4 +1,5 @@
 import { ABOUT_PAGE_PATH } from '@/lib/aboutContent';
+import { BASE_URL } from '@/lib/site';
 import { ALL_WORK_SLUGS, getWorkBySlug } from '@/lib/workSlug';
 
 /** First 1–2 sentences (or up to `maxChars`) for case summaries / meta descriptions. */
@@ -118,12 +119,12 @@ export function workCreativeWorkJsonLd(slug: string) {
     '@type': 'CreativeWork',
     name: work.name,
     description: summarizeWorkCopy(work.description, 200),
-    url: `https://masonwongcs.com/work/${slug}`,
-    image: `https://masonwongcs.com${resolvePublicPath(work.thumbnail || work.image)}`,
+    url: `${BASE_URL}/work/${slug}`,
+    image: `${BASE_URL}${resolvePublicPath(work.thumbnail || work.image)}`,
     author: {
       '@type': 'Person',
       name: 'Mason Wong',
-      url: 'https://masonwongcs.com'
+      url: BASE_URL
     },
     ...(work.url ? { sameAs: work.url } : {})
   };
