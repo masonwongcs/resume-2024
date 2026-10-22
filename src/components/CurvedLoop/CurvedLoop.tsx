@@ -2,7 +2,17 @@
 
 import './CurvedLoop.scss';
 
-import { type FC, type MutableRefObject, type PointerEvent, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type FC,
+  type MutableRefObject,
+  type PointerEvent,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState
+} from 'react';
 
 interface CurvedLoopProps {
   marqueeText?: string;
@@ -31,6 +41,59 @@ export type MarqueePersistedState = {
   initialized: boolean;
 };
 
+/**
+ * Word-level layout of one marquee cycle, measured once. The textPath only ever holds
+ * the words covering the visible curve — re-laying out every glyph of every copy on
+ * each startOffset change cost ~7ms/frame for ~2% visible text.
+ */
+type MarqueeWindowLayout = {
+  /** Words with their trailing space — cut points stay on whitespace so shaping/bidi are unchanged */
+  tokens: string[];
+  /** Distance from the cycle start to each token, in SVG user units */
+  starts: number[];
+  widths: number[];
+  pathLength: number;
+};
+
+const measureWindowLayout = (
+  measureEl: SVGTextElement,
+  pathEl: SVGPathElement,
+  text: string
+): MarqueeWindowLayout | null => {
+  const tokens = text.match(/[^\s\u00A0]+[\s\u00A0]*|[\s\u00A0]+/g);
+  if (!tokens?.length) return null;
+  const starts: number[] = [];
+  const widths: number[] = [];
+  let charIndex = 0;
+  let prevEnd = 0;
+  try {
+    for (const token of tokens) {
+      const end = measureEl.getSubStringLength(0, charIndex + token.length);
+      starts.push(prevEnd);
+      widths.push(end - prevEnd);
+      prevEnd = end;
+      charIndex += token.length;
+    }
+  } catch {
+    return null;
+  }
+  const pathLength = pathEl.getTotalLength();
+  if (!(pathLength > 0) || !(prevEnd > 0)) return null;
+  return { tokens, starts, widths, pathLength };
+};
+
+/** Index of the token under cycle distance `d` (0 ≤ d < spacing) */
+const tokenIndexAt = (starts: number[], d: number) => {
+  let lo = 0;
+  let hi = starts.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (starts[mid] <= d) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+};
+
 const DRAG_THRESHOLD_PX = 6;
 /** Touch: cancel tap sooner than marquee scrub so a canvas pan doesn't open focus. */
 const TOUCH_TAP_CANCEL_PX = 8;
@@ -56,6 +119,12 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
 
   const measureRef = useRef<SVGTextElement | null>(null);
   const textPathRef = useRef<SVGTextPathElement | null>(null);
+  const pathRef = useRef<SVGPathElement | null>(null);
+  const windowLayoutRef = useRef<MarqueeWindowLayout | null>(null);
+  /** First token currently in the textPath — content only changes when this does */
+  const windowStartRef = useRef(-1);
+  const textRef = useRef(text);
+  textRef.current = text;
   const [spacing, setSpacing] = useState(() => {
     const saved = persistedState?.current;
     return saved?.initialized && saved.spacing > 0 ? saved.spacing : 0;
@@ -79,11 +148,6 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
   const pausedRef = useRef(paused);
   const persistedStateRef = useRef(persistedState);
 
-  const totalText = spacing
-    ? Array(Math.ceil(1800 / spacing) + 2)
-        .fill(text)
-        .join('')
-    : text;
   const ready = spacing > 0;
   const showMarquee = ready || Boolean(persistedState?.current.initialized && persistedState.current.spacing > 0);
 
@@ -111,7 +175,8 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
 
   const applyOffset = (next: number) => {
     const wrap = spacingRef.current;
-    if (!wrap || !textPathRef.current) return;
+    const textPath = textPathRef.current;
+    if (!wrap || !textPath) return;
     let value = next;
     while (value <= -wrap) value += wrap;
     while (value > 0) value -= wrap;
@@ -119,7 +184,41 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     if (persistedStateRef.current) {
       persistedStateRef.current.current.offset = value;
     }
-    textPathRef.current.setAttribute('startOffset', `${value}px`);
+
+    if (!windowLayoutRef.current && measureRef.current && pathRef.current) {
+      windowLayoutRef.current = measureWindowLayout(measureRef.current, pathRef.current, textRef.current);
+      windowStartRef.current = -1;
+    }
+    const layout = windowLayoutRef.current;
+    if (!layout) {
+      // Measurement unavailable — fall back to enough full copies to cover the curve
+      const fallback = Array(Math.ceil(1800 / wrap) + 2)
+        .fill(textRef.current)
+        .join('');
+      if (textPath.textContent !== fallback) textPath.textContent = fallback;
+      textPath.setAttribute('startOffset', `${value}px`);
+      return;
+    }
+
+    // Path distance 0 sits at cycle distance -value
+    const { tokens, starts, widths, pathLength } = layout;
+    const first = tokenIndexAt(starts, Math.min(-value, wrap - 0.001));
+    if (first !== windowStartRef.current) {
+      windowStartRef.current = first;
+      // Cover the first token (partly behind the path start) + the whole curve, wrapping cycles
+      const needed = widths[first] + pathLength;
+      let covered = 0;
+      let i = first;
+      let content = '';
+      while (covered < needed) {
+        content += tokens[i];
+        covered += widths[i];
+        i = (i + 1) % tokens.length;
+      }
+      content += tokens[i];
+      textPath.textContent = content;
+    }
+    textPath.setAttribute('startOffset', `${value + starts[first]}px`);
   };
 
   useEffect(() => {
@@ -139,6 +238,11 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
       if (cancelled || !measureRef.current) return;
       const next = measureRef.current.getComputedTextLength();
       if (next <= 0) return;
+      // Fonts / size may have changed — re-measure word positions (also while paused)
+      windowLayoutRef.current = null;
+      if (spacingRef.current > 0 && Math.abs(spacingRef.current - next) <= 0.5) {
+        applyOffset(offsetRef.current);
+      }
       setSpacing((prev) => (Math.abs(prev - next) > 0.5 ? next : prev));
       const saved = persistedStateRef.current?.current;
       if (saved) {
@@ -167,8 +271,15 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     };
   }, [text, className, fontSize]);
 
-  // Restore saved offset on mount / spacing change — only default to 0 on first ever paint
   useEffect(() => {
+    windowLayoutRef.current = null;
+    if (spacingRef.current > 0) applyOffset(offsetRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curveAmount]);
+
+  // Restore saved offset on mount / spacing change — only default to 0 on first ever paint.
+  // Layout effect: the textPath content is written imperatively, so fill it before paint.
+  useLayoutEffect(() => {
     if (!spacing) return;
     const saved = persistedStateRef.current?.current;
     if (saved?.initialized) {
@@ -289,13 +400,12 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
           {text}
         </text>
         <defs>
-          <path id={pathId} d={pathD} fill="none" stroke="transparent" />
+          <path ref={pathRef} id={pathId} d={pathD} fill="none" stroke="transparent" />
         </defs>
         {ready || Boolean(persistedState?.current.initialized && persistedState.current.spacing > 0) ? (
           <text fontSize={fontSize} fontWeight="bold" className={className} {...{ xmlSpace: 'preserve' }}>
-            <textPath ref={textPathRef} href={`#${pathId}`} {...{ xmlSpace: 'preserve' }}>
-              {totalText}
-            </textPath>
+            {/* Content is the visible word window, written by applyOffset — not React children */}
+            <textPath ref={textPathRef} href={`#${pathId}`} {...{ xmlSpace: 'preserve' }} />
           </text>
         ) : null}
       </svg>

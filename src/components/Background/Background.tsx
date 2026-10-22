@@ -53,10 +53,45 @@ interface BlobConfig {
   lerpFactor: number;
 }
 
+// Base colors (more vibrant versions)
+const BASE_COLORS = [
+  '#0d00a9', // blob3 - blue
+  '#fd0f00', // blob2 - red
+  '#e1bd00' // blob1 - yellow
+];
+
+// Target colors for interpolation (slightly shifted for animation)
+const TARGET_COLORS = [
+  '#1a00ff', // blob3 - brighter blue
+  '#ff1a1a', // blob2 - brighter red
+  '#ffd700' // blob1 - brighter yellow
+];
+
+const BLOB_CONFIGS: BlobConfig[] = [
+  { height: 70, aspectRatio: 3 / 2, color: '#0d00a9', lerpFactor: 0.1 }, // blob3
+  { height: 60, aspectRatio: 3 / 2, color: '#fd0f00', lerpFactor: 0.2 }, // blob2
+  { height: 50, aspectRatio: 2 / 1, color: '#e1bd00', lerpFactor: 0.3 } // blob1
+];
+
+/**
+ * Backing-store pixels per CSS px. The wash is blurred by 40–100px, so a quarter-res
+ * buffer upscaled by the compositor is indistinguishable from full retina — and ~64×
+ * fewer pixels to fill and blur every frame.
+ */
+const RENDER_SCALE = 0.25;
+const DESKTOP_BLUR_PX = 100;
+const MOBILE_BLUR_PX = 40;
+
+/** Per-frame lerp factors are tuned at 60fps — rescale so 120Hz / dropped frames feel identical */
+const frameLerp = (factor: number, dtSeconds: number) => 1 - Math.pow(1 - factor, dtSeconds * 60);
+
 const Blob = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const mousePosRef = useRef({ x: 0, y: 0 });
   const [isMobile, setIsMobile] = useState(false);
+  /** null until the context is probed — canvas `filter` is missing on older Safari */
+  const [canvasBlur, setCanvasBlur] = useState<boolean | null>(null);
+  const canvasBlurRef = useRef(false);
   const animationRef = useRef(0);
   const isMobileRef = useRef(false);
   const timeRef = useRef(0);
@@ -81,26 +116,6 @@ const Blob = () => {
     '#fd0f00', // blob2
     '#e1bd00' // blob1
   ]);
-
-  // Base colors (more vibrant versions)
-  const baseColors = [
-    '#0d00a9', // blob3 - blue
-    '#fd0f00', // blob2 - red
-    '#e1bd00' // blob1 - yellow
-  ];
-
-  // Target colors for interpolation (slightly shifted for animation)
-  const targetColors = [
-    '#1a00ff', // blob3 - brighter blue
-    '#ff1a1a', // blob2 - brighter red
-    '#ffd700' // blob1 - brighter yellow
-  ];
-
-  const blobConfigs: BlobConfig[] = [
-    { height: 70, aspectRatio: 3 / 2, color: '#0d00a9', lerpFactor: 0.1 }, // blob3
-    { height: 60, aspectRatio: 3 / 2, color: '#fd0f00', lerpFactor: 0.2 }, // blob2
-    { height: 50, aspectRatio: 2 / 1, color: '#e1bd00', lerpFactor: 0.3 } // blob1
-  ];
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -135,52 +150,62 @@ const Blob = () => {
 
     const handleResize = () => {
       checkMobile();
+      sizeCanvas();
       // Redraw canvas on resize
       drawBlobs.current();
     };
 
     checkMobile();
+    sizeCanvas();
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Desktop mouse movement handler
   useEffect(() => {
-    if (isMobile) return;
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.filter = 'blur(2px)';
+    const supported = ctx.filter === 'blur(2px)';
+    ctx.filter = 'none';
+    canvasBlurRef.current = supported;
+    setCanvasBlur(supported);
+  }, []);
 
+  // Pointer position lives in a ref — re-rendering on every mousemove restarted the rAF loop
+  useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
-      setMousePos({ x: event.clientX, y: event.clientY });
+      mousePosRef.current = { x: event.clientX, y: event.clientY };
     };
-
-    window.addEventListener('mousemove', handleMouseMove);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [isMobile]);
-
-  // Mobile touch handler
-  useEffect(() => {
-    if (!isMobile) return;
-
     const handleTouchMove = (event: TouchEvent) => {
       if (event.touches.length > 0) {
         const touch = event.touches[0];
-        setMousePos({ x: touch.clientX, y: touch.clientY });
+        mousePosRef.current = { x: touch.clientX, y: touch.clientY };
       }
     };
 
-    window.addEventListener('touchmove', handleTouchMove);
-
-    return () => {
-      window.removeEventListener('touchmove', handleTouchMove);
-    };
+    if (isMobile) {
+      window.addEventListener('touchmove', handleTouchMove, { passive: true });
+      return () => window.removeEventListener('touchmove', handleTouchMove);
+    }
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, [isMobile]);
 
-  // Draw all blobs on canvas
+  /** Resize the backing store only when the viewport changes — assigning width clears + reallocates */
+  const sizeCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const width = Math.max(1, Math.ceil(window.innerWidth * RENDER_SCALE));
+    const height = Math.max(1, Math.ceil(window.innerHeight * RENDER_SCALE));
+    if (canvas.width !== width) canvas.width = width;
+    if (canvas.height !== height) canvas.height = height;
+  };
+
+  // Draw all blobs on canvas (canvas pixel space = CSS px × RENDER_SCALE)
   const drawBlobs = useRef(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -188,19 +213,13 @@ const Blob = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size to full viewport
-    const dpr = window.devicePixelRatio || 1;
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    ctx.scale(dpr, dpr);
-
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
+    const s = RENDER_SCALE;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.filter = 'none';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (canvasBlurRef.current) {
+      ctx.filter = `blur(${(isMobileRef.current ? MOBILE_BLUR_PX : DESKTOP_BLUR_PX) * s}px)`;
+    }
 
     // Convert vh to pixels
     const vhToPx = (vh: number) => (vh / 100) * window.innerHeight;
@@ -209,62 +228,47 @@ const Blob = () => {
     const midAlpha = disco ? 0.55 : 0.5;
     const outerAlpha = disco ? 0.34 : 0.3;
 
-    // Draw each blob
-    blobConfigs.forEach((config, index) => {
+    BLOB_CONFIGS.forEach((config, index) => {
       const blobPos = blobPositionsRef.current[index];
-      const blobHeight = vhToPx(config.height);
+      const blobHeight = vhToPx(config.height) * s;
       const blobWidth = blobHeight * config.aspectRatio;
       const currentColor = blobColorsRef.current[index];
 
-      // Calculate rotation angle
-      // On mobile, use time-based rotation if no mouse/touch position
+      // Slow sweep like a rotating stage light on mobile / disco; desktop rests unrotated
       let angle = 0;
-      if (mousePos.x !== 0 || mousePos.y !== 0) {
-        angle = Math.atan2(mousePos.y - blobPos.y, mousePos.x - blobPos.x);
-      } else if (isMobileRef.current || disco) {
-        // Slow sweep like a rotating stage light
+      if (isMobileRef.current || disco) {
         const spin = disco ? (reduceMotionRef.current ? 0.25 : 0.55) : 0.3;
         angle = timeRef.current * spin + index * 0.5;
       }
 
-      // Save context
       ctx.save();
 
       // Set blend mode for additive color mixing when overlapping
       ctx.globalCompositeOperation = 'lighter';
-
-      // Translate to blob position (center of blob)
-      ctx.translate(blobPos.x, blobPos.y);
-
-      // Rotate around center
+      ctx.translate(blobPos.x * s, blobPos.y * s);
       ctx.rotate(angle);
 
       // Create gradient for smoother blob with transparency for blending
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(blobWidth, blobHeight) / 2);
-      // Use rgba with reduced opacity so blobs can overlap and blend
       const rgb = hexToRgb(currentColor);
       gradient.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${coreAlpha})`);
       gradient.addColorStop(0.3, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${midAlpha})`);
       gradient.addColorStop(0.6, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${outerAlpha})`);
       gradient.addColorStop(1, 'transparent');
 
-      // Draw ellipse centered at origin (after translate)
       ctx.beginPath();
       ctx.ellipse(0, 0, blobWidth / 2, blobHeight / 2, 0, 0, Math.PI * 2);
       ctx.fillStyle = gradient;
       ctx.fill();
 
-      // Restore context
       ctx.restore();
     });
-
-    // Apply blur and opacity via composite operation
-    // We'll use CSS filter for blur as it's more performant
   });
 
   // Animation loop — skip continuous rAF on mobile unless disco (spotlight wash).
-  // Full-screen blur(100px) canvas competing with the infinite canvas is a major Android jank source.
   useEffect(() => {
+    if (canvasBlur === null) return;
+
     if (isMobile && !discoMode) {
       drawBlobs.current();
       return;
@@ -274,15 +278,16 @@ const Blob = () => {
 
     const updateBlobs = () => {
       const currentTime = performance.now();
-      const deltaTime = (currentTime - lastTime) / 1000; // Convert to seconds
+      // Clamp so a backgrounded tab doesn't teleport the blobs on return
+      const deltaTime = Math.min(0.1, (currentTime - lastTime) / 1000);
       lastTime = currentTime;
 
       timeRef.current += deltaTime;
       const disco = discoModeRef.current;
       const reduceMotion = reduceMotionRef.current;
+      const mousePos = mousePosRef.current;
 
-      // Update positions for each blob
-      blobConfigs.forEach((config, index) => {
+      BLOB_CONFIGS.forEach((config, index) => {
         const currentPos = blobPositionsRef.current[index];
 
         if (disco) {
@@ -294,15 +299,18 @@ const Blob = () => {
           const a = timeRef.current * speed + index * ((Math.PI * 2) / 3);
           const targetX = cx + Math.cos(a) * orbit;
           const targetY = cy + Math.sin(a * 0.9) * orbit * 0.7;
+          const t = frameLerp(0.06, deltaTime);
           blobPositionsRef.current[index] = {
-            x: lerp(currentPos.x, targetX, 0.06),
-            y: lerp(currentPos.y, targetY, 0.06)
+            x: lerp(currentPos.x, targetX, t),
+            y: lerp(currentPos.y, targetY, t)
           };
         } else {
           // Desktop: follow mouse
-          const newX = lerp(currentPos.x, mousePos.x, config.lerpFactor);
-          const newY = lerp(currentPos.y, mousePos.y, config.lerpFactor);
-          blobPositionsRef.current[index] = { x: newX, y: newY };
+          const t = frameLerp(config.lerpFactor, deltaTime);
+          blobPositionsRef.current[index] = {
+            x: lerp(currentPos.x, mousePos.x, t),
+            y: lerp(currentPos.y, mousePos.y, t)
+          };
         }
 
         const currentColor = blobColorsRef.current[index];
@@ -317,7 +325,7 @@ const Blob = () => {
           // Ease the gel change so it reads as a wash, not a strobe
           const eased = frac * frac * (3 - 2 * frac);
           const target = lerpColor(DISCO_PALETTE[i0], DISCO_PALETTE[i1], eased);
-          const blend = reduceMotion ? 0.05 : 0.1;
+          const blend = frameLerp(reduceMotion ? 0.05 : 0.1, deltaTime);
           blobColorsRef.current[index] = lerpColor(currentColor, target, blend);
         } else {
           // Lerp colors based on time and mouse position
@@ -326,11 +334,9 @@ const Blob = () => {
           const timeInfluence = Math.sin(timeRef.current * 0.5 + timeOffset) * 0.5 + 0.5;
           const lerpValue = posInfluence * 0.3 + timeInfluence * 0.7;
 
-          const baseColor = baseColors[index];
-          const targetColor = targetColors[index];
-          const newColor = lerpColor(baseColor, targetColor, lerpValue);
+          const newColor = lerpColor(BASE_COLORS[index], TARGET_COLORS[index], lerpValue);
 
-          blobColorsRef.current[index] = lerpColor(currentColor, newColor, 0.1);
+          blobColorsRef.current[index] = lerpColor(currentColor, newColor, frameLerp(0.1, deltaTime));
         }
       });
 
@@ -346,14 +352,10 @@ const Blob = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [mousePos, isMobile, discoMode, blobConfigs, baseColors, targetColors]);
-
-  // Initial draw
-  useEffect(() => {
-    drawBlobs.current();
-  }, [isMobile]);
+  }, [isMobile, discoMode, canvasBlur]);
 
   const canvasOpacity = discoMode ? (isMobile ? 0.38 : 0.48) : isMobile ? 0.12 : 0.15;
+  const cssBlurPx = isMobile ? MOBILE_BLUR_PX : DESKTOP_BLUR_PX;
 
   return (
     <canvas
@@ -366,8 +368,8 @@ const Blob = () => {
         height: '100%',
         pointerEvents: 'none',
         zIndex: -1,
-        // Softer blur on mobile — 100px over a moving canvas is extremely expensive
-        filter: isMobile ? 'blur(40px)' : 'blur(100px)',
+        // Blur is baked into the low-res buffer when canvas filters exist — CSS blur is the fallback
+        filter: canvasBlur ? undefined : `blur(${cssBlurPx}px)`,
         opacity: canvasOpacity,
         transition: 'opacity 650ms var(--material-cubic-bezier, cubic-bezier(0.4, 0, 0.2, 1))'
       }}

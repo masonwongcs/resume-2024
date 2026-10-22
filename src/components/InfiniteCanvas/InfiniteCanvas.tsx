@@ -644,6 +644,7 @@ const InfiniteCanvas: React.FC<InfiniteCanvasProps> = ({
     <div
       ref={outerContainerRef}
       className={styles.infiniteCanvas}
+      data-canvas-viewport=""
       data-total={visibleItems.length}
       data-focused={isFocused && !isFocusReturning ? 'true' : undefined}
       onMouseDown={isInteractionLocked ? undefined : camera.handleMouseDown}

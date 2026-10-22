@@ -56,6 +56,17 @@ type UseCanvasCameraArgs = {
 
 const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
 
+const FRAME_MS_60 = 1000 / 60;
+/** Cap catch-up after a stalled / backgrounded frame so the camera never teleports */
+const MAX_FRAME_STEPS = 4;
+
+/** Lerp/friction constants are tuned per 60fps frame — rescale by elapsed frames */
+const frameLerp = (factor: number, frames: number) => 1 - Math.pow(1 - factor, frames);
+
+/** Firefox mouse wheels report lines (deltaMode 1); pages are rare but possible */
+const wheelDeltaToPx = (delta: number, mode: number, pageSize: number) =>
+  mode === 1 ? delta * 16 : mode === 2 ? delta * pageSize : delta;
+
 /** Resistance past min/max while pinching — lower = stiffer wall (matches focus swipe rubberband) */
 const ZOOM_RUBBERBAND_FACTOR = 0.28;
 /** Cap how far past the limit the rubberband can stretch (as a fraction of the limit) */
@@ -129,6 +140,7 @@ export const useCanvasCamera = ({
   /** Throttle React cull commits during touch so overscan stays warm without remount storms */
   const lastCullCommitMsRef = useRef(0);
   const animationFrameRef = useRef<number>(null);
+  const lastFrameTsRef = useRef<number | null>(null);
   const lastPosition = useRef({ x: 0, y: 0 });
   /** Resting zoom while disco boombox pulses around it */
   const discoBaseZoomRef = useRef<number | null>(null);
@@ -326,7 +338,17 @@ export const useCanvasCamera = ({
     });
   }, []);
 
-  const animateOffset = useCallback(() => {
+  const animateOffset = useCallback((ts?: number) => {
+    const now = ts ?? performance.now();
+    const lastTs = lastFrameTsRef.current;
+    lastFrameTsRef.current = now;
+    const frames = lastTs == null ? 1 : Math.min(MAX_FRAME_STEPS, Math.max(0, (now - lastTs) / FRAME_MS_60));
+    // Same-timestamp re-entry (loop restarted mid-frame) — a zero step would read as "settled"
+    if (frames === 0) {
+      animationFrameRef.current = requestAnimationFrame(animateOffset);
+      return;
+    }
+
     // Focus locks the camera — freeze pose while morph / peer springs run.
     // Exception: while returning to an off-screen seat we lerp the camera there.
     // Also idle the camera while the menu drawer animates/scales .main so we
@@ -424,11 +446,12 @@ export const useCanvasCamera = ({
       ) {
         const v = panVelocityRef.current;
         targetOffsetRef.current = {
-          x: targetOffsetRef.current.x + v.x,
-          y: targetOffsetRef.current.y + v.y
+          x: targetOffsetRef.current.x + v.x * frames,
+          y: targetOffsetRef.current.y + v.y * frames
         };
-        v.x *= touchInertiaFriction;
-        v.y *= touchInertiaFriction;
+        const decay = Math.pow(touchInertiaFriction, frames);
+        v.x *= decay;
+        v.y *= decay;
         if (Math.hypot(v.x, v.y) < touchInertiaMinSpeed) {
           v.x = 0;
           v.y = 0;
@@ -437,12 +460,14 @@ export const useCanvasCamera = ({
       }
 
       // Touch drag/pinch use touchLerpFactor; rubberband settle is slower; else lerpFactor
-      const follow =
+      const follow = frameLerp(
         zoomSnapBackRef.current
           ? ZOOM_SNAP_BACK_LERP
           : !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
             ? touchLerpFactor
-            : lerpFactor;
+            : lerpFactor,
+        frames
+      );
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
       const newY = lerp(view.offsetY, targetOffsetRef.current.y, follow);
       const newZoom = lerp(view.zoom, targetZoomRef.current, follow);
@@ -796,9 +821,14 @@ export const useCanvasCamera = ({
 
       e.preventDefault();
 
+      const pageHeight = viewRef.current.height || window.innerHeight;
+      const pageWidth = viewRef.current.width || window.innerWidth;
+      const deltaX = wheelDeltaToPx(e.deltaX, e.deltaMode, pageWidth);
+      const deltaY = wheelDeltaToPx(e.deltaY, e.deltaMode, pageHeight);
+
       if (e.ctrlKey || e.metaKey) {
         // Zoom functionality remains the same
-        const delta = -e.deltaY * zoomSpeed;
+        const delta = -deltaY * zoomSpeed;
         const newZoom = Math.max(minZoom, Math.min(maxZoom, targetZoomRef.current * (1 + delta)));
 
         if (newZoom !== targetZoomRef.current) {
@@ -815,12 +845,12 @@ export const useCanvasCamera = ({
         // Always assign a new object — in-place mutation breaks lerp when
         // targetOffsetRef and React offset state accidentally share a reference
         targetOffsetRef.current = {
-          x: targetOffsetRef.current.x - e.deltaX,
-          y: targetOffsetRef.current.y - e.deltaY
+          x: targetOffsetRef.current.x - deltaX,
+          y: targetOffsetRef.current.y - deltaY
         };
       }
     },
-    [handleZoom, focusedIdRef, isIntroPlayingRef, zoomSpeed, minZoom, maxZoom, targetZoomRef, targetOffsetRef, outerContainerRef]
+    [handleZoom, focusedIdRef, isIntroPlayingRef, zoomSpeed, minZoom, maxZoom, targetZoomRef, targetOffsetRef, outerContainerRef, viewRef]
   );
 
   const handleTouchStart = useCallback(

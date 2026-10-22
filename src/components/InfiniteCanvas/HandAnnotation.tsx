@@ -207,8 +207,8 @@ export const HandAnnotation = ({
 
       const node = portalRef.current;
       if (node) {
-        node.style.top = `${top}px`;
-        node.style.left = `${left}px`;
+        // Transform, not top/left — layout writes here forced a full relayout every frame
+        node.style.transform = `translate3d(${left}px, ${top}px, 0)`;
         node.style.opacity = String(opacity);
       } else {
         setPos({ top, left });
@@ -265,8 +265,9 @@ export const HandAnnotation = ({
           data-note={note}
           style={
             {
-              top: pos.top,
-              left: pos.left,
+              top: 0,
+              left: 0,
+              transform: `translate3d(${pos.left}px, ${pos.top}px, 0)`,
               zIndex,
               '--ann-font': "'Shantell Sans', cursive",
               '--ann-color': color,

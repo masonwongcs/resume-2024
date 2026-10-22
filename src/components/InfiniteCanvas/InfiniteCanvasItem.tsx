@@ -210,6 +210,34 @@ const getPillApproachPose = (
   };
 };
 
+/**
+ * Culled cards stay mounted in an overscan ring so pans never show empty edges,
+ * but Chrome still pays per-frame rendering cost for every painted layer. Mark
+ * cards outside viewport + margin so CSS can skip painting them.
+ * Root must be the canvas's own overflow clip — with the implicit root, ancestor
+ * clipping cancels rootMargin and cards would pop in at the edge.
+ */
+const OFFSCREEN_ROOT_MARGIN = '25%';
+const offscreenObservers = new WeakMap<Element, IntersectionObserver>();
+
+const getOffscreenObserver = (root: Element) => {
+  let observer = offscreenObservers.get(root);
+  if (!observer) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const el = entry.target as HTMLElement;
+          if (entry.isIntersecting) delete el.dataset.offscreen;
+          else el.dataset.offscreen = '';
+        }
+      },
+      { root, rootMargin: OFFSCREEN_ROOT_MARGIN }
+    );
+    offscreenObservers.set(root, observer);
+  }
+  return observer;
+};
+
 const smoothstep = (t: number) => t * t * (3 - 2 * t);
 
 const setMotion = (value: MotionValue<number>, next: number, immediate?: boolean) => {
@@ -263,6 +291,17 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   // Custom faces are ready immediately (optional poster is decorative only)
   const isLoaded = hasCustomContent || imageLoaded;
   const itemRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = itemRef.current;
+    const root = el?.closest('[data-canvas-viewport]');
+    if (!el || !root || typeof IntersectionObserver === 'undefined') return;
+    const observer = getOffscreenObserver(root);
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+      delete el.dataset.offscreen;
+    };
+  }, []);
   const prefersReducedMotion = useReducedMotion();
   // Gate 3D tilt/shine by pointer capability — NOT viewport width.
   // max-width was incorrectly killing desktop tilt in narrow windows / side panels.
