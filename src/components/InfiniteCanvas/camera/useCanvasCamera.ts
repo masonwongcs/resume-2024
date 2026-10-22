@@ -86,6 +86,8 @@ const ZOOM_RUBBERBAND_FACTOR = 0.28;
 const ZOOM_RUBBERBAND_MAX_OVERSHOOT = 0.2;
 /** Lerp rate while settling back from a rubberband overshoot — lower = slower bounce */
 const ZOOM_SNAP_BACK_LERP = 0.08;
+/** Camera follow while mouse-dragging — higher = tighter to the cursor (wheel keeps lerpFactor) */
+const MOUSE_DRAG_LERP = 0.22;
 
 /**
  * iOS-style rubber-band for zoom: allow a little overshoot past min/max with
@@ -170,7 +172,7 @@ export const useCanvasCamera = ({
   const lastPinchZoomPointRef = useRef<Point | null>(null);
   /** True while easing zoom/offset back after a rubberband overshoot */
   const zoomSnapBackRef = useRef(false);
-  /** True only for touch drag — mouse drag keeps wheel lerp */
+  /** True only for touch drag — selects touchLerpFactor over MOUSE_DRAG_LERP */
   const isTouchDrag = useRef(false);
   const dragDistanceRef = useRef(0);
   const lastMoveTsRef = useRef(0);
@@ -476,13 +478,17 @@ export const useCanvasCamera = ({
         }
       }
 
-      // Touch drag/pinch use touchLerpFactor; rubberband settle is slower; else lerpFactor
+      // Touch drag/pinch use touchLerpFactor, mouse drag MOUSE_DRAG_LERP; rubberband settle is slower; else lerpFactor
       const follow = frameLerp(
         zoomSnapBackRef.current
           ? ZOOM_SNAP_BACK_LERP
-          : !focusedIdRef.current && (isPinching.current || (isDragging.current && isTouchDrag.current))
-            ? touchLerpFactor
-            : lerpFactor,
+          : focusedIdRef.current
+            ? lerpFactor
+            : isPinching.current || (isDragging.current && isTouchDrag.current)
+              ? touchLerpFactor
+              : isDragging.current
+                ? MOUSE_DRAG_LERP
+                : lerpFactor,
         frames
       );
       const newX = lerp(view.offsetX, targetOffsetRef.current.x, follow);
