@@ -57,6 +57,19 @@ type UseCanvasCameraArgs = {
 const lerp = (start: number, end: number, factor: number) => start + (end - start) * factor;
 
 const FRAME_MS_60 = 1000 / 60;
+/** Per-60fps-frame ease into / out of the drag globe */
+const GLOBE_IN_LERP = 0.16;
+const GLOBE_OUT_LERP = 0.13;
+/** Bend while a drag is held still; ramps to 1 as the camera reaches GLOBE_FULL_SPEED */
+const GLOBE_MIN_BEND = 0.7;
+/** Camera speed (screen px per 60fps frame) that fully bends the globe — a brisk hand drag */
+const GLOBE_FULL_SPEED = 10;
+const GLOBE_SPEED_SMOOTHING = 0.2;
+/** Fling tuning — mouse throws are shorter than touch, and both are capped (px per 60fps frame) */
+const MOUSE_INERTIA_BOOST = 0.45;
+const MAX_MOUSE_FLING_SPEED = 22;
+const MAX_TOUCH_FLING_SPEED = 45;
+const MIN_VELOCITY_SAMPLE_MS = 8;
 /** Cap catch-up after a stalled / backgrounded frame so the camera never teleports */
 const MAX_FRAME_STEPS = 4;
 
@@ -166,8 +179,12 @@ export const useCanvasCamera = ({
   const pointerY = useMotionValue(-1);
 
   const proximityHandlersRef = useRef(
-    new Map<string, { onFrame: ProximityRegistration['onFrame']; onReset: ProximityRegistration['onReset'] }>()
+    new Map<string, ProximityRegistration>()
   );
+  /** Globe curvature while dragging — 0 flat, 1 fully curved */
+  const globeBendRef = useRef(0);
+  const globeSpeedRef = useRef(0);
+  const lastGlobeCamRef = useRef({ x: 0, y: 0 });
 
   /** Injected by the parent once useCanvasRecenter is available */
   const updateRecenterVisibilityRef = useRef<(() => void) | null>(null);
@@ -538,6 +555,42 @@ export const useCanvasCamera = ({
       }
     }
 
+    // Globe: curve the grid while a drag (or fling) moves it — harder the faster it moves
+    {
+      const view = viewRef.current;
+      const last = lastGlobeCamRef.current;
+      const camSpeed = Math.hypot(view.offsetX - last.x, view.offsetY - last.y) / frames;
+      last.x = view.offsetX;
+      last.y = view.offsetY;
+      globeSpeedRef.current = lerp(globeSpeedRef.current, camSpeed, frameLerp(GLOBE_SPEED_SMOOTHING, frames));
+
+      const globeAllowed = !prefersReducedMotion && !focusedIdRef.current && !isIntroPlayingRef.current;
+      const speedBend = Math.min(1, globeSpeedRef.current / GLOBE_FULL_SPEED);
+      // Held drag keeps a floor; after release the curve relaxes with the glide's speed
+      const globeTarget = !globeAllowed
+        ? 0
+        : isDragging.current && dragDistanceRef.current > clickDragThresholdPx
+          ? GLOBE_MIN_BEND + (1 - GLOBE_MIN_BEND) * speedBend
+          : isCoastingRef.current
+            ? speedBend
+            : 0;
+
+      const prevBend = globeBendRef.current;
+      if (prevBend > 0 || globeTarget > 0) {
+        let bend = lerp(
+          prevBend,
+          globeTarget,
+          frameLerp(globeTarget > prevBend ? GLOBE_IN_LERP : GLOBE_OUT_LERP, frames)
+        );
+        if (globeTarget === 0 && bend < 0.002) bend = 0;
+        globeBendRef.current = bend;
+        // Cards move under the camera while bent, so re-project every frame
+        proximityHandlersRef.current.forEach((handlers) => {
+          handlers.onGlobe?.(bend, view);
+        });
+      }
+    }
+
     updateRecenterVisibilityRef.current?.();
 
     animationFrameRef.current = requestAnimationFrame(animateOffset);
@@ -565,7 +618,8 @@ export const useCanvasCamera = ({
     discoModeRef,
     isIntroPlayingRef,
     minZoom,
-    maxZoom
+    maxZoom,
+    clickDragThresholdPx
   ]);
 
   const syncViewBounds = useCallback(() => {
@@ -683,24 +737,23 @@ export const useCanvasCamera = ({
         y: targetOffsetRef.current.y + dy
       };
 
-      // Sample touch velocity for post-release inertia (mouse pans stay snappy)
-      if (isTouchDrag.current) {
-        const now = performance.now();
-        const dt = now - lastMoveTsRef.current;
-        lastMoveTsRef.current = now;
-        if (dt > 0 && dt < 100) {
-          // Normalize to ~60fps frame units so fling distance is frame-rate stable
-          const scale = 16.67 / dt;
-          const instX = dx * scale;
-          const instY = dy * scale;
-          const s = touchVelocitySmoothing;
-          const prev = panVelocityRef.current;
-          panVelocityRef.current = {
-            x: prev.x * (1 - s) + instX * s,
-            y: prev.y * (1 - s) + instY * s
-          };
-          touchInertiaEligibleRef.current = true;
-        }
+      // Sample velocity for post-release inertia (touch and mouse both glide)
+      const now = performance.now();
+      const dt = now - lastMoveTsRef.current;
+      lastMoveTsRef.current = now;
+      if (dt > 0 && dt < 100) {
+        // Normalize to ~60fps frame units so fling distance is frame-rate stable.
+        // High-rate mice report every 1–4ms — floor dt so one tiny gap can't spike the fling.
+        const scale = 16.67 / Math.max(dt, MIN_VELOCITY_SAMPLE_MS);
+        const instX = dx * scale;
+        const instY = dy * scale;
+        const s = touchVelocitySmoothing;
+        const prev = panVelocityRef.current;
+        panVelocityRef.current = {
+          x: prev.x * (1 - s) + instX * s,
+          y: prev.y * (1 - s) + instY * s
+        };
+        touchInertiaEligibleRef.current = true;
       }
 
       lastPosition.current = { x: clientX, y: clientY };
@@ -713,15 +766,19 @@ export const useCanvasCamera = ({
       suppressClickRef.current = true;
     }
 
-    // Touch fling: keep coasting if the finger was still moving at release
+    // Fling: keep coasting if the pointer was still moving at release
     if (touchInertiaEligibleRef.current) {
       touchInertiaEligibleRef.current = false;
       const age = performance.now() - lastMoveTsRef.current;
       const speed = Math.hypot(panVelocityRef.current.x, panVelocityRef.current.y);
-      if (!prefersReducedMotion && age < 80 && speed > touchInertiaMinSpeed) {
+      const wasPan = dragDistanceRef.current > clickDragThresholdPx;
+      if (!prefersReducedMotion && wasPan && age < 80 && speed > touchInertiaMinSpeed) {
+        const boost = isTouchDrag.current ? touchInertiaBoost : MOUSE_INERTIA_BOOST;
+        const maxSpeed = isTouchDrag.current ? MAX_TOUCH_FLING_SPEED : MAX_MOUSE_FLING_SPEED;
+        const clamp = Math.min(1, maxSpeed / (speed * boost));
         panVelocityRef.current = {
-          x: panVelocityRef.current.x * touchInertiaBoost,
-          y: panVelocityRef.current.y * touchInertiaBoost
+          x: panVelocityRef.current.x * boost * clamp,
+          y: panVelocityRef.current.y * boost * clamp
         };
         isCoastingRef.current = true;
       } else {

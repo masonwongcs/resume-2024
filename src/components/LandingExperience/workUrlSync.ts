@@ -4,12 +4,16 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import type { CanvasFocusBridge, FocusUrlIntent, Work } from '@/components/InfiniteCanvas';
 import { ABOUT_PAGE_PATH } from '@/lib/aboutContent';
-import { getSlugForWork, getWorkBySlug } from '@/lib/workSlug';
+import { ALL_WORK_SLUGS, getSlugForWork, getWorkBySlug } from '@/lib/workSlug';
 import { usePortfolioViewStore, useWorkStore } from '@/store';
 
 const WORK_PATH_PREFIX = '/work/';
 const ORIGIN_WORK_NAME = 'Hello';
 const LISTENING_WORK_NAME = 'Now listening';
+/** Let the intro finish before warming routes */
+const PREFETCH_START_DELAY_MS = 3000;
+/** Assets the focus overlay mounts on settle — first open otherwise fetches them mid-morph */
+const FOCUS_OVERLAY_ASSETS = ['/images/icon/close.svg'];
 
 const slugFromPathname = (pathname: string): string | null => {
   if (!pathname.startsWith(WORK_PATH_PREFIX)) return null;
@@ -61,6 +65,42 @@ export const useWorkUrlSync = (canvasBridgeRef: React.RefObject<CanvasFocusBridg
       sessionShellRef.current = pathname === '/' ? '/' : '/work';
     }
   }, [pathname]);
+
+  // Opening a card pushes /work/[slug]; uncached, its RSC fetch + commit lands mid-morph.
+  // Warm every focus route (one per idle slot) so first opens match repeat opens.
+  useEffect(() => {
+    const paths = [ABOUT_PAGE_PATH, ...ALL_WORK_SLUGS.map((slug) => `${WORK_PATH_PREFIX}${slug}`)];
+    const idle =
+      typeof window.requestIdleCallback === 'function'
+        ? (cb: () => void) => window.requestIdleCallback(cb, { timeout: 2000 })
+        : (cb: () => void) => window.setTimeout(cb, 50);
+    const cancelIdle =
+      typeof window.cancelIdleCallback === 'function'
+        ? (id: number) => window.cancelIdleCallback(id)
+        : (id: number) => window.clearTimeout(id);
+
+    let idleId: number | null = null;
+    let index = 0;
+    const next = () => {
+      const path = paths[index++];
+      if (!path) return;
+      router.prefetch(path);
+      idleId = idle(next);
+    };
+    const startId = window.setTimeout(() => {
+      for (const src of FOCUS_OVERLAY_ASSETS) {
+        const img = new Image();
+        img.src = src;
+        void img.decode().catch(() => {});
+      }
+      idleId = idle(next);
+    }, PREFETCH_START_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(startId);
+      if (idleId != null) cancelIdle(idleId);
+    };
+  }, [router]);
 
   const selfNavigate = useCallback(
     (path: string, mode: 'push' | 'replace') => {

@@ -297,8 +297,19 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     let frame = 0;
     lastTsRef.current = 0;
 
+    // Every startOffset write forces a full rendering frame — skip them while off-screen
+    let onScreen = true;
+    const svg = measureRef.current?.ownerSVGElement;
+    const io =
+      svg && typeof IntersectionObserver !== 'undefined'
+        ? new IntersectionObserver(([entry]) => {
+            onScreen = entry?.isIntersecting ?? true;
+          })
+        : null;
+    if (io && svg) io.observe(svg);
+
     const step = (ts: number) => {
-      if (pausedRef.current) {
+      if (pausedRef.current || !onScreen) {
         lastTsRef.current = 0;
         frame = requestAnimationFrame(step);
         return;
@@ -317,7 +328,10 @@ const CurvedLoop: FC<CurvedLoopProps> = ({
     };
 
     frame = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      io?.disconnect();
+    };
   }, [spacing, ready]);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {

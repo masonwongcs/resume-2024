@@ -22,6 +22,7 @@ import {
   type ProximityFrameHandler,
   type ProximityResetHandler
 } from './camera/canvasView';
+import { getGlobeStyle, type GlobeFrameHandler } from './camera/globe';
 import { CARD_BORDER_RADIUS_RATIO } from './focus/focusLayout';
 import type { Work } from './types';
 
@@ -40,6 +41,7 @@ export type InfiniteCanvasFocusMode = 'idle' | 'focused' | 'exiting' | 'returnin
 export interface ProximityRegistration {
   onFrame: ProximityFrameHandler;
   onReset: ProximityResetHandler;
+  onGlobe?: GlobeFrameHandler;
 }
 
 interface InfiniteCanvasItemProps {
@@ -178,6 +180,8 @@ const SHADOW_REST_OPACITY = 0;
 const SHADOW_MAX_OPACITY = 0.5;
 const SHADOW_REST_SCALE = 0.96;
 const SHADOW_MAX_SCALE = 1.03;
+/** How long shadow / image layers stay promoted after proximity ends */
+const HOT_LAYER_LINGER_MS = 700;
 /** Pre-stack pose — emerge from the progress pill and grow into the pile */
 const STACK_ENTER_SCALE = 0;
 /** Matches Loader pill: bottom 20px + half of 64px height */
@@ -316,6 +320,9 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const isAwaitingStack = isClusterHold && !stackEntered;
   const isClustered = isClusterHold && stackEntered;
   const isFocusing = focusMode !== 'idle';
+  const isFocusingRef = useRef(isFocusing);
+  isFocusingRef.current = isFocusing;
+  const globeRef = useRef<HTMLDivElement>(null);
   const canUseProximity = useRef(false);
   const isClusteredRef = useRef(isClusterHold);
   const proximityEnabledRef = useRef(proximityEnabled && !isFocusing);
@@ -378,8 +385,35 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   }, [prefersReducedMotion]);
 
+  const hotTimerRef = useRef<number | null>(null);
+  const setHot = useCallback((hot: boolean) => {
+    const el = itemRef.current;
+    if (hotTimerRef.current != null) {
+      window.clearTimeout(hotTimerRef.current);
+      hotTimerRef.current = null;
+    }
+    if (!el) return;
+    if (hot) {
+      el.dataset.hot = '';
+      return;
+    }
+    // Keep layers until the return springs settle, or they'd repaint every frame
+    hotTimerRef.current = window.setTimeout(() => {
+      hotTimerRef.current = null;
+      if (!proximityEngagedRef.current && !isPointerOverRef.current) delete el.dataset.hot;
+    }, HOT_LAYER_LINGER_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (hotTimerRef.current != null) window.clearTimeout(hotTimerRef.current);
+    },
+    []
+  );
+
   const resetProximity = useCallback(
     (immediate?: boolean) => {
+      if (proximityEngagedRef.current) setHot(false);
       proximityEngagedRef.current = false;
       setMotion(scale, 1, immediate);
       setMotion(magnetX, 0, immediate);
@@ -396,7 +430,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         zIndex.set(baseZIndexRef.current);
       }
     },
-    [scale, magnetX, magnetY, proximity, shadowX, shadowY, shadowOpacity, shadowScale, shineOpacity, zIndex, isFocusing]
+    [scale, magnetX, magnetY, proximity, shadowX, shadowY, shadowOpacity, shadowScale, shineOpacity, zIndex, isFocusing, setHot]
   );
 
   useEffect(() => {
@@ -451,6 +485,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         return;
       }
 
+      if (!proximityEngagedRef.current) setHot(true);
       proximityEngagedRef.current = true;
       proximity.set(nextProximity);
       scale.set(1 + nextProximity * (SCALE_ON_PROXIMITY - 1));
@@ -483,6 +518,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     },
     [
       resetProximity,
+      setHot,
       proximity,
       scale,
       magnetX,
@@ -498,16 +534,31 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     ]
   );
 
+  const onGlobeFrame = useCallback<GlobeFrameHandler>((bend, view) => {
+    const el = globeRef.current;
+    if (!el) return;
+    // Offscreen cards are hidden; focus morphs measure the flat pose
+    const flat = isFocusingRef.current || itemRef.current?.dataset.offscreen !== undefined;
+    const { x: contentX, y: contentY, width: w, height: h } = layoutRef.current;
+    const center = contentToClient(contentX + w / 2, contentY + h / 2, view);
+    const next = flat ? null : getGlobeStyle(center.x, center.y, view, bend);
+    const transform = next?.transform ?? '';
+    const opacity = next?.opacity ?? '';
+    if (el.style.transform !== transform) el.style.transform = transform;
+    if (el.style.opacity !== opacity) el.style.opacity = opacity;
+  }, []);
+
   useEffect(() => {
     if (!registerProximity || !unregisterProximity) return;
 
     registerProximity(id, {
       onFrame: onProximityFrame,
-      onReset: resetProximity
+      onReset: resetProximity,
+      onGlobe: onGlobeFrame
     });
 
     return () => unregisterProximity(id);
-  }, [id, registerProximity, unregisterProximity, onProximityFrame, resetProximity]);
+  }, [id, registerProximity, unregisterProximity, onProximityFrame, resetProximity, onGlobeFrame]);
 
   useEffect(() => {
     if ((isClusterHold || !proximityEnabled || isFocusing) && proximityEngagedRef.current) {
@@ -608,14 +659,16 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
   const handleMouseEnter = useCallback(() => {
     if (isFocusing || isClusteredRef.current || !proximityEnabledRef.current) return;
     isPointerOverRef.current = true;
+    setHot(true);
     magnetX.set(0);
     magnetY.set(0);
     shineOpacity.set(1);
     zIndex.set(baseZIndexRef.current + 50);
-  }, [shineOpacity, isFocusing, zIndex, magnetX, magnetY]);
+  }, [shineOpacity, isFocusing, zIndex, magnetX, magnetY, setHot]);
 
   const handleMouseLeave = useCallback(() => {
     isPointerOverRef.current = false;
+    if (!proximityEngagedRef.current) setHot(false);
     rotateX.set(0);
     rotateY.set(0);
     angle.set(180);
@@ -625,7 +678,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
     if (!isFocusing) {
       zIndex.set(baseZIndexRef.current);
     }
-  }, [rotateX, rotateY, angle, imageX, imageY, shineOpacity, proximity, zIndex, isFocusing]);
+  }, [rotateX, rotateY, angle, imageX, imageY, shineOpacity, proximity, zIndex, isFocusing, setHot]);
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -817,6 +870,8 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
         cursor: focusMode === 'focused' ? 'default' : undefined
       }}
     >
+      {/* Globe bend while dragging — transform written by the camera loop */}
+      <div ref={globeRef} className={styles.infiniteCanvasItemGlobe}>
       <motion.div
         style={{
           x: focusScrollNudgeX,
@@ -937,6 +992,7 @@ const InfiniteCanvasItemComponent: React.FC<InfiniteCanvasItemProps> = ({
       </div>
       </motion.div>
       </motion.div>
+      </div>
     </motion.div>
   );
 };
