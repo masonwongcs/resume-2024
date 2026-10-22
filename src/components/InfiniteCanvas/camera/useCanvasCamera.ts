@@ -187,6 +187,12 @@ export const useCanvasCamera = ({
   const globeBendRef = useRef(0);
   const globeSpeedRef = useRef(0);
   const lastGlobeCamRef = useRef({ x: 0, y: 0 });
+  // Phones and tablets: the bend reads as warping under a finger, so keep the grid flat
+  const [isTouchUi] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
 
   /** Injected by the parent once useCanvasRecenter is available */
   const updateRecenterVisibilityRef = useRef<(() => void) | null>(null);
@@ -570,7 +576,7 @@ export const useCanvasCamera = ({
       last.y = view.offsetY;
       globeSpeedRef.current = lerp(globeSpeedRef.current, camSpeed, frameLerp(GLOBE_SPEED_SMOOTHING, frames));
 
-      const globeAllowed = !prefersReducedMotion && !focusedIdRef.current && !isIntroPlayingRef.current;
+      const globeAllowed = !isTouchUi && !isTouchDrag.current && !prefersReducedMotion && !focusedIdRef.current && !isIntroPlayingRef.current;
       const speedBend = Math.min(1, globeSpeedRef.current / GLOBE_FULL_SPEED);
       // Held drag keeps a floor; after release the curve relaxes with the glide's speed
       const globeTarget = !globeAllowed
@@ -606,6 +612,7 @@ export const useCanvasCamera = ({
     commitCullPose,
     getCellWindowKey,
     prefersReducedMotion,
+    isTouchUi,
     focusedIdRef,
     focusPhaseRef,
     focusReturnPanActiveRef,
